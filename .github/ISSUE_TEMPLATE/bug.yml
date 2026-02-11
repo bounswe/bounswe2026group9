@@ -1,7 +1,7 @@
 name: 🐞 Bug
 description: File a bug/issue
 title: "[BUG] <title>"
-labels: [Bug, Needs Triage]
+labels: ["Bug"]
 body:
   - type: markdown
     attributes:
@@ -49,19 +49,22 @@ body:
     validations:
       required: false
 
-  - type: textarea
+  - type: checkboxes
     id: steps_actions
     attributes:
       label: Steps / Actions (Fix Plan)
       description: Optional: What steps/actions will be performed to fix this bug?
-      placeholder: |
-        - [ ] Investigate logs / reproduce
-        - [ ] Identify root cause
-        - [ ] Implement fix
-        - [ ] Add/update tests (if applicable)
-        - [ ] Verify fix
-    validations:
-      required: false
+      options:
+        - label: Investigate logs / reproduce
+          required: false
+        - label: Identify root cause
+          required: false
+        - label: Implement fix
+          required: false
+        - label: Add/update tests (if applicable)
+          required: false
+        - label: Verify fix
+          required: false
 
   - type: textarea
     id: final_actions
