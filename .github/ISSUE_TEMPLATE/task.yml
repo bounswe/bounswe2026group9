@@ -1,0 +1,166 @@
+name: "🧩 Task"
+description: "Create a task/work item (implementation, research, refactor, docs, etc.)"
+title: "[TASK] <title>"
+labels: ["Task"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        🚀 Use this template for any task you plan to work on.
+        ---
+        Please keep it clear, scoped, and verifiable.
+
+  - type: textarea
+    id: objective
+    attributes:
+      label: "Objective"
+      description: "What is the main goal of this task? (2–3 sentences)"
+      placeholder: "This task aims to..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: "Motivation / Context"
+      description: "Why do we need this? What does it affect?"
+      placeholder: "We need this because..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: "Scope"
+      description: "What is included and what is explicitly out of scope?"
+      placeholder: |
+        In scope:
+        - ...
+        Out of scope:
+        - ...
+    validations:
+      required: false
+
+  - type: textarea
+    id: deliverables
+    attributes:
+      label: "Deliverables"
+      description: "What artifacts/results will be produced?"
+      placeholder: |
+        - Code/PR: ...
+        - Documentation/Wiki: ...
+        - Demo/video/screenshot: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps_actions
+    attributes:
+      label: "Steps / Actions (Plan)"
+      description: "Optional: List the steps you will follow."
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: false
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: "Dependencies / Related Issues"
+      description: "Link dependencies with #issue_number and related resources."
+      placeholder: |
+        - Blocked by: #12
+        - Depends on: #34
+        - Related: #56
+    validations:
+      required: false
+
+  - type: textarea
+    id: final_actions
+    attributes:
+      label: "Final Actions"
+      description: "What will be done right before closing the issue?"
+      placeholder: |
+        - PR merged: #
+        - Links to deliverables:
+        - Verification notes:
+        - Docs/wiki updated (if needed):
+    validations:
+      required: false
+
+  - type: input
+    id: issue_deadline
+    attributes:
+      label: "Deadline of the Issue"
+      description: "Provide a deadline for completing the task."
+      placeholder: "YYYY-MM-DD HH:MM"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: reviewer
+    attributes:
+      label: "Reviewer"
+      description: "Who will review/verify that the task meets the acceptance criteria?"
+      multiple: false
+      options:
+        - Bahrican Yesil
+        - Egemen Atik
+        - Altay Acar
+        - Ezgi Aysel Batı
+        - Muhammed Enes Sürmeli
+        - Onur Kömürcü
+        - Mehmet Batuhan Çelik
+        - Hasan Can Erol
+        - Koray Tekin
+        - Mehmet Gökay Yıldız
+        - Ecenur Sezer
+    validations:
+      required: true
+
+  - type: input
+    id: review_deadline
+    attributes:
+      label: "Deadline for the Review"
+      description: "Optional: Provide a deadline for the review/verification."
+      placeholder: "YYYY-MM-DD HH:MM"
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: acceptance_criteria
+    attributes:
+      label: "Acceptance Criteria"
+      description: "The task is considered done when:"
+      options:
+        - label: "Objective and deliverables are clearly met"
+          required: true
+        - label: "Deliverables are accessible (links provided)"
+          required: false
+        - label: "Scope constraints are respected"
+          required: false
+        - label: "Work is reviewable and verifiable"
+          required: false
+        - label: "Relevant docs/wiki updated (if applicable)"
+          required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: "Notes / Risks / Open Questions"
+      description: "Optional: assumptions, risks, or open questions."
+      placeholder: "Anything else?"
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        ⚠️ Reminders
+        * Keep title & objective clear and specific.
+        * Link dependent issues using `#issue_number`.
+        * Post progress updates as comments when important.
+        * Before closing, add a final summary comment with deliverable links.
