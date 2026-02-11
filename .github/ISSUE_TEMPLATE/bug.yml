@@ -121,7 +121,7 @@ body:
     id: acceptance_criteria
     attributes:
       label: Acceptance Criteria
-      description: The bug is considered fixed when:
+      description: "The bug is considered fixed when:"
       options:
         - label: The issue is reproducible OR root cause is clearly explained
           required: true
