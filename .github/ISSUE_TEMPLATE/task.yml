@@ -106,17 +106,13 @@ body:
       description: "Who will review/verify that the task meets the acceptance criteria?"
       multiple: false
       options:
-        - Bahrican Yesil
-        - Egemen Atik
-        - Altay Acar
-        - Ezgi Aysel Batı
-        - Muhammed Enes Sürmeli
-        - Onur Kömürcü
-        - Mehmet Batuhan Çelik
-        - Hasan Can Erol
-        - Koray Tekin
-        - Mehmet Gökay Yıldız
-        - Ecenur Sezer
+        - Emre Bektaş
+        - Can Emir Bora
+        - Muhittin Köybaşı
+        - Mustafa Koyuncu
+        - Faik İhsan Südüpak
+        - İbrahim Fırat Yoğurtçu
+        - Tuğçe Yücel
     validations:
       required: true
 
