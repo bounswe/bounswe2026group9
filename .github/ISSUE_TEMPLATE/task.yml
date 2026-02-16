@@ -20,28 +20,6 @@ body:
       required: true
 
   - type: textarea
-    id: motivation
-    attributes:
-      label: "Motivation / Context"
-      description: "Why do we need this? What does it affect?"
-      placeholder: "We need this because..."
-    validations:
-      required: false
-
-  - type: textarea
-    id: scope
-    attributes:
-      label: "Scope"
-      description: "What is included and what is explicitly out of scope?"
-      placeholder: |
-        In scope:
-        - ...
-        Out of scope:
-        - ...
-    validations:
-      required: false
-
-  - type: textarea
     id: deliverables
     attributes:
       label: "Deliverables"
@@ -52,43 +30,6 @@ body:
         - Demo/video/screenshot: ...
     validations:
       required: true
-
-  - type: textarea
-    id: steps_actions
-    attributes:
-      label: "Steps / Actions (Plan)"
-      description: "Optional: List the steps you will follow."
-      placeholder: |
-        - [ ] ...
-        - [ ] ...
-        - [ ] ...
-    validations:
-      required: false
-
-  - type: textarea
-    id: dependencies
-    attributes:
-      label: "Dependencies / Related Issues"
-      description: "Link dependencies with #issue_number and related resources."
-      placeholder: |
-        - Blocked by: #12
-        - Depends on: #34
-        - Related: #56
-    validations:
-      required: false
-
-  - type: textarea
-    id: final_actions
-    attributes:
-      label: "Final Actions"
-      description: "What will be done right before closing the issue?"
-      placeholder: |
-        - PR merged: #
-        - Links to deliverables:
-        - Verification notes:
-        - Docs/wiki updated (if needed):
-    validations:
-      required: false
 
   - type: input
     id: issue_deadline
@@ -104,7 +45,7 @@ body:
     attributes:
       label: "Reviewer"
       description: "Who will review/verify that the task meets the acceptance criteria?"
-      multiple: false
+      multiple: true
       options:
         - Emre Bektaş
         - Can Emir Bora
@@ -116,15 +57,6 @@ body:
     validations:
       required: true
 
-  - type: input
-    id: review_deadline
-    attributes:
-      label: "Deadline for the Review"
-      description: "Optional: Provide a deadline for the review/verification."
-      placeholder: "YYYY-MM-DD HH:MM"
-    validations:
-      required: false
-
   - type: checkboxes
     id: acceptance_criteria
     attributes:
@@ -135,21 +67,10 @@ body:
           required: true
         - label: "Deliverables are accessible (links provided)"
           required: false
-        - label: "Scope constraints are respected"
-          required: false
         - label: "Work is reviewable and verifiable"
           required: false
         - label: "Relevant docs/wiki updated (if applicable)"
           required: false
-
-  - type: textarea
-    id: notes
-    attributes:
-      label: "Notes / Risks / Open Questions"
-      description: "Optional: assumptions, risks, or open questions."
-      placeholder: "Anything else?"
-    validations:
-      required: false
 
   - type: markdown
     attributes:
@@ -157,6 +78,5 @@ body:
         ---
         ⚠️ Reminders
         * Keep title & objective clear and specific.
-        * Link dependent issues using `#issue_number`.
         * Post progress updates as comments when important.
         * Before closing, add a final summary comment with deliverable links.
