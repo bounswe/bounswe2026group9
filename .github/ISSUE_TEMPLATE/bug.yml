@@ -43,11 +43,11 @@ body:
       label: Acceptance Criteria
       description: "The task is considered done when all items below are checked. Add/remove items as needed with using - [ ]."
       value: |
-      - [ ] The issue is reproducible OR the root cause is clearly explained
-      - [ ] A fix is implemented
-      - [ ] Relevant tests are added/updated (if applicable)
-      - [ ] The fix is verified (steps repeated, no longer occurs)
-      - [ ] Any related documentation is updated (if applicable)
+        - [ ] The issue is reproducible OR the root cause is clearly explained
+        - [ ] A fix is implemented
+        - [ ] Relevant tests are added/updated (if applicable)
+        - [ ] The fix is verified (steps repeated, no longer occurs)
+        - [ ] Any related documentation is updated (if applicable)
     validations:
       required: true
 
