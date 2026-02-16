@@ -16,74 +16,7 @@ body:
     attributes:
       label: Description
       description: Clearly describe the problem/bug in 2-4 sentences.
-      placeholder: What is the bug? Where does it happen? Who is affected?
-    validations:
-      required: true
-
-  - type: textarea
-    id: current_behavior
-    attributes:
-      label: Current Behavior
-      description: A concise description of what you're experiencing.
-    validations:
-      required: false
-
-  - type: textarea
-    id: expected_behavior
-    attributes:
-      label: Expected Behavior
-      description: A concise description of what you expected to happen.
-    validations:
-      required: false
-
-  - type: textarea
-    id: steps_to_reproduce
-    attributes:
-      label: Steps To Reproduce
-      description: Steps to reproduce the behavior.
-      placeholder: |
-        1. In this environment...
-        2. With this config...
-        3. Run '...'
-        4. See error...
-    validations:
-      required: false
-
-  - type: checkboxes
-    id: steps_actions
-    attributes:
-      label: Steps / Actions (Fix Plan)
-      description: "Optional: What steps/actions will be performed to fix this bug?"
-      options:
-        - label: Investigate logs / reproduce
-          required: false
-        - label: Identify root cause
-          required: false
-        - label: Implement fix
-          required: false
-        - label: Add/update tests (if applicable)
-          required: false
-        - label: Verify fix
-          required: false
-
-  - type: textarea
-    id: final_actions
-    attributes:
-      label: Final Actions
-      description: What will be done right before closing the issue? (e.g., share PR link, update wiki, notify others)
-      placeholder: |
-        - PR merged: #
-        - Verification notes:
-        - Docs/wiki updated (if needed):
-    validations:
-      required: false
-
-  - type: input
-    id: issue_deadline
-    attributes:
-      label: Deadline of the Issue
-      description: Provide a deadline for completing the fix.
-      placeholder: "YYYY-MM-DD HH:MM"
+      placeholder: What is the bug? Where does it happen? Who is affected? What is the current and expected behavior?
     validations:
       required: true
 
@@ -92,7 +25,7 @@ body:
     attributes:
       label: Reviewer
       description: Who will review/verify that the fix meets the acceptance criteria?
-      multiple: false
+      multiple: true
       options:
         - Emre Bektaş
         - Can Emir Bora
@@ -103,15 +36,6 @@ body:
         - Tuğçe Yücel
     validations:
       required: true
-
-  - type: input
-    id: review_deadline
-    attributes:
-      label: Deadline for the Review
-      description: "Optional: Provide a deadline for the review/verification."
-      placeholder: "YYYY-MM-DD HH:MM"
-    validations:
-      required: false
 
   - type: checkboxes
     id: acceptance_criteria
@@ -129,35 +53,6 @@ body:
           required: false
         - label: Any related documentation is updated (if applicable)
           required: false
-
-  - type: dropdown
-    id: os
-    attributes:
-      label: Operating System
-      multiple: true
-      options:
-        - Windows
-        - macOS
-        - Linux
-        - Android
-        - iOS
-        - Other / Not sure
-    validations:
-      required: false
-
-  - type: dropdown
-    id: device
-    attributes:
-      label: Device Type
-      multiple: true
-      options:
-        - Desktop
-        - Laptop
-        - Phone
-        - Tablet
-        - Other / Not sure
-    validations:
-      required: false
 
   - type: textarea
     id: anything_else
