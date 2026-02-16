@@ -51,7 +51,6 @@ body:
     validations:
       required: true
 
-
   - type: textarea
     id: anything_else
     attributes:
