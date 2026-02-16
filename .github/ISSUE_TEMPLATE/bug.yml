@@ -37,22 +37,20 @@ body:
     validations:
       required: true
 
-  - type: checkboxes
-    id: acceptance_criteria
-    attributes:
-      label: Acceptance Criteria
-      description: "The bug is considered fixed when:"
-      options:
-        - label: The issue is reproducible OR root cause is clearly explained
-          required: true
-        - label: A fix is implemented
-          required: false
-        - label: Relevant tests are added/updated (if applicable)
-          required: false
-        - label: The fix is verified (steps repeated, no longer occurs)
-          required: false
-        - label: Any related documentation is updated (if applicable)
-          required: false
+  - type: textarea
+  id: acceptance_criteria
+  attributes:
+    label: Acceptance Criteria
+    description: "The task is considered done when all items below are checked. Add/remove items as needed with using - [ ]."
+    value: |
+      - [ ] The issue is reproducible OR the root cause is clearly explained
+      - [ ] A fix is implemented
+      - [ ] Relevant tests are added/updated (if applicable)
+      - [ ] The fix is verified (steps repeated, no longer occurs)
+      - [ ] Any related documentation is updated (if applicable)
+  validations:
+    required: true
+
 
   - type: textarea
     id: anything_else
