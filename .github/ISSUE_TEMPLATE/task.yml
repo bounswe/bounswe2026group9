@@ -57,20 +57,18 @@ body:
     validations:
       required: true
 
-  - type: checkboxes
+  - type: textarea
     id: acceptance_criteria
     attributes:
-      label: "Acceptance Criteria"
-      description: "The task is considered done when:"
-      options:
-        - label: "Objective and deliverables are clearly met"
-          required: true
-        - label: "Deliverables are accessible (links provided)"
-          required: false
-        - label: "Work is reviewable and verifiable"
-          required: false
-        - label: "Relevant docs/wiki updated (if applicable)"
-          required: false
+      label: Acceptance Criteria
+      description: "Add as many as you want. PLEASE use task list format: - [ ] ..."
+      value: |
+        - [ ] Objective and deliverables are clearly met
+        - [ ] Deliverables are accessible (links provided)
+        - [ ] Work is reviewable and verifiable
+        - [ ] Relevant docs/wiki updated (if applicable)
+    validations:
+      required: true
 
   - type: markdown
     attributes:
