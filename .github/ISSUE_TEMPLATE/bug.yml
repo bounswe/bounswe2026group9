@@ -49,7 +49,7 @@ body:
       - [ ] The fix is verified (steps repeated, no longer occurs)
       - [ ] Any related documentation is updated (if applicable)
     validations:
-    required: true
+      required: true
 
 
   - type: textarea
