@@ -47,13 +47,12 @@ body:
       description: "Who will review/verify that the task meets the acceptance criteria?"
       multiple: true
       options:
-        - Emre Bektaş
         - Can Emir Bora
         - Muhittin Köybaşı
         - Mustafa Koyuncu
         - Faik İhsan Südüpak
         - İbrahim Fırat Yoğurtçu
-        - Tuğçe Yücel
+        - Battal Hazar
     validations:
       required: true
 
