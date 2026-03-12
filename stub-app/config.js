@@ -11,6 +11,6 @@ const BUTTON_LABELS = [
   "Cat Fact",
   "Button 2",
   "Button 3",
-  "Button 4",
+  "Country Info",
   "Button 5",
 ];
