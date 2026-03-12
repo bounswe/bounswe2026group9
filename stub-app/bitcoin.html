@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cat Fact</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+      padding: 24px;
+    }
+    .card {
+      width: 100%;
+      max-width: 640px;
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+      padding: 48px 40px;
+      text-align: center;
+    }
+    h1 { font-size: 1.875rem; font-weight: 700; color: #1e293b; margin-bottom: 8px; }
+    .description { color: #64748b; margin-bottom: 32px; }
+    #fact { font-size: 1.1rem; color: #1e293b; line-height: 1.6; min-height: 60px; }
+    button {
+      margin-top: 32px;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 12px;
+      background-color: #4f46e5;
+      color: #ffffff;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 150ms;
+    }
+    button:hover { background-color: #4338ca; }
+    .back { display: inline-block; margin-top: 16px; color: #64748b; cursor: pointer; font-size: 0.9rem; text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>BTC Price</h1>
+    <p class="description">
+      Data from <strong>coinGecko.com</strong> — a public API that returns USD price of Bitcoin.
+    </p>
+    <p id="fact">Loading...</p>
+    <button onclick="loadPrice()">Refresh price</button>
+    <br />
+    <span class="back" onclick="window.location.href='index.html'">Back to Home</span>
+  </div>
+
+  <script>
+  function loadPrice() {
+    const factElement = document.getElementById("fact");
+    factElement.innerText = "Fetching current price...";
+
+    fetch("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd")
+      .then((response) => response.json()) // Parse as JSON
+      .then((data) => {
+        // CoinGecko returns: { "bitcoin": { "usd": 65000 } }
+        const price = data.bitcoin.usd;
+        factElement.innerHTML = `<strong>1 BTC = $${price.toLocaleString()} USD</strong>`;
+      })
+      .catch((error) => {
+        console.error('Error:', error);
+        factElement.innerText = "Failed to load price. Try again later.";
+      });
+  }
+
+  // Call the function immediately when the page loads
+  loadPrice(); 
+</script>
+</body>
+</html>
