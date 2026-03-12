@@ -10,7 +10,7 @@ const NUM_BUTTONS = 6;
 const BUTTON_LABELS = [
   "Cat Fact",
   "Button 2",
-  "Button 3",
+  "Bitcoin",
   "Country Info",
   "Battal Button",
   "Dog Breeds"
