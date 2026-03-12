@@ -13,4 +13,5 @@ const BUTTON_LABELS = [
   "Button 3",
   "Button 4",
   "Button 5",
+  "Button 6"
 ];
