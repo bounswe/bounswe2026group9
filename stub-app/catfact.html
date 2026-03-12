@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cat Fact</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+      padding: 24px;
+    }
+    .card {
+      width: 100%;
+      max-width: 640px;
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+      padding: 48px 40px;
+      text-align: center;
+    }
+    h1 { font-size: 1.875rem; font-weight: 700; color: #1e293b; margin-bottom: 8px; }
+    .description { color: #64748b; margin-bottom: 32px; }
+    #fact { font-size: 1.1rem; color: #1e293b; line-height: 1.6; min-height: 60px; }
+    button {
+      margin-top: 32px;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 12px;
+      background-color: #4f46e5;
+      color: #ffffff;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 150ms;
+    }
+    button:hover { background-color: #4338ca; }
+    .back { display: inline-block; margin-top: 16px; color: #64748b; cursor: pointer; font-size: 0.9rem; text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Cat Fact</h1>
+    <p class="description">
+      Data from <strong>catfact.ninja</strong> — a public API that returns random, verified facts about cats.
+    </p>
+    <p id="fact">Loading...</p>
+    <button onclick="loadFact()">New Fact</button>
+    <br />
+    <span class="back" onclick="window.location.href='index.html'">Back to Home</span>
+  </div>
+
+  <script>
+    function loadFact() {
+      document.getElementById("fact").textContent = "Loading...";
+      fetch("https://catfact.ninja/fact")
+        .then(function(res) { return res.json(); })
+        .then(function(data) { document.getElementById("fact").textContent = data.fact; })
+        .catch(function() { document.getElementById("fact").textContent = "Failed to load fact. Please try again."; });
+    }
+    loadFact();
+  </script>
+</body>
+</html>
