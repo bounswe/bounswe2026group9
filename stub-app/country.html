@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Country Info</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+      padding: 24px;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 640px;
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+      padding: 48px 40px;
+    }
+
+    .card h1 { font-size: 1.875rem; font-weight: 700; color: #1e293b; text-align: center; margin-bottom: 8px; }
+    .card .desc { color: #64748b; text-align: center; margin-bottom: 24px; }
+
+    .search-box { display: flex; gap: 8px; margin-bottom: 24px; }
+    .search-box input {
+      flex: 1;
+      padding: 10px 16px;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 150ms;
+    }
+    .search-box input:focus { border-color: #4f46e5; }
+    .search-box button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 10px;
+      background-color: #4f46e5;
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 150ms;
+    }
+    .search-box button:hover { background-color: #4338ca; }
+
+    .info { display: flex; flex-direction: column; gap: 12px; }
+    .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e2e8f0; }
+    .info-row span:first-child { font-weight: 600; color: #334155; }
+    .info-row span:last-child { color: #64748b; }
+
+    .flag { font-size: 4rem; text-align: center; margin-bottom: 16px; }
+
+    .back-link { display: block; text-align: center; margin-top: 24px; color: #4f46e5; text-decoration: none; font-weight: 500; }
+    .back-link:hover { text-decoration: underline; }
+
+    .loading { text-align: center; color: #64748b; }
+    .error { text-align: center; color: #dc2626; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Country Info</h1>
+    <p class="desc">
+      Search any country to fetch data from the <strong>RestCountries API</strong>
+      (restcountries.com). The API returns details like population, capital, languages, and currency.
+    </p>
+    <div class="search-box">
+      <input type="text" id="country-input" placeholder="Enter a country name (e.g. Turkey)" />
+      <button id="search-btn">Search</button>
+    </div>
+    <div id="content"></div>
+    <a class="back-link" href="index.html">Back to Home</a>
+  </div>
+
+  <script>
+    var input = document.getElementById("country-input");
+    var btn = document.getElementById("search-btn");
+    var content = document.getElementById("content");
+
+    function searchCountry() {
+      var name = input.value.trim();
+      if (!name) return;
+
+      content.innerHTML = '<p class="loading">Loading...</p>';
+
+      fetch("https://restcountries.com/v3.1/name/" + encodeURIComponent(name))
+        .then(function (res) {
+          if (!res.ok) throw new Error("Not found");
+          return res.json();
+        })
+        .then(function (data) {
+          var c = data[0];
+          var langs = c.languages ? Object.values(c.languages).join(", ") : "N/A";
+          var currency = c.currencies
+            ? Object.values(c.currencies).map(function(cur) { return cur.name + " (" + cur.symbol + ")"; }).join(", ")
+            : "N/A";
+          var capital = c.capital ? c.capital[0] : "N/A";
+
+          content.innerHTML =
+            '<div class="flag">' + c.flag + '</div>' +
+            '<div class="info">' +
+              '<div class="info-row"><span>Name</span><span>' + c.name.common + '</span></div>' +
+              '<div class="info-row"><span>Official Name</span><span>' + c.name.official + '</span></div>' +
+              '<div class="info-row"><span>Capital</span><span>' + capital + '</span></div>' +
+              '<div class="info-row"><span>Region</span><span>' + c.region + '</span></div>' +
+              '<div class="info-row"><span>Subregion</span><span>' + (c.subregion || "N/A") + '</span></div>' +
+              '<div class="info-row"><span>Population</span><span>' + c.population.toLocaleString() + '</span></div>' +
+              '<div class="info-row"><span>Languages</span><span>' + langs + '</span></div>' +
+              '<div class="info-row"><span>Currency</span><span>' + currency + '</span></div>' +
+            '</div>';
+        })
+        .catch(function () {
+          content.innerHTML = '<p class="error">Country not found. Please try again.</p>';
+        });
+    }
+
+    btn.addEventListener("click", searchCountry);
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") searchCountry();
+    });
+  </script>
+</body>
+</html>
