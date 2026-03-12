@@ -11,6 +11,8 @@ const BUTTON_LABELS = [
   "Cat Fact",
   "Button 2",
   "Button 3",
+  "Button 4",
+  "Battal Button",
   "Country Info",
   "Button 5",
   "Dog Breeds"
