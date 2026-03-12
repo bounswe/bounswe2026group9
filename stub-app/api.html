@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Istanbul Weather</title>
+</head>
+<body>
+
+<h1>Istanbul Weather</h1>
+
+<p id="weather">Loading weather...</p>
+
+<script>
+fetch("https://api.open-meteo.com/v1/forecast?latitude=41.01&longitude=28.97&current_weather=true")
+  .then(response => response.json())
+  .then(data => {
+
+    const temp = data.current_weather.temperature;
+    const wind = data.current_weather.windspeed;
+
+    document.getElementById("weather").innerHTML =
+      "Temperature: " + temp + "°C <br> Wind Speed: " + wind + " km/h";
+  });
+</script>
+
+<br>
+<button onclick="window.location.href='index.html'">
+Back
+</button>
+
+</body>
+</html>

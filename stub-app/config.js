@@ -5,12 +5,13 @@
  * Update BUTTON_LABELS to set the text displayed on each button.
  */
 
-const NUM_BUTTONS = 5;
+const NUM_BUTTONS = 6;
 
 const BUTTON_LABELS = [
   "Cat Fact",
   "Button 2",
   "Bitcoin",
-  "Button 4",
-  "Button 5",
+  "Country Info",
+  "Battal Button",
+  "Dog Breeds"
 ];

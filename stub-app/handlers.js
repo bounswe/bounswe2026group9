@@ -18,9 +18,13 @@ function onButton3Click() {
 }
 
 function onButton4Click() {
-  console.log("Button 4 clicked -- implement me!");
+  window.location.href = "country.html";
 }
 
 function onButton5Click() {
-  console.log("Button 5 clicked -- implement me!");
+  window.location.href = "api.html";
+}
+
+function onButton6Click() {
+  window.location.href = "dogbreeds.html";
 }
