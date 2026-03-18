@@ -323,22 +323,28 @@ def google_callback(
         user = db.table("users").select("*").eq("id", user["id"]).execute().data[0]
     else:
         # New user — create account
+        import secrets
         username = google_email.split("@")[0]
-        # Ensure unique username
-        existing = db.table("users").select("id").eq("username", username).execute()
-        if existing.data:
-            username = f"{username}_{google_id[:6]}"
-
-        insert_result = db.table("users").insert({
-            "username": username,
-            "email": google_email,
-            "hashed_password": None,
-            "role": "registered",
-            "auth_provider": "google",
-            "google_id": google_id,
-            "email_verified": google_email_verified,
-        }).execute()
-        user = insert_result.data[0]
+        for _ in range(3):
+            try:
+                insert_result = db.table("users").insert({
+                    "username": username,
+                    "email": google_email,
+                    "hashed_password": None,
+                    "role": "registered",
+                    "auth_provider": "google",
+                    "google_id": google_id,
+                    "email_verified": google_email_verified,
+                }).execute()
+                user = insert_result.data[0]
+                break
+            except Exception as e:
+                if "users_username_key" in str(e).lower():
+                    username = f"{google_email.split('@')[0]}_{secrets.token_hex(3)}"
+                else:
+                    raise
+        else:
+            raise HTTPException(status_code=500, detail="Failed to create user")
 
     # Generate refresh token only — frontend will call /auth/refresh to get access token
     refresh_token = generate_refresh_token()
