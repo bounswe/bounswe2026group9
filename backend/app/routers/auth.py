@@ -1,5 +1,3 @@
-from urllib.parse import urlencode
-
 from fastapi import APIRouter, HTTPException, Response, Request, Depends
 from starlette.responses import RedirectResponse
 
@@ -52,7 +50,7 @@ def _set_refresh_cookie(response: Response, token: str) -> None:
         key=REFRESH_TOKEN_COOKIE,
         value=token,
         httponly=True,
-        secure=False,  # True in production (HTTPS)
+        secure=settings.is_production,
         samesite="lax",
         max_age=REFRESH_COOKIE_MAX_AGE,
         path="/",
@@ -73,27 +71,25 @@ def _user_response(user: dict) -> UserResponse:
 def register(body: UserRegisterRequest, response: Response):
     db = get_supabase()
 
-    # Check duplicate email
-    existing = db.table("users").select("id").eq("email", body.email).execute()
-    if existing.data:
-        raise HTTPException(status_code=409, detail="Email already registered")
-
-    # Check duplicate username
-    existing = db.table("users").select("id").eq("username", body.username).execute()
-    if existing.data:
-        raise HTTPException(status_code=409, detail="Username already taken")
-
-    # Create user
+    # Create user (unique constraints handle race conditions)
     hashed = hash_password(body.password)
-    insert_result = db.table("users").insert({
-        "username": body.username,
-        "email": body.email,
-        "hashed_password": hashed,
-        "date_of_birth": body.date_of_birth.isoformat(),
-        "role": "registered",
-        "auth_provider": "local",
-        "email_verified": False,
-    }).execute()
+    try:
+        insert_result = db.table("users").insert({
+            "username": body.username,
+            "email": body.email,
+            "hashed_password": hashed,
+            "date_of_birth": body.date_of_birth.isoformat(),
+            "role": "registered",
+            "auth_provider": "local",
+            "email_verified": False,
+        }).execute()
+    except Exception as e:
+        error_msg = str(e).lower()
+        if "users_email_key" in error_msg:
+            raise HTTPException(status_code=409, detail="Email already registered")
+        if "users_username_key" in error_msg:
+            raise HTTPException(status_code=409, detail="Username already taken")
+        raise
 
     user = insert_result.data[0]
 
@@ -267,7 +263,7 @@ def google_auth(mode: str = "login"):
         key=OAUTH_STATE_COOKIE,
         value=state,
         httponly=True,
-        secure=False,
+        secure=settings.is_production,
         samesite="lax",
         max_age=600,  # 10 minutes
         path="/",
@@ -301,6 +297,7 @@ def google_callback(
 
     google_email = google_user["email"]
     google_id = google_user["id"]
+    google_email_verified = google_user.get("verified_email", False)
 
     db = get_supabase()
 
@@ -310,12 +307,17 @@ def google_callback(
     if result.data:
         # Existing user — link Google account if not already linked
         user = result.data[0]
+
+        # Check if account is deactivated
+        if not user["is_active"]:
+            raise HTTPException(status_code=403, detail="Account is deactivated")
+
         if not user["google_id"]:
             db.table("users").update({
                 "google_id": google_id,
                 "auth_provider": "google" if not user["hashed_password"] else user["auth_provider"],
             }).eq("id", user["id"]).execute()
-        if not user["email_verified"]:
+        if not user["email_verified"] and google_email_verified:
             db.table("users").update({"email_verified": True}).eq("id", user["id"]).execute()
         # Re-fetch updated user
         user = db.table("users").select("*").eq("id", user["id"]).execute().data[0]
@@ -334,26 +336,16 @@ def google_callback(
             "role": "registered",
             "auth_provider": "google",
             "google_id": google_id,
-            "email_verified": True,
+            "email_verified": google_email_verified,
         }).execute()
         user = insert_result.data[0]
 
-    # Generate tokens
-    access_token = create_access_token(user["id"], user["email"])
+    # Generate refresh token only — frontend will call /auth/refresh to get access token
     refresh_token = generate_refresh_token()
     store_refresh_token(user["id"], refresh_token)
 
-    # Redirect to frontend with access token
-    params = urlencode({"access_token": access_token, "token_type": "bearer"})
-    redirect = RedirectResponse(url=f"{settings.FRONTEND_URL}/auth/callback?{params}")
-    redirect.set_cookie(
-        key=REFRESH_TOKEN_COOKIE,
-        value=refresh_token,
-        httponly=True,
-        secure=False,
-        samesite="lax",
-        max_age=REFRESH_COOKIE_MAX_AGE,
-        path="/",
-    )
+    # Redirect to frontend (no token in URL)
+    redirect = RedirectResponse(url=f"{settings.FRONTEND_URL}/auth/callback")
+    _set_refresh_cookie(redirect, refresh_token)
     redirect.delete_cookie(key=OAUTH_STATE_COOKIE, path="/")
     return redirect

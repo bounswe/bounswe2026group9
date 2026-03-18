@@ -59,7 +59,11 @@ def mark_email_verified(user_id: str) -> None:
 def send_verification_email(to_email: str, token: str) -> bool:
     """Send verification email. Returns True on success, False on failure."""
     if not is_smtp_configured():
-        print(f"[EMAIL] SMTP not configured. Verification token: {token}")
+        from app.config import settings
+        if not settings.is_production:
+            print(f"[EMAIL] SMTP not configured. Verification token: {token}")
+        else:
+            print("[EMAIL] SMTP not configured. Cannot send verification email.")
         return False
 
     verify_url = f"{settings.FRONTEND_URL}/verify-email?token={token}"

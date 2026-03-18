@@ -26,9 +26,14 @@ class Settings(BaseSettings):
     SMTP_FROM_NAME: str = "Social Event Mapper"
 
     # App
+    ENVIRONMENT: str = "development"  # "development" or "production"
     FRONTEND_URL: str = "http://localhost:3000"
     BACKEND_URL: str = "http://localhost:8888"
     CORS_ORIGINS: str = "http://localhost:3000"
+
+    @property
+    def is_production(self) -> bool:
+        return self.ENVIRONMENT == "production"
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
