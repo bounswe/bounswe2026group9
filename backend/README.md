@@ -23,23 +23,9 @@ cp .env.example .env
 | `SMTP_USER` | Gmail adresi |
 | `SMTP_PASSWORD` | Google Account → App Passwords |
 
-### 2. Supabase tablolarını oluştur
+### 2. Docker ile çalıştır
 
-Supabase Dashboard → SQL Editor → `sql/001_create_tables.sql` dosyasını çalıştır.
-
-Ardından tablolara erişim ver:
-
-```sql
-GRANT ALL ON public.users TO anon, authenticated, service_role;
-GRANT ALL ON public.refresh_tokens TO anon, authenticated, service_role;
-GRANT ALL ON public.email_verification_tokens TO anon, authenticated, service_role;
-
-ALTER TABLE public.users DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.refresh_tokens DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.email_verification_tokens DISABLE ROW LEVEL SECURITY;
-```
-
-### 3. Docker ile çalıştır
+> **Not:** Supabase tabloları ortak hesapta zaten oluşturulmuş durumda. Sıfırdan kurulum gerekirse `sql/001_create_tables.sql` dosyasını Supabase SQL Editor'da çalıştır.
 
 Proje root'unda (`docker-compose.yml`'ın olduğu yer):
 
