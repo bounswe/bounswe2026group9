@@ -358,6 +358,68 @@ WHERE NOT EXISTS (SELECT 1 FROM public.rate_limit_config);
 
 
 -- ================================================================
+-- EVENT INVITATIONS
+-- Hosts generate unique invite tokens for private events.
+-- Guests join via link; use_count is incremented on each use.
+-- ================================================================
+
+CREATE TABLE IF NOT EXISTS public.event_invitations (
+    id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_id    UUID        NOT NULL REFERENCES public.events(id) ON DELETE CASCADE,
+    created_by  UUID        NOT NULL REFERENCES public.users(id)  ON DELETE CASCADE,
+    token       TEXT        NOT NULL UNIQUE,
+    max_uses    INT         CHECK (max_uses IS NULL OR max_uses > 0),  -- NULL = unlimited
+    use_count   INT         NOT NULL DEFAULT 0 CHECK (use_count >= 0),
+    expires_at  TIMESTAMPTZ,                                           -- NULL = no expiry
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_event_invitations_event_id ON public.event_invitations (event_id);
+CREATE INDEX IF NOT EXISTS idx_event_invitations_token    ON public.event_invitations (token);
+
+
+-- ================================================================
+-- EVENT ACCESS REQUESTS
+-- Users can request access to private events.
+-- Host is notified (via notifications table) on each new request.
+-- ================================================================
+
+CREATE TABLE IF NOT EXISTS public.event_access_requests (
+    id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_id   UUID        NOT NULL REFERENCES public.events(id) ON DELETE CASCADE,
+    user_id    UUID        NOT NULL REFERENCES public.users(id)  ON DELETE CASCADE,
+    status     TEXT        NOT NULL DEFAULT 'pending'
+                           CHECK (status IN ('pending', 'approved', 'rejected')),
+    message    TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (user_id, event_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_access_requests_event_id ON public.event_access_requests (event_id);
+CREATE INDEX IF NOT EXISTS idx_access_requests_status   ON public.event_access_requests (event_id, status);
+
+CREATE TRIGGER event_access_requests_set_updated_at
+    BEFORE UPDATE ON public.event_access_requests
+    FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+-- Extend notification types to cover private event access flow
+ALTER TABLE public.notifications
+    DROP CONSTRAINT IF EXISTS notifications_type_check;
+
+ALTER TABLE public.notifications
+    ADD CONSTRAINT notifications_type_check
+    CHECK (type IN (
+        'event_updated',
+        'event_cancelled',
+        'event_deleted',
+        'access_request',   -- host receives when a user requests access
+        'access_approved',  -- user receives when host approves
+        'access_rejected'   -- user receives when host rejects
+    ));
+
+
+-- ================================================================
 -- GRANTS
 -- Allow Supabase roles to access all tables in this schema
 -- ================================================================
