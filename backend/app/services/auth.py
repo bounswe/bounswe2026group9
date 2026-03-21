@@ -1,8 +1,8 @@
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import bcrypt
-from jose import jwt, JWTError
+from jose import JWTError, jwt
 
 from app.config import settings
 from app.database import get_supabase
@@ -22,7 +22,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 
 def create_access_token(user_id: str, email: str) -> str:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     payload = {
         "sub": user_id,
         "email": email,
@@ -51,7 +51,7 @@ def generate_refresh_token() -> str:
 
 def store_refresh_token(user_id: str, token: str) -> None:
     db = get_supabase()
-    expires_at = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    expires_at = datetime.now(UTC) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     db.table("refresh_tokens").insert({
         "user_id": user_id,
         "token": token,
@@ -73,7 +73,7 @@ def validate_refresh_token(token: str) -> str | None:
     row = result.data[0]
     if row["revoked"]:
         return None
-    if datetime.fromisoformat(row["expires_at"]) < datetime.now(timezone.utc):
+    if datetime.fromisoformat(row["expires_at"]) < datetime.now(UTC):
         return None
     return row["user_id"]
 
@@ -100,8 +100,8 @@ def check_account_locked(user: dict) -> tuple[bool, str | None]:
     if not locked_until:
         return False, None
     lock_time = datetime.fromisoformat(locked_until)
-    if lock_time > datetime.now(timezone.utc):
-        remaining = int((lock_time - datetime.now(timezone.utc)).total_seconds() / 60) + 1
+    if lock_time > datetime.now(UTC):
+        remaining = int((lock_time - datetime.now(UTC)).total_seconds() / 60) + 1
         return True, f"Account locked. Try again in {remaining} minutes."
     return False, None
 
@@ -111,7 +111,7 @@ def increment_failed_attempts(user_id: str, current_attempts: int) -> None:
     new_count = current_attempts + 1
     update_data: dict = {"failed_login_attempts": new_count}
     if new_count >= MAX_FAILED_ATTEMPTS:
-        lock_until = datetime.now(timezone.utc) + timedelta(minutes=LOCKOUT_MINUTES)
+        lock_until = datetime.now(UTC) + timedelta(minutes=LOCKOUT_MINUTES)
         update_data["locked_until"] = lock_until.isoformat()
     db.table("users").update(update_data).eq("id", user_id).execute()
 
