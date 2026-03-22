@@ -86,9 +86,9 @@ def register(body: UserRegisterRequest, response: Response):
     except Exception as e:
         error_msg = str(e).lower()
         if "users_email_key" in error_msg:
-            raise HTTPException(status_code=409, detail="Email already registered") from e
+            raise HTTPException(status_code=409, detail="Email already registered") from None
         if "users_username_key" in error_msg:
-            raise HTTPException(status_code=409, detail="Username already taken") from e
+            raise HTTPException(status_code=409, detail="Username already taken") from None
         raise
 
     user = insert_result.data[0]
@@ -286,14 +286,14 @@ def google_callback(
     # Exchange code for tokens
     try:
         google_tokens = exchange_code_for_tokens(code)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail="Failed to exchange authorization code") from e
+    except Exception as err:
+        raise HTTPException(status_code=400, detail="Failed to exchange authorization code") from err
 
     # Get user info from Google
     try:
         google_user = get_google_user_info(google_tokens["access_token"])
-    except Exception as e:
-        raise HTTPException(status_code=400, detail="Failed to fetch Google user info") from e
+    except Exception as err:
+        raise HTTPException(status_code=400, detail="Failed to fetch Google user info") from err
 
     google_email = google_user["email"]
     google_id = google_user["id"]

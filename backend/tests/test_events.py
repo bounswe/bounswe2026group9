@@ -74,6 +74,36 @@ def _valid_event_body(category_ids: list[str] | None = None, **overrides) -> dic
     return body
 
 
+def _create_published_event(user_id: str, cat_ids: list[str], **overrides) -> dict:
+    """Create a draft event, upload an image, then publish it. Returns event detail."""
+    import io
+
+    from PIL import Image as PILImage
+
+    body = _valid_event_body(cat_ids, status="draft", **overrides)
+    resp = client.post("/events", json=body, headers=_auth_header(user_id))
+    event_id = resp.json()["id"]
+
+    # Upload image
+    img = PILImage.new("RGB", (100, 100), color="red")
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG")
+    buf.seek(0)
+    client.post(
+        f"/events/{event_id}/images",
+        files={"file": ("test.jpg", buf, "image/jpeg")},
+        headers=_auth_header(user_id),
+    )
+
+    # Publish
+    client.patch(
+        f"/events/{event_id}/status",
+        json={"status": "published"},
+        headers=_auth_header(user_id),
+    )
+    return client.get(f"/events/{event_id}", headers=_auth_header(user_id)).json()
+
+
 def _cleanup_event(event_id: str):
     """Delete an event and all related data."""
     db.table("equipment_requirements").delete().eq("event_id", event_id).execute()
@@ -111,16 +141,16 @@ class TestCreateEvent:
         _cleanup_event(data["id"])
         _cleanup_user(user["id"])
 
-    def test_create_event_published(self):
+    def test_create_event_published_rejected(self):
+        """Cannot publish directly on create — images must be uploaded first."""
         user = _create_test_user("pub")
         cat_ids = _get_category_ids(1)
         body = _valid_event_body(cat_ids, status="published")
 
         resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
-        assert resp.status_code == 201
-        assert resp.json()["status"] == "published"
+        assert resp.status_code == 400
+        assert "Cannot publish directly" in resp.json()["detail"]
 
-        _cleanup_event(resp.json()["id"])
         _cleanup_user(user["id"])
 
     def test_create_event_with_venue_metadata(self):
@@ -259,10 +289,8 @@ class TestGetEvent:
         """Registered user gets full detail of a public event."""
         user = _create_test_user("getfull")
         cat_ids = _get_category_ids(1)
-        body = _valid_event_body(cat_ids, status="published")
-
-        create_resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
-        event_id = create_resp.json()["id"]
+        event = _create_published_event(user["id"], cat_ids)
+        event_id = event["id"]
 
         resp = client.get(f"/events/{event_id}", headers=_auth_header(user["id"]))
         assert resp.status_code == 200
@@ -280,10 +308,8 @@ class TestGetEvent:
         """Guest (no auth) gets limited preview."""
         user = _create_test_user("getguest")
         cat_ids = _get_category_ids(1)
-        body = _valid_event_body(cat_ids, status="published")
-
-        create_resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
-        event_id = create_resp.json()["id"]
+        event = _create_published_event(user["id"], cat_ids)
+        event_id = event["id"]
 
         resp = client.get(f"/events/{event_id}")
         assert resp.status_code == 200
@@ -317,10 +343,8 @@ class TestGetEvent:
         host = _create_test_user("privowner")
         other = _create_test_user("privother")
         cat_ids = _get_category_ids(1)
-        body = _valid_event_body(cat_ids, visibility="private", status="published")
-
-        create_resp = client.post("/events", json=body, headers=_auth_header(host["id"]))
-        event_id = create_resp.json()["id"]
+        event = _create_published_event(host["id"], cat_ids, visibility="private")
+        event_id = event["id"]
 
         resp = client.get(f"/events/{event_id}", headers=_auth_header(other["id"]))
         assert resp.status_code == 200
@@ -342,33 +366,26 @@ class TestGetEvent:
         """Event with past end_datetime is auto-ended on read."""
         user = _create_test_user("autoend")
         cat_ids = _get_category_ids(1)
-        body = _valid_event_body(cat_ids,
-            start_datetime=(datetime.now(UTC) - timedelta(hours=3)).isoformat(),
-            end_datetime=(datetime.now(UTC) - timedelta(hours=1)).isoformat(),
-            status="published",
-        )
 
-        # Insert directly to bypass datetime validation (event in the past)
-        create_resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
-        # If create blocks past events, insert via DB directly
-        if create_resp.status_code != 201:
-            event_data = {
-                "host_id": user["id"],
-                "title": "Past Event",
-                "description": "Already ended",
-                "start_datetime": (datetime.now(UTC) - timedelta(hours=3)).isoformat(),
-                "end_datetime": (datetime.now(UTC) - timedelta(hours=1)).isoformat(),
-                "visibility": "public",
-                "status": "published",
-            }
-            result = db.table("events").insert(event_data).execute()
-            event_id = result.data[0]["id"]
-            loc_data = {"event_id": event_id, "name": "Test", "latitude": 41.0, "longitude": 29.0, "is_primary": True, "order_index": 0}
-            db.table("event_locations").insert(loc_data).execute()
-            cat_row = {"event_id": event_id, "category_id": cat_ids[0]}
-            db.table("event_categories").insert(cat_row).execute()
-        else:
-            event_id = create_resp.json()["id"]
+        # Insert directly into DB to bypass datetime validation (event in the past)
+        event_data = {
+            "host_id": user["id"],
+            "title": "Past Event",
+            "description": "Already ended",
+            "start_datetime": (datetime.now(UTC) - timedelta(hours=3)).isoformat(),
+            "end_datetime": (datetime.now(UTC) - timedelta(hours=1)).isoformat(),
+            "visibility": "public",
+            "status": "published",
+        }
+        result = db.table("events").insert(event_data).execute()
+        event_id = result.data[0]["id"]
+        db.table("event_locations").insert({
+            "event_id": event_id, "name": "Test", "latitude": 41.0,
+            "longitude": 29.0, "is_primary": True, "order_index": 0,
+        }).execute()
+        db.table("event_categories").insert({
+            "event_id": event_id, "category_id": cat_ids[0],
+        }).execute()
 
         resp = client.get(f"/events/{event_id}", headers=_auth_header(user["id"]))
         assert resp.status_code == 200
@@ -406,9 +423,8 @@ class TestUpdateEvent:
     def test_update_published_becomes_updated(self):
         user = _create_test_user("uppub")
         cat_ids = _get_category_ids(1)
-        body = _valid_event_body(cat_ids, status="published")
-        create_resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
-        event_id = create_resp.json()["id"]
+        event = _create_published_event(user["id"], cat_ids)
+        event_id = event["id"]
 
         resp = client.put(
             f"/events/{event_id}",
@@ -440,9 +456,8 @@ class TestUpdateEvent:
     def test_update_cancelled_event_fails(self):
         user = _create_test_user("upcancel")
         cat_ids = _get_category_ids(1)
-        body = _valid_event_body(cat_ids, status="published")
-        create_resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
-        event_id = create_resp.json()["id"]
+        event = _create_published_event(user["id"], cat_ids)
+        event_id = event["id"]
 
         # Cancel the event directly in DB
         db.table("events").update({"status": "cancelled"}).eq("id", event_id).execute()
@@ -496,12 +511,46 @@ class TestUpdateEvent:
 
 class TestChangeEventStatus:
 
-    def test_draft_to_published(self):
+    def test_draft_to_published_no_image_rejected(self):
+        """Cannot publish without at least one image."""
         user = _create_test_user("d2p")
         cat_ids = _get_category_ids(1)
         body = _valid_event_body(cat_ids, status="draft")
         create_resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
         event_id = create_resp.json()["id"]
+
+        resp = client.patch(
+            f"/events/{event_id}/status",
+            json={"status": "published"},
+            headers=_auth_header(user["id"]),
+        )
+        assert resp.status_code == 400
+        assert "at least one image" in resp.json()["detail"]
+
+        _cleanup_event(event_id)
+        _cleanup_user(user["id"])
+
+    def test_draft_to_published_with_image(self):
+        """Publish succeeds when image exists."""
+        user = _create_test_user("d2pi")
+        cat_ids = _get_category_ids(1)
+        body = _valid_event_body(cat_ids, status="draft")
+        create_resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
+        event_id = create_resp.json()["id"]
+
+        # Upload a test image
+        import io
+
+        from PIL import Image as PILImage
+        img = PILImage.new("RGB", (100, 100), color="red")
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG")
+        buf.seek(0)
+        client.post(
+            f"/events/{event_id}/images",
+            files={"file": ("test.jpg", buf, "image/jpeg")},
+            headers=_auth_header(user["id"]),
+        )
 
         resp = client.patch(
             f"/events/{event_id}/status",
@@ -517,9 +566,8 @@ class TestChangeEventStatus:
     def test_published_to_cancelled(self):
         user = _create_test_user("p2c")
         cat_ids = _get_category_ids(1)
-        body = _valid_event_body(cat_ids, status="published")
-        create_resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
-        event_id = create_resp.json()["id"]
+        event = _create_published_event(user["id"], cat_ids)
+        event_id = event["id"]
 
         resp = client.patch(
             f"/events/{event_id}/status",
@@ -535,9 +583,8 @@ class TestChangeEventStatus:
     def test_published_to_ended(self):
         user = _create_test_user("p2e")
         cat_ids = _get_category_ids(1)
-        body = _valid_event_body(cat_ids, status="published")
-        create_resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
-        event_id = create_resp.json()["id"]
+        event = _create_published_event(user["id"], cat_ids)
+        event_id = event["id"]
 
         resp = client.patch(
             f"/events/{event_id}/status",
@@ -553,9 +600,8 @@ class TestChangeEventStatus:
     def test_invalid_transition_cancelled_to_published(self):
         user = _create_test_user("c2p")
         cat_ids = _get_category_ids(1)
-        body = _valid_event_body(cat_ids, status="published")
-        create_resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
-        event_id = create_resp.json()["id"]
+        event = _create_published_event(user["id"], cat_ids)
+        event_id = event["id"]
 
         # Cancel first
         client.patch(f"/events/{event_id}/status", json={"status": "cancelled"}, headers=_auth_header(user["id"]))
@@ -615,9 +661,8 @@ class TestDeleteEvent:
     def test_delete_cancelled_event(self):
         user = _create_test_user("delcancel")
         cat_ids = _get_category_ids(1)
-        body = _valid_event_body(cat_ids, status="published")
-        create_resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
-        event_id = create_resp.json()["id"]
+        event = _create_published_event(user["id"], cat_ids)
+        event_id = event["id"]
 
         # Cancel first
         client.patch(f"/events/{event_id}/status", json={"status": "cancelled"}, headers=_auth_header(user["id"]))
@@ -635,9 +680,8 @@ class TestDeleteEvent:
     def test_delete_ended_event(self):
         user = _create_test_user("delended")
         cat_ids = _get_category_ids(1)
-        body = _valid_event_body(cat_ids, status="published")
-        create_resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
-        event_id = create_resp.json()["id"]
+        event = _create_published_event(user["id"], cat_ids)
+        event_id = event["id"]
 
         # End first
         client.patch(f"/events/{event_id}/status", json={"status": "ended"}, headers=_auth_header(user["id"]))
@@ -650,9 +694,8 @@ class TestDeleteEvent:
     def test_delete_published_event_fails(self):
         user = _create_test_user("delpub")
         cat_ids = _get_category_ids(1)
-        body = _valid_event_body(cat_ids, status="published")
-        create_resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
-        event_id = create_resp.json()["id"]
+        event = _create_published_event(user["id"], cat_ids)
+        event_id = event["id"]
 
         resp = client.delete(f"/events/{event_id}", headers=_auth_header(user["id"]))
         assert resp.status_code == 400
@@ -664,9 +707,8 @@ class TestDeleteEvent:
         host = _create_test_user("delhost")
         other = _create_test_user("delother")
         cat_ids = _get_category_ids(1)
-        body = _valid_event_body(cat_ids, status="published")
-        create_resp = client.post("/events", json=body, headers=_auth_header(host["id"]))
-        event_id = create_resp.json()["id"]
+        event = _create_published_event(host["id"], cat_ids)
+        event_id = event["id"]
 
         # Cancel first
         client.patch(f"/events/{event_id}/status", json={"status": "cancelled"}, headers=_auth_header(host["id"]))
@@ -691,7 +733,6 @@ class TestAgeRestriction:
         """User under 18 cannot view age-restricted event."""
         from datetime import date
         host = _create_test_user("agehost")
-        # Create underage user (15 years old)
         import uuid
         unique = uuid.uuid4().hex[:8]
         young_dob = date(date.today().year - 15, 1, 1).isoformat()
@@ -707,9 +748,8 @@ class TestAgeRestriction:
         }).execute().data[0]
 
         cat_ids = _get_category_ids(1)
-        body = _valid_event_body(cat_ids, status="published", is_age_restricted=True)
-        create_resp = client.post("/events", json=body, headers=_auth_header(host["id"]))
-        event_id = create_resp.json()["id"]
+        event = _create_published_event(host["id"], cat_ids, is_age_restricted=True)
+        event_id = event["id"]
 
         resp = client.get(f"/events/{event_id}", headers=_auth_header(young_user["id"]))
         assert resp.status_code == 403
@@ -722,7 +762,6 @@ class TestAgeRestriction:
     def test_no_dob_blocked_from_age_restricted(self):
         """User without date_of_birth cannot view age-restricted event."""
         host = _create_test_user("agenodob_host")
-        # Create user without DOB
         import uuid
         unique = uuid.uuid4().hex[:8]
         no_dob_user = db.table("users").insert({
@@ -736,9 +775,8 @@ class TestAgeRestriction:
         }).execute().data[0]
 
         cat_ids = _get_category_ids(1)
-        body = _valid_event_body(cat_ids, status="published", is_age_restricted=True)
-        create_resp = client.post("/events", json=body, headers=_auth_header(host["id"]))
-        event_id = create_resp.json()["id"]
+        event = _create_published_event(host["id"], cat_ids, is_age_restricted=True)
+        event_id = event["id"]
 
         resp = client.get(f"/events/{event_id}", headers=_auth_header(no_dob_user["id"]))
         assert resp.status_code == 403
@@ -752,9 +790,8 @@ class TestAgeRestriction:
         """Host can always view their own age-restricted event."""
         host = _create_test_user("ageexempt")
         cat_ids = _get_category_ids(1)
-        body = _valid_event_body(cat_ids, status="published", is_age_restricted=True)
-        create_resp = client.post("/events", json=body, headers=_auth_header(host["id"]))
-        event_id = create_resp.json()["id"]
+        event = _create_published_event(host["id"], cat_ids, is_age_restricted=True)
+        event_id = event["id"]
 
         resp = client.get(f"/events/{event_id}", headers=_auth_header(host["id"]))
         assert resp.status_code == 200
@@ -769,9 +806,8 @@ class TestUpdatedStatusTransitions:
     def test_updated_to_cancelled(self):
         user = _create_test_user("u2c")
         cat_ids = _get_category_ids(1)
-        body = _valid_event_body(cat_ids, status="published")
-        create_resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
-        event_id = create_resp.json()["id"]
+        event = _create_published_event(user["id"], cat_ids)
+        event_id = event["id"]
 
         # Update to get "updated" status
         client.put(f"/events/{event_id}", json={"title": "Changed"}, headers=_auth_header(user["id"]))
@@ -790,9 +826,8 @@ class TestUpdatedStatusTransitions:
     def test_updated_to_ended(self):
         user = _create_test_user("u2e")
         cat_ids = _get_category_ids(1)
-        body = _valid_event_body(cat_ids, status="published")
-        create_resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
-        event_id = create_resp.json()["id"]
+        event = _create_published_event(user["id"], cat_ids)
+        event_id = event["id"]
 
         # Update to get "updated" status
         client.put(f"/events/{event_id}", json={"title": "Changed"}, headers=_auth_header(user["id"]))

@@ -96,12 +96,16 @@ def create_event(db: Client, user_id: str, body: EventCreateRequest) -> EventDet
     )
     check_rate_limit(db, user_id)
 
-    # If publishing directly, ensure at least one primary location
+    # Cannot publish directly on create — images must be uploaded first
     if body.status == "published":
-        has_primary = any(loc.is_primary for loc in body.locations)
-        if not has_primary:
-            # Auto-set first location as primary
-            body.locations[0].is_primary = True
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot publish directly on create. Create as draft, upload images, then publish via PATCH status.",
+        )
+
+    has_primary = any(loc.is_primary for loc in body.locations)
+    if not has_primary:
+        body.locations[0].is_primary = True
 
     # Insert event
     event_data = {
@@ -392,6 +396,9 @@ def change_event_status(
         categories = event_repo.get_event_categories(db, event_id)
         if not categories:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Event must have at least one category to publish")
+        images = event_repo.get_event_images(db, event_id)
+        if not images:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Event must have at least one image to publish")
 
     event_repo.update_event_status(db, event_id, new_status)
     return get_event_detail(db, event_id, user_id)

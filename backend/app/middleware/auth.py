@@ -14,11 +14,11 @@ def get_current_user_id(
     """FastAPI dependency: extract and validate user_id from Bearer token, check active."""
     try:
         payload = decode_access_token(credentials.credentials)
-    except JWTError as e:
+    except JWTError as err:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
-        ) from e
+        ) from err
     user_id = payload.get("sub")
     if not user_id:
         raise HTTPException(
