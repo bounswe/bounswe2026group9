@@ -9,6 +9,8 @@ from app.models.event import (
     EventCreateRequest,
     EventDetailResponse,
     EventLimitedResponse,
+    EventListItemResponse,
+    EventListResponse,
     EventUpdateRequest,
 )
 from app.repositories import event as event_repo
@@ -430,3 +432,54 @@ def delete_event(db: Client, event_id: str, user_id: str) -> None:
             pass  # Best-effort storage cleanup
 
     event_repo.delete_event(db, event_id)
+
+
+# --- Discovery ---
+
+def list_events(
+    db: Client,
+    *,
+    search: str | None = None,
+    category_id: str | None = None,
+    temporal_filter: str | None = None,
+    page: int = 1,
+    page_size: int = 20,
+) -> EventListResponse:
+    events, total = event_repo.list_events(
+        db,
+        search=search,
+        category_id=category_id,
+        temporal_filter=temporal_filter,
+        page=page,
+        page_size=page_size,
+    )
+
+    total_pages = (total + page_size - 1) // page_size if total > 0 else 0
+    if not events:
+        return EventListResponse(items=[], total=total, page=page, page_size=page_size, total_pages=total_pages)
+
+    event_ids = [e["id"] for e in events]
+    locations_by_event = event_repo.get_primary_locations_for_events(db, event_ids)
+    categories_by_event = event_repo.get_categories_for_events(db, event_ids)
+    images_by_event = event_repo.get_primary_images_for_events(db, event_ids)
+
+    items = [
+        EventListItemResponse(
+            id=event["id"],
+            title=event["title"],
+            description=event["description"],
+            start_datetime=event["start_datetime"],
+            end_datetime=event["end_datetime"],
+            visibility=event["visibility"],
+            is_age_restricted=event["is_age_restricted"],
+            attendee_limit=event["attendee_limit"],
+            attendee_count=event["attendee_count"],
+            status=event["status"],
+            categories=categories_by_event.get(event["id"], []),
+            primary_location=locations_by_event.get(event["id"]),
+            primary_image_url=images_by_event.get(event["id"]),
+        )
+        for event in events
+    ]
+
+    return EventListResponse(items=items, total=total, page=page, page_size=page_size, total_pages=total_pages)
