@@ -5,8 +5,9 @@ bcrypt==4.2.1
 python-jose[cryptography]==3.3.0
 python-dotenv==1.0.1
 httpx==0.28.1
-authlib==1.4.1
 pydantic[email]==2.10.5
 pydantic-settings==2.7.1
+Pillow==11.1.0
+python-multipart==0.0.20
 pytest==8.3.4
 ruff==0.8.6

@@ -11,7 +11,7 @@ bearer_scheme = HTTPBearer()
 def get_current_user_id(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
 ) -> str:
-    """FastAPI dependency: extract and validate user_id from Bearer token."""
+    """FastAPI dependency: extract and validate user_id from Bearer token, check active."""
     try:
         payload = decode_access_token(credentials.credentials)
     except JWTError as err:
@@ -25,6 +25,13 @@ def get_current_user_id(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token claims",
         )
+    # Check user exists and is active
+    db = get_supabase()
+    result = db.table("users").select("is_active").eq("id", user_id).execute()
+    if not result.data:
+        raise HTTPException(status_code=401, detail="User not found")
+    if not result.data[0]["is_active"]:
+        raise HTTPException(status_code=403, detail="Account is deactivated")
     return user_id
 
 

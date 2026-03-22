@@ -54,7 +54,7 @@ def disable_email_sending():
 
 @pytest.fixture(autouse=True)
 def cleanup_test_users(db):
-    """Clean up test users after each test."""
+    """Clean up test users after each test (all test prefixes)."""
     yield
-    # Delete all test users (username starts with testuser_)
-    db.table("users").delete().like("username", "testuser_%").execute()
+    for prefix in ["testuser_%", "eventtest_%", "imgtest_%", "cattest_%"]:
+        db.table("users").delete().like("username", prefix).execute()
