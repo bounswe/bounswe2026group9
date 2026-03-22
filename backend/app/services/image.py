@@ -44,6 +44,11 @@ def upload_event_image(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
     if event["host_id"] != user_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the host can upload images")
+    if event["status"] in ("cancelled", "ended"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot upload images to a cancelled or ended event",
+        )
 
     # Validate content type
     if file.content_type not in ALLOWED_CONTENT_TYPES:

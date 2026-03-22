@@ -1,8 +1,8 @@
-import smtplib
 import secrets
-from email.mime.text import MIMEText
+import smtplib
+from datetime import UTC, datetime, timedelta
 from email.mime.multipart import MIMEMultipart
-from datetime import datetime, timedelta, timezone
+from email.mime.text import MIMEText
 
 from app.config import settings
 from app.database import get_supabase
@@ -21,7 +21,7 @@ def store_verification_token(user_id: str, token: str) -> None:
     # Delete any existing tokens for this user
     db.table("email_verification_tokens").delete().eq("user_id", user_id).execute()
     # Insert new token (24h expiry)
-    expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
+    expires_at = datetime.now(UTC) + timedelta(hours=24)
     db.table("email_verification_tokens").insert({
         "user_id": user_id,
         "token": token,
@@ -41,7 +41,7 @@ def validate_verification_token(token: str) -> str | None:
     if not result.data:
         return None
     row = result.data[0]
-    if datetime.fromisoformat(row["expires_at"]) < datetime.now(timezone.utc):
+    if datetime.fromisoformat(row["expires_at"]) < datetime.now(UTC):
         return None
     return row["user_id"]
 

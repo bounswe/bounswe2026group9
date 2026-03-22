@@ -12,6 +12,7 @@ from app.models.event import (
     EventUpdateRequest,
 )
 from app.repositories import event as event_repo
+from app.repositories import image as image_repo
 from app.repositories import user as user_repo
 
 # --- Validators ---
@@ -94,6 +95,13 @@ def create_event(db: Client, user_id: str, body: EventCreateRequest) -> EventDet
         db, user_id, body.title, body.start_datetime.isoformat(), primary_location.name,
     )
     check_rate_limit(db, user_id)
+
+    # If publishing directly, ensure at least one primary location
+    if body.status == "published":
+        has_primary = any(loc.is_primary for loc in body.locations)
+        if not has_primary:
+            # Auto-set first location as primary
+            body.locations[0].is_primary = True
 
     # Insert event
     event_data = {
@@ -404,5 +412,14 @@ def delete_event(db: Client, event_id: str, user_id: str) -> None:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Only cancelled or ended events can be deleted",
         )
+
+    # Clean up storage images before DB delete (CASCADE will remove DB records)
+    images = image_repo.get_all_event_images(db, event_id)
+    for img in images:
+        try:
+            path = img["image_url"].split(f"/{image_repo.BUCKET_NAME}/")[-1]
+            image_repo.delete_from_storage(db, path)
+        except Exception:
+            pass  # Best-effort storage cleanup
 
     event_repo.delete_event(db, event_id)

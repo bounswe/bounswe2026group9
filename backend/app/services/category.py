@@ -26,12 +26,17 @@ def create_custom_category(
         )
 
     data = {
-        "name": body.name,
+        "name": body.name.strip(),
         "is_predefined": False,
         "is_approved": False,
     }
-    # TODO: Add created_by column to categories table, then include user_id for audit trail
-    row = category_repo.insert_category(db, data)
+    try:
+        row = category_repo.insert_category(db, data)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Category '{body.name}' already exists",
+        ) from e
     if not row:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create category")
     return CategoryResponse(**row)

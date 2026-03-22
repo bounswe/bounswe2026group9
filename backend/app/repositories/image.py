@@ -23,6 +23,11 @@ def insert_event_image(db: Client, event_id: str, image_url: str) -> dict:
     return result.data[0] if result.data else None
 
 
+def get_all_event_images(db: Client, event_id: str) -> list[dict]:
+    result = db.table("event_images").select("*").eq("event_id", event_id).execute()
+    return result.data or []
+
+
 def get_event_image(db: Client, image_id: str) -> dict | None:
     result = db.table("event_images").select("*").eq("id", image_id).execute()
     return result.data[0] if result.data else None

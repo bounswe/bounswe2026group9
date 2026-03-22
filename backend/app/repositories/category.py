@@ -28,7 +28,8 @@ def search_available(db: Client, query: str) -> list[dict]:
 
 
 def get_by_name(db: Client, name: str) -> dict | None:
-    result = db.table("categories").select("*").ilike("name", name).execute()
+    """Case-insensitive exact match using lower() to align with DB constraint."""
+    result = db.table("categories").select("*").ilike("name", name.strip()).execute()
     return result.data[0] if result.data else None
 
 

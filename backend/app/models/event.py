@@ -146,5 +146,3 @@ class EventLimitedResponse(BaseModel):
     categories: list[CategoryResponse] = []
 
 
-class MessageResponse(BaseModel):
-    message: str

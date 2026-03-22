@@ -1,43 +1,43 @@
-from fastapi import APIRouter, HTTPException, Response, Request, Depends
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from starlette.responses import RedirectResponse
 
 from app.config import settings
 from app.database import get_supabase
+from app.middleware.auth import get_current_user_id
 from app.models.user import (
-    UserRegisterRequest,
-    UserLoginRequest,
-    RefreshTokenRequest,
-    UserResponse,
     AuthResponse,
     MessageResponse,
+    RefreshTokenRequest,
+    UserLoginRequest,
+    UserRegisterRequest,
+    UserResponse,
 )
 from app.services.auth import (
-    hash_password,
-    verify_password,
+    check_account_locked,
     create_access_token,
     generate_refresh_token,
-    store_refresh_token,
-    validate_refresh_token,
-    revoke_refresh_token,
-    check_account_locked,
+    hash_password,
     increment_failed_attempts,
     reset_failed_attempts,
-)
-from app.services.oauth import (
-    generate_oauth_state,
-    build_google_auth_url,
-    exchange_code_for_tokens,
-    get_google_user_info,
+    revoke_refresh_token,
+    store_refresh_token,
+    validate_refresh_token,
+    verify_password,
 )
 from app.services.email import (
-    generate_verification_token,
-    store_verification_token,
-    validate_verification_token,
     delete_verification_token,
+    generate_verification_token,
     mark_email_verified,
     send_verification_email,
+    store_verification_token,
+    validate_verification_token,
 )
-from app.middleware.auth import get_current_user_id
+from app.services.oauth import (
+    build_google_auth_url,
+    exchange_code_for_tokens,
+    generate_oauth_state,
+    get_google_user_info,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -86,9 +86,9 @@ def register(body: UserRegisterRequest, response: Response):
     except Exception as e:
         error_msg = str(e).lower()
         if "users_email_key" in error_msg:
-            raise HTTPException(status_code=409, detail="Email already registered")
+            raise HTTPException(status_code=409, detail="Email already registered") from e
         if "users_username_key" in error_msg:
-            raise HTTPException(status_code=409, detail="Username already taken")
+            raise HTTPException(status_code=409, detail="Username already taken") from e
         raise
 
     user = insert_result.data[0]
@@ -286,14 +286,14 @@ def google_callback(
     # Exchange code for tokens
     try:
         google_tokens = exchange_code_for_tokens(code)
-    except Exception:
-        raise HTTPException(status_code=400, detail="Failed to exchange authorization code")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Failed to exchange authorization code") from e
 
     # Get user info from Google
     try:
         google_user = get_google_user_info(google_tokens["access_token"])
-    except Exception:
-        raise HTTPException(status_code=400, detail="Failed to fetch Google user info")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Failed to fetch Google user info") from e
 
     google_email = google_user["email"]
     google_id = google_user["id"]
