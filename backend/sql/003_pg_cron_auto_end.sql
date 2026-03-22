@@ -16,3 +16,17 @@ SELECT cron.schedule(
     WHERE status IN ('published', 'updated')
     AND end_datetime < NOW()$$
 );
+
+-- Remove existing cleanup job if present (idempotent re-run)
+SELECT cron.unschedule('cleanup-expired-tokens')
+WHERE EXISTS (
+  SELECT 1 FROM cron.job WHERE jobname = 'cleanup-expired-tokens'
+);
+
+-- Schedule token cleanup: every hour, remove expired/revoked refresh tokens and expired verification tokens
+SELECT cron.schedule(
+  'cleanup-expired-tokens',
+  '0 * * * *',
+  $$DELETE FROM public.refresh_tokens WHERE revoked = true OR expires_at < NOW();
+    DELETE FROM public.email_verification_tokens WHERE expires_at < NOW()$$
+);

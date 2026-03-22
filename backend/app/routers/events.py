@@ -12,9 +12,9 @@ from app.models.event import (
     EventImageResponse,
     EventLimitedResponse,
     EventUpdateRequest,
-    MessageResponse,
     StatusChangeRequest,
 )
+from app.models.user import MessageResponse
 from app.services.auth import decode_access_token
 from app.services.event import (
     change_event_status,
