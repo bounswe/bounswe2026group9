@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, UploadFile, status
 
 from app.database import get_supabase
 from app.middleware.auth import get_current_user_id
@@ -11,6 +11,7 @@ from app.models.event import (
     EventDetailResponse,
     EventImageResponse,
     EventLimitedResponse,
+    EventListResponse,
     EventUpdateRequest,
     StatusChangeRequest,
 )
@@ -22,6 +23,9 @@ from app.services.event import (
     delete_event,
     get_event_detail,
     update_event,
+)
+from app.services.event import (
+    list_events as list_events_svc,
 )
 from app.services.image import delete_event_image as delete_image_svc
 from app.services.image import upload_event_image
@@ -58,6 +62,27 @@ def _optional_user_id(authorization: str | None = Header(default=None)) -> str |
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
         ) from e
+
+
+@router.get("", response_model=EventListResponse)
+def list_events_endpoint(
+    search: str | None = Query(default=None, max_length=200),
+    category_id: UUID | None = Query(default=None),
+    temporal_filter: str | None = Query(default=None, pattern="^(upcoming|today|this_week)$"),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    user_id: str | None = Depends(_optional_user_id),
+):
+    db = get_supabase()
+    return list_events_svc(
+        db,
+        user_id=user_id,
+        search=search,
+        category_id=str(category_id) if category_id else None,
+        temporal_filter=temporal_filter,
+        page=page,
+        page_size=page_size,
+    )
 
 
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=EventDetailResponse)

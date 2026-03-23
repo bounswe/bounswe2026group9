@@ -1,5 +1,7 @@
 """Event repository — all database operations for events and related tables."""
 
+from datetime import UTC, datetime, timedelta
+
 from supabase import Client
 
 
@@ -143,3 +145,118 @@ def get_valid_category_ids(db: Client, category_ids: list[str]) -> set[str]:
         .execute()
     )
     return {row["id"] for row in result.data}
+
+
+# --- Discovery ---
+
+def list_events(
+    db: Client,
+    *,
+    search: str | None = None,
+    category_id: str | None = None,
+    temporal_filter: str | None = None,
+    page: int = 1,
+    page_size: int = 20,
+) -> tuple[list[dict], int]:
+    """Return (events, total_count) for all published/updated events (public + private)."""
+    now = datetime.now(UTC)
+
+    # Resolve category event IDs upfront (shared by both count and data queries)
+    category_event_ids: list[str] | None = None
+    if category_id:
+        cat_result = (
+            db.table("event_categories")
+            .select("event_id")
+            .eq("category_id", category_id)
+            .execute()
+        )
+        category_event_ids = [row["event_id"] for row in (cat_result.data or [])]
+        if not category_event_ids:
+            return [], 0
+
+    def _apply_filters(q):
+        q = q.in_("status", ["published", "updated"])
+        q = q.gte("end_datetime", now.isoformat())  # Exclude events whose end time has passed
+        if search:
+            safe = search.replace("%", r"\%").replace("_", r"\_")
+            q = q.or_(f"title.ilike.%{safe}%,description.ilike.%{safe}%")
+        if category_event_ids is not None:
+            q = q.in_("id", category_event_ids)
+        if temporal_filter == "upcoming":
+            q = q.gte("start_datetime", now.isoformat())
+        elif temporal_filter == "today":
+            today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            tomorrow = today_start + timedelta(days=1)
+            q = q.gte("start_datetime", today_start.isoformat()).lt("start_datetime", tomorrow.isoformat())
+        elif temporal_filter == "this_week":
+            today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            week_end = today_start + timedelta(days=7)
+            q = q.gte("start_datetime", today_start.isoformat()).lt("start_datetime", week_end.isoformat())
+        return q
+
+    # Count query: fetch only IDs to avoid transferring all columns just for counting
+    count_result = _apply_filters(db.table("events").select("id", count="exact")).execute()
+    total = count_result.count or 0
+
+    offset = (page - 1) * page_size
+    if offset >= total:
+        return [], total
+
+    # Data query: fetch full rows, sorted deterministically
+    result = (
+        _apply_filters(db.table("events").select("*"))
+        .order("start_datetime")
+        .order("id")
+        .range(offset, offset + page_size - 1)
+        .execute()
+    )
+    return result.data or [], total
+
+
+def get_primary_locations_for_events(db: Client, event_ids: list[str]) -> dict[str, dict]:
+    """Return {event_id: primary_location_row} for a batch of events."""
+    if not event_ids:
+        return {}
+    result = (
+        db.table("event_locations")
+        .select("*")
+        .in_("event_id", event_ids)
+        .eq("is_primary", True)
+        .execute()
+    )
+    return {row["event_id"]: row for row in (result.data or [])}
+
+
+def get_categories_for_events(db: Client, event_ids: list[str]) -> dict[str, list[dict]]:
+    """Return {event_id: [category_rows]} for a batch of events."""
+    if not event_ids:
+        return {}
+    result = (
+        db.table("event_categories")
+        .select("event_id, categories(id, name, is_predefined, is_approved)")
+        .in_("event_id", event_ids)
+        .execute()
+    )
+    cats: dict[str, list[dict]] = {}
+    for row in (result.data or []):
+        cats.setdefault(row["event_id"], []).append(row["categories"])
+    return cats
+
+
+def get_primary_images_for_events(db: Client, event_ids: list[str]) -> dict[str, str]:
+    """Return {event_id: first_image_url} for a batch of events."""
+    if not event_ids:
+        return {}
+    result = (
+        db.table("event_images")
+        .select("event_id, image_url")
+        .in_("event_id", event_ids)
+        .order("upload_date")
+        .execute()
+    )
+    images: dict[str, str] = {}
+    for row in (result.data or []):
+        eid = row["event_id"]
+        if eid not in images:
+            images[eid] = row["image_url"]
+    return images

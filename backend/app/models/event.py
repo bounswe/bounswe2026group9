@@ -146,3 +146,35 @@ class EventLimitedResponse(BaseModel):
     categories: list[CategoryResponse] = []
 
 
+class EventListItemResponse(BaseModel):
+    """Single event card for discovery listing.
+
+    description and primary_image_url are None for:
+    - private events (always limited in list)
+    - guest users viewing public events
+    primary_location is None for private events.
+    """
+    id: UUID
+    title: str
+    description: str | None = None
+    start_datetime: datetime
+    end_datetime: datetime
+    visibility: str
+    is_age_restricted: bool
+    attendee_limit: int | None
+    attendee_count: int
+    status: str
+    categories: list[CategoryResponse] = []
+    primary_location: LocationResponse | None = None
+    primary_image_url: str | None = None
+
+
+class EventListResponse(BaseModel):
+    """Paginated event discovery result."""
+    items: list[EventListItemResponse]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
