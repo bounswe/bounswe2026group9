@@ -167,16 +167,48 @@ class TestListEventsBasic:
         _cleanup_event(event_id)
         _cleanup_user(user["id"])
 
-    def test_private_event_not_in_listing(self):
+    def test_private_event_appears_with_limited_info(self):
+        """Private published events are discoverable but show title/categories/dates only."""
         user = _create_test_user("priv")
         cat_ids = _get_category_ids(1)
         event = _create_published_event(user["id"], cat_ids, visibility="private")
 
         list_resp = client.get("/events")
         ids = [item["id"] for item in list_resp.json()["items"]]
-        assert event["id"] not in ids
+        assert event["id"] in ids
+
+        item = next(i for i in list_resp.json()["items"] if i["id"] == event["id"])
+        assert item["description"] is None
+        assert item["primary_image_url"] is None
+        assert item["primary_location"] is None
 
         _cleanup_event(event["id"])
+        _cleanup_user(user["id"])
+
+    def test_past_end_datetime_not_in_listing(self):
+        """Events whose end_datetime has already passed must not appear in discovery."""
+        user = _create_test_user("pastend")
+        cat_ids = _get_category_ids(1)
+        from datetime import UTC, datetime, timedelta
+        result = db.table("events").insert({
+            "host_id": user["id"],
+            "title": "Past Event Should Not Appear",
+            "description": "Should not appear",
+            "start_datetime": (datetime.now(UTC) - timedelta(days=2)).isoformat(),
+            "end_datetime": (datetime.now(UTC) - timedelta(hours=1)).isoformat(),
+            "visibility": "public",
+            "status": "published",
+            "is_age_restricted": False,
+            "attendee_count": 0,
+        }).execute()
+        event_id = result.data[0]["id"]
+        db.table("event_categories").insert({"event_id": event_id, "category_id": cat_ids[0]}).execute()
+
+        resp = client.get("/events")
+        ids = [i["id"] for i in resp.json()["items"]]
+        assert event_id not in ids
+
+        _cleanup_event(event_id)
         _cleanup_user(user["id"])
 
     def test_cancelled_event_not_in_listing(self):
@@ -197,25 +229,28 @@ class TestListEventsBasic:
         _cleanup_event(event["id"])
         _cleanup_user(user["id"])
 
-    def test_list_item_fields_present(self):
+    def test_list_item_fields_present_auth_user(self):
+        """Authenticated users receive full fields for public events."""
         user = _create_test_user("fields")
         cat_ids = _get_category_ids(1)
         event = _create_published_event(user["id"], cat_ids, title="Fields Check Event")
 
-        resp = client.get("/events")
+        resp = client.get("/events", headers=_auth_header(user["id"]))
         items = resp.json()["items"]
         item = next((i for i in items if i["id"] == event["id"]), None)
         assert item is not None
         for field in ("id", "title", "description", "start_datetime", "end_datetime",
                       "visibility", "is_age_restricted", "attendee_count", "status", "categories"):
             assert field in item
+        assert item["description"] is not None
         assert item["primary_location"] is not None
         assert item["primary_image_url"] == MOCK_STORAGE_URL
 
         _cleanup_event(event["id"])
         _cleanup_user(user["id"])
 
-    def test_guest_and_auth_both_see_listing(self):
+    def test_guest_sees_limited_info_auth_sees_full(self):
+        """Guests get limited fields; authenticated users get full details."""
         user = _create_test_user("guestauth")
         cat_ids = _get_category_ids(1)
         event = _create_published_event(user["id"], cat_ids)
@@ -225,10 +260,21 @@ class TestListEventsBasic:
 
         assert guest_resp.status_code == 200
         assert auth_resp.status_code == 200
+
         guest_ids = [i["id"] for i in guest_resp.json()["items"]]
         auth_ids = [i["id"] for i in auth_resp.json()["items"]]
         assert event["id"] in guest_ids
         assert event["id"] in auth_ids
+
+        guest_item = next(i for i in guest_resp.json()["items"] if i["id"] == event["id"])
+        assert guest_item["description"] is None
+        assert guest_item["primary_image_url"] is None
+        assert guest_item["primary_location"] is not None  # Location visible for map browsing
+
+        auth_item = next(i for i in auth_resp.json()["items"] if i["id"] == event["id"])
+        assert auth_item["description"] is not None
+        assert auth_item["primary_image_url"] == MOCK_STORAGE_URL
+        assert auth_item["primary_location"] is not None
 
         _cleanup_event(event["id"])
         _cleanup_user(user["id"])

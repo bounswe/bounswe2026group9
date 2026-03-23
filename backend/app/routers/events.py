@@ -71,11 +71,12 @@ def list_events_endpoint(
     temporal_filter: str | None = Query(default=None, pattern="^(upcoming|today|this_week)$"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    user_id: str | None = Depends(_optional_user_id),  # noqa: ARG001 — reserved for future auth-only filters
+    user_id: str | None = Depends(_optional_user_id),
 ):
     db = get_supabase()
     return list_events_svc(
         db,
+        user_id=user_id,
         search=search,
         category_id=str(category_id) if category_id else None,
         temporal_filter=temporal_filter,

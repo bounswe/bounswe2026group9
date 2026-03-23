@@ -1,5 +1,7 @@
 """Event repository — all database operations for events and related tables."""
 
+from datetime import UTC, datetime, timedelta
+
 from supabase import Client
 
 
@@ -156,17 +158,11 @@ def list_events(
     page: int = 1,
     page_size: int = 20,
 ) -> tuple[list[dict], int]:
-    """Return (events, total_count) for public published/updated events."""
-    from datetime import UTC, datetime, timedelta
+    """Return (events, total_count) for all published/updated events (public + private)."""
+    now = datetime.now(UTC)
 
-    query = db.table("events").select("*", count="exact")
-    query = query.in_("status", ["published", "updated"])
-    query = query.eq("visibility", "public")
-
-    if search:
-        safe = search.replace("%", r"\%").replace("_", r"\_")
-        query = query.or_(f"title.ilike.%{safe}%,description.ilike.%{safe}%")
-
+    # Resolve category event IDs upfront (shared by both count and data queries)
+    category_event_ids: list[str] | None = None
     if category_id:
         cat_result = (
             db.table("event_categories")
@@ -174,38 +170,46 @@ def list_events(
             .eq("category_id", category_id)
             .execute()
         )
-        event_ids = [row["event_id"] for row in (cat_result.data or [])]
-        if not event_ids:
+        category_event_ids = [row["event_id"] for row in (cat_result.data or [])]
+        if not category_event_ids:
             return [], 0
-        query = query.in_("id", event_ids)
 
-    now = datetime.now(UTC)
-    if temporal_filter == "upcoming":
-        query = query.gte("start_datetime", now.isoformat())
-    elif temporal_filter == "today":
-        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        tomorrow = today_start + timedelta(days=1)
-        query = (
-            query
-            .gte("start_datetime", today_start.isoformat())
-            .lt("start_datetime", tomorrow.isoformat())
-        )
-    elif temporal_filter == "this_week":
-        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        week_end = today_start + timedelta(days=7)
-        query = (
-            query
-            .gte("start_datetime", today_start.isoformat())
-            .lt("start_datetime", week_end.isoformat())
-        )
+    def _apply_filters(q):
+        q = q.in_("status", ["published", "updated"])
+        q = q.gte("end_datetime", now.isoformat())  # Exclude events whose end time has passed
+        if search:
+            safe = search.replace("%", r"\%").replace("_", r"\_")
+            q = q.or_(f"title.ilike.%{safe}%,description.ilike.%{safe}%")
+        if category_event_ids is not None:
+            q = q.in_("id", category_event_ids)
+        if temporal_filter == "upcoming":
+            q = q.gte("start_datetime", now.isoformat())
+        elif temporal_filter == "today":
+            today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            tomorrow = today_start + timedelta(days=1)
+            q = q.gte("start_datetime", today_start.isoformat()).lt("start_datetime", tomorrow.isoformat())
+        elif temporal_filter == "this_week":
+            today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            week_end = today_start + timedelta(days=7)
+            q = q.gte("start_datetime", today_start.isoformat()).lt("start_datetime", week_end.isoformat())
+        return q
+
+    # Count query: fetch only IDs to avoid transferring all columns just for counting
+    count_result = _apply_filters(db.table("events").select("id", count="exact")).execute()
+    total = count_result.count or 0
 
     offset = (page - 1) * page_size
-    # First get total count without range to avoid PGRST103 when offset > total
-    count_result = query.execute()
-    total = count_result.count or 0
     if offset >= total:
         return [], total
-    result = query.order("start_datetime").range(offset, offset + page_size - 1).execute()
+
+    # Data query: fetch full rows, sorted deterministically
+    result = (
+        _apply_filters(db.table("events").select("*"))
+        .order("start_datetime")
+        .order("id")
+        .range(offset, offset + page_size - 1)
+        .execute()
+    )
     return result.data or [], total
 
 
@@ -247,6 +251,7 @@ def get_primary_images_for_events(db: Client, event_ids: list[str]) -> dict[str,
         db.table("event_images")
         .select("event_id, image_url")
         .in_("event_id", event_ids)
+        .order("upload_date")
         .execute()
     )
     images: dict[str, str] = {}

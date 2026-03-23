@@ -439,6 +439,7 @@ def delete_event(db: Client, event_id: str, user_id: str) -> None:
 def list_events(
     db: Client,
     *,
+    user_id: str | None = None,
     search: str | None = None,
     category_id: str | None = None,
     temporal_filter: str | None = None,
@@ -463,11 +464,15 @@ def list_events(
     categories_by_event = event_repo.get_categories_for_events(db, event_ids)
     images_by_event = event_repo.get_primary_images_for_events(db, event_ids)
 
-    items = [
-        EventListItemResponse(
+    items = []
+    for event in events:
+        is_private = event["visibility"] == "private"
+        # Full details only for authenticated users viewing public events
+        is_full = user_id is not None and not is_private
+        items.append(EventListItemResponse(
             id=event["id"],
             title=event["title"],
-            description=event["description"],
+            description=event["description"] if is_full else None,
             start_datetime=event["start_datetime"],
             end_datetime=event["end_datetime"],
             visibility=event["visibility"],
@@ -476,10 +481,10 @@ def list_events(
             attendee_count=event["attendee_count"],
             status=event["status"],
             categories=categories_by_event.get(event["id"], []),
-            primary_location=locations_by_event.get(event["id"]),
-            primary_image_url=images_by_event.get(event["id"]),
-        )
-        for event in events
-    ]
+            # Private events: no location in list (venue is private)
+            # Public events: location visible to all (needed for map view)
+            primary_location=locations_by_event.get(event["id"]) if not is_private else None,
+            primary_image_url=images_by_event.get(event["id"]) if is_full else None,
+        ))
 
     return EventListResponse(items=items, total=total, page=page, page_size=page_size, total_pages=total_pages)
