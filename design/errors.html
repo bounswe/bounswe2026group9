@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Error Pages — Social Event Mapper</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --color-bg: #E4E0E1;
+      --color-surface: #D6C0B3;
+      --color-mid: #AB886D;
+      --color-dark: #493628;
+      --color-bg-alpha: rgba(228, 224, 225, 0.7);
+      --color-surface-alpha: rgba(214, 192, 179, 0.6);
+      --color-mid-alpha: rgba(171, 136, 109, 0.3);
+      --color-dark-alpha: rgba(73, 54, 40, 0.15);
+    }
+
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Lato', sans-serif;
+      background: var(--color-bg);
+      color: var(--color-dark);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    h1, h2, h3, h4 {
+      font-family: 'Playfair Display', serif;
+    }
+
+    /* ── Tab Navigation ── */
+    .tab-nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      display: flex;
+      justify-content: center;
+      gap: 0;
+      background: var(--color-surface);
+      border-bottom: 2px solid var(--color-mid-alpha);
+      box-shadow: 0 2px 12px var(--color-dark-alpha);
+    }
+
+    .tab-btn {
+      font-family: 'Lato', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.4px;
+      padding: 16px 32px;
+      border: none;
+      background: transparent;
+      color: var(--color-dark);
+      cursor: pointer;
+      position: relative;
+      transition: background 0.25s, color 0.25s;
+    }
+
+    .tab-btn:hover {
+      background: var(--color-mid-alpha);
+    }
+
+    .tab-btn.active {
+      color: var(--color-dark);
+      background: var(--color-bg);
+    }
+
+    .tab-btn.active::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--color-dark);
+      border-radius: 3px 3px 0 0;
+    }
+
+    /* ── Error Screen ── */
+    .error-screen {
+      display: none;
+      min-height: 100vh;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .error-screen.active {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Logo ── */
+    .logo {
+      position: absolute;
+      top: 72px;
+      left: 40px;
+      z-index: 10;
+      text-decoration: none;
+      font-family: 'Playfair Display', serif;
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--color-dark);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: opacity 0.2s;
+    }
+
+    .logo:hover {
+      opacity: 0.7;
+    }
+
+    .logo svg {
+      flex-shrink: 0;
+    }
+
+    /* ── Centered Content ── */
+    .error-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 24px 48px;
+      text-align: center;
+      position: relative;
+      z-index: 2;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .error-icon {
+      margin-bottom: 24px;
+    }
+
+    .error-heading {
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--color-dark);
+      margin-bottom: 16px;
+      line-height: 1.2;
+    }
+
+    .error-desc {
+      font-size: 17px;
+      line-height: 1.7;
+      color: var(--color-dark);
+      opacity: 0.75;
+      margin-bottom: 8px;
+      max-width: 440px;
+    }
+
+    .error-sub-desc {
+      font-size: 15px;
+      line-height: 1.6;
+      color: var(--color-mid);
+      margin-bottom: 8px;
+      max-width: 400px;
+    }
+
+    /* ── Faint Background Code ── */
+    .bg-code {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-family: 'Playfair Display', serif;
+      font-size: 200px;
+      font-weight: 700;
+      color: var(--color-dark-alpha);
+      z-index: 1;
+      user-select: none;
+      pointer-events: none;
+      line-height: 1;
+    }
+
+    /* ── Buttons ── */
+    .btn-group {
+      display: flex;
+      gap: 16px;
+      margin-top: 32px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .btn {
+      font-family: 'Lato', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      padding: 14px 28px;
+      border-radius: 12px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.25s ease;
+      border: 2px solid transparent;
+    }
+
+    .btn-solid {
+      background: var(--color-dark);
+      color: #fff;
+      border-color: var(--color-dark);
+    }
+
+    .btn-solid:hover {
+      background: #5e4535;
+      border-color: #5e4535;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px var(--color-dark-alpha);
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--color-dark);
+      border-color: var(--color-dark);
+    }
+
+    .btn-outline:hover {
+      background: var(--color-dark);
+      color: #fff;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px var(--color-dark-alpha);
+    }
+
+    .btn-full {
+      width: 100%;
+      justify-content: center;
+      padding: 16px 28px;
+    }
+
+    /* ── Age Verification Card ── */
+    .age-card {
+      background: var(--color-surface);
+      border-radius: 12px;
+      padding: 32px;
+      max-width: 400px;
+      width: 100%;
+      margin-top: 32px;
+      text-align: left;
+    }
+
+    .age-card h3 {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: var(--color-dark);
+    }
+
+    .age-card label {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--color-mid);
+      margin-bottom: 8px;
+    }
+
+    .age-card input[type="date"] {
+      width: 100%;
+      padding: 14px 16px;
+      border: 2px solid var(--color-mid-alpha);
+      border-radius: 8px;
+      font-family: 'Lato', sans-serif;
+      font-size: 15px;
+      background: var(--color-bg);
+      color: var(--color-dark);
+      outline: none;
+      transition: border-color 0.2s;
+      margin-bottom: 20px;
+    }
+
+    .age-card input[type="date"]:focus {
+      border-color: var(--color-dark);
+    }
+
+    .age-card .privacy-text {
+      font-size: 12px;
+      color: var(--color-mid);
+      line-height: 1.6;
+      margin-top: 16px;
+      text-align: center;
+    }
+
+    .back-link {
+      margin-top: 24px;
+      font-size: 15px;
+      color: var(--color-mid);
+      text-decoration: none;
+      font-weight: 700;
+      transition: color 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .back-link:hover {
+      color: var(--color-dark);
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .logo {
+        top: 64px;
+        left: 24px;
+        font-size: 18px;
+      }
+      .bg-code {
+        font-size: 120px;
+      }
+      .error-heading {
+        font-size: 28px;
+      }
+      .tab-btn {
+        padding: 14px 16px;
+        font-size: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Tab Navigation -->
+  <nav class="tab-nav">
+    <button class="tab-btn active" data-tab="err01">ERR-01 Not Found</button>
+    <button class="tab-btn" data-tab="err02">ERR-02 Access Denied</button>
+    <button class="tab-btn" data-tab="err03">ERR-03 Underage Warning</button>
+  </nav>
+
+  <!-- ════════════════════════════════════════════════════════════════════
+       ERR-01 : 404 NOT FOUND
+       ════════════════════════════════════════════════════════════════════ -->
+  <section id="err01" class="error-screen active">
+    <span class="bg-code">404</span>
+
+    <a href="#" class="logo">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <circle cx="14" cy="14" r="13" stroke="var(--color-dark)" stroke-width="2"/>
+        <path d="M14 4C14 4 6 10 6 16a8 8 0 0016 0c0-6-8-12-8-12z" fill="var(--color-mid)" opacity="0.5"/>
+        <circle cx="14" cy="14" r="4" fill="var(--color-dark)"/>
+      </svg>
+      Social Event Mapper
+    </a>
+
+    <div class="error-content">
+      <!-- Magnifying glass with question mark -->
+      <div class="error-icon">
+        <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+          <circle cx="34" cy="34" r="22" stroke="var(--color-mid)" stroke-width="4" fill="none"/>
+          <line x1="50" y1="50" x2="70" y2="70" stroke="var(--color-mid)" stroke-width="5" stroke-linecap="round"/>
+          <text x="34" y="42" text-anchor="middle" font-family="Playfair Display, serif" font-size="26" font-weight="700" fill="var(--color-mid)">?</text>
+        </svg>
+      </div>
+
+      <h1 class="error-heading">Page not found</h1>
+      <p class="error-desc">The page you're looking for doesn't exist or has been moved.</p>
+
+      <div class="btn-group">
+        <a href="#" class="btn btn-solid">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M10 2L4 8l6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Back to Home
+        </a>
+        <a href="#" class="btn btn-outline">Browse Events</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════════════
+       ERR-02 : 403 ACCESS DENIED
+       ════════════════════════════════════════════════════════════════════ -->
+  <section id="err02" class="error-screen">
+    <span class="bg-code">403</span>
+
+    <a href="#" class="logo">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <circle cx="14" cy="14" r="13" stroke="var(--color-dark)" stroke-width="2"/>
+        <path d="M14 4C14 4 6 10 6 16a8 8 0 0016 0c0-6-8-12-8-12z" fill="var(--color-mid)" opacity="0.5"/>
+        <circle cx="14" cy="14" r="4" fill="var(--color-dark)"/>
+      </svg>
+      Social Event Mapper
+    </a>
+
+    <div class="error-content">
+      <!-- Padlock icon -->
+      <div class="error-icon">
+        <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+          <rect x="18" y="34" width="44" height="32" rx="6" fill="var(--color-dark)"/>
+          <path d="M28 34V26a12 12 0 0124 0v8" stroke="var(--color-dark)" stroke-width="5" stroke-linecap="round" fill="none"/>
+          <circle cx="40" cy="50" r="5" fill="var(--color-bg)"/>
+          <rect x="38" y="52" width="4" height="8" rx="2" fill="var(--color-bg)"/>
+        </svg>
+      </div>
+
+      <h1 class="error-heading">Access Denied</h1>
+      <p class="error-desc">This is a private event. Only the host can view the full details.</p>
+      <p class="error-sub-desc">If you think this is a mistake, try contacting the event host.</p>
+
+      <div class="btn-group">
+        <a href="#" class="btn btn-solid">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M10 2L4 8l6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Back to Discovery
+        </a>
+        <a href="#" class="btn btn-outline">Contact Host</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════════════
+       ERR-03 : UNDERAGE WARNING
+       ════════════════════════════════════════════════════════════════════ -->
+  <section id="err03" class="error-screen">
+    <span class="bg-code">18+</span>
+
+    <a href="#" class="logo">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <circle cx="14" cy="14" r="13" stroke="var(--color-dark)" stroke-width="2"/>
+        <path d="M14 4C14 4 6 10 6 16a8 8 0 0016 0c0-6-8-12-8-12z" fill="var(--color-mid)" opacity="0.5"/>
+        <circle cx="14" cy="14" r="4" fill="var(--color-dark)"/>
+      </svg>
+      Social Event Mapper
+    </a>
+
+    <div class="error-content">
+      <!-- Alert triangle icon -->
+      <div class="error-icon">
+        <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+          <path d="M40 10L72 68H8L40 10z" stroke="#C45B4A" stroke-width="4" fill="none" stroke-linejoin="round"/>
+          <line x1="40" y1="32" x2="40" y2="48" stroke="#C45B4A" stroke-width="4" stroke-linecap="round"/>
+          <circle cx="40" cy="57" r="3" fill="#C45B4A"/>
+        </svg>
+      </div>
+
+      <h1 class="error-heading">Age Restricted Event</h1>
+      <p class="error-desc">This event is restricted to attendees aged 18 and above.</p>
+
+      <!-- Age Verification Card -->
+      <div class="age-card">
+        <h3>Please confirm your age</h3>
+        <label for="dob">Date of Birth</label>
+        <input type="date" id="dob" name="dob" />
+        <button class="btn btn-solid btn-full" onclick="verifyAge()">Verify Age</button>
+        <p class="privacy-text">Your date of birth is only used for age verification and will not be stored or shared with third parties.</p>
+      </div>
+
+      <a href="#" class="back-link">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+          <path d="M10 2L4 8l6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Back to Event
+      </a>
+    </div>
+  </section>
+
+  <script>
+    // ── Tab Switching ──
+    const tabs = document.querySelectorAll('.tab-btn');
+    const screens = document.querySelectorAll('.error-screen');
+
+    tabs.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = btn.getAttribute('data-tab');
+
+        tabs.forEach(t => t.classList.remove('active'));
+        btn.classList.add('active');
+
+        screens.forEach(s => s.classList.remove('active'));
+        document.getElementById(target).classList.add('active');
+      });
+    });
+
+    // ── Age Verification (mock) ──
+    function verifyAge() {
+      const dobInput = document.getElementById('dob');
+      if (!dobInput.value) {
+        alert('Please enter your date of birth.');
+        return;
+      }
+
+      const dob = new Date(dobInput.value);
+      const today = new Date();
+      let age = today.getFullYear() - dob.getFullYear();
+      const monthDiff = today.getMonth() - dob.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+        age--;
+      }
+
+      if (age >= 18) {
+        alert('Age verified successfully. You may proceed to the event.');
+      } else {
+        alert('Sorry, you must be at least 18 years old to view this event.');
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,1686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create Event — Social Event Mapper</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --color-bg: #E4E0E1;
+  --color-surface: #D6C0B3;
+  --color-mid: #AB886D;
+  --color-dark: #493628;
+  --color-bg-alpha: rgba(228, 224, 225, 0.7);
+  --color-surface-alpha: rgba(214, 192, 179, 0.6);
+  --color-mid-alpha: rgba(171, 136, 109, 0.3);
+  --color-dark-alpha: rgba(73, 54, 40, 0.15);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Lato', sans-serif;
+  background: var(--color-bg);
+  color: var(--color-dark);
+  min-height: 100vh;
+}
+h1, h2, h3, h4, h5, h6, .font-heading {
+  font-family: 'Playfair Display', serif;
+}
+.btn-primary {
+  background: var(--color-dark);
+  color: #fff;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-family: 'Lato', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn-primary:hover { opacity: 0.88; transform: translateY(-1px); }
+.btn-outline {
+  background: transparent;
+  color: var(--color-dark);
+  border: 1.5px solid var(--color-mid);
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-family: 'Lato', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn-outline:hover { border-color: var(--color-dark); background: var(--color-dark-alpha); }
+.form-label {
+  display: block;
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 6px;
+  color: var(--color-dark);
+}
+.form-label .req { color: #c0392b; margin-left: 2px; }
+.form-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid var(--color-mid-alpha);
+  border-radius: 8px;
+  font-family: 'Lato', sans-serif;
+  font-size: 14px;
+  background: #fff;
+  color: var(--color-dark);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  outline: none;
+}
+.form-input:focus {
+  border-color: var(--color-dark);
+  box-shadow: 0 0 0 3px var(--color-dark-alpha);
+}
+.form-input::placeholder { color: #a09090; }
+textarea.form-input { resize: vertical; }
+.card {
+  background: #fff;
+  border: 1px solid var(--color-mid-alpha);
+  border-radius: 12px;
+  padding: 32px;
+}
+.char-counter {
+  text-align: right;
+  font-size: 12px;
+  color: #999;
+  margin-top: 4px;
+}
+
+/* Tab navigation */
+.tab-nav {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-mid-alpha);
+  display: flex;
+  align-items: center;
+  padding: 0 32px;
+  gap: 0;
+}
+.tab-group-btn {
+  padding: 12px 20px;
+  font-weight: 700;
+  font-size: 13px;
+  border: none;
+  background: transparent;
+  color: var(--color-dark);
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  opacity: 0.6;
+  transition: all 0.2s;
+  font-family: 'Lato', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.tab-group-btn.active { opacity: 1; border-bottom-color: var(--color-dark); }
+.tab-group-btn:hover { opacity: 0.9; }
+.tab-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--color-mid-alpha);
+  margin: 0 8px;
+}
+.sub-tab-bar {
+  background: var(--color-bg);
+  padding: 8px 32px;
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--color-mid-alpha);
+  flex-wrap: wrap;
+}
+.sub-tab-btn {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  border-radius: 20px;
+  background: transparent;
+  color: var(--color-dark);
+  cursor: pointer;
+  opacity: 0.55;
+  transition: all 0.2s;
+  font-family: 'Lato', sans-serif;
+}
+.sub-tab-btn.active {
+  background: var(--color-dark);
+  color: #fff;
+  opacity: 1;
+}
+.sub-tab-btn:hover:not(.active) { opacity: 0.85; background: var(--color-dark-alpha); }
+
+/* Stepper */
+.stepper {
+  width: 240px;
+  min-width: 240px;
+  padding: 32px 24px;
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+}
+.step-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  position: relative;
+}
+.step-item:not(:last-child) { padding-bottom: 32px; }
+.step-item:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 15px;
+  top: 36px;
+  width: 2px;
+  height: calc(100% - 40px);
+  background: var(--color-mid-alpha);
+}
+.step-item.completed:not(:last-child)::after { background: var(--color-mid); }
+.step-circle {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  border: 2px solid var(--color-mid-alpha);
+  color: #aaa;
+  position: relative;
+  z-index: 1;
+  background: var(--color-bg);
+  transition: all 0.2s;
+}
+.step-item.active .step-circle {
+  background: var(--color-dark);
+  border-color: var(--color-dark);
+  color: #fff;
+}
+.step-item.completed .step-circle {
+  background: var(--color-mid);
+  border-color: var(--color-mid);
+  color: #fff;
+}
+.step-label {
+  font-size: 14px;
+  font-weight: 400;
+  color: #999;
+  padding-top: 5px;
+  line-height: 1.3;
+}
+.step-item.active .step-label { font-weight: 700; color: var(--color-dark); }
+.step-item.completed .step-label { color: var(--color-dark); }
+
+/* Toggle switch */
+.toggle-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.toggle {
+  width: 44px;
+  height: 24px;
+  border-radius: 12px;
+  background: #ccc;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.25s;
+  flex-shrink: 0;
+}
+.toggle.on { background: var(--color-mid); }
+.toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.25s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.toggle.on::after { transform: translateX(20px); }
+
+/* Pill / tag */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1.5px solid var(--color-mid-alpha);
+  background: transparent;
+  color: var(--color-dark);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Lato', sans-serif;
+}
+.pill:hover { border-color: var(--color-mid); }
+.pill.selected {
+  background: var(--color-dark);
+  color: #fff;
+  border-color: var(--color-dark);
+}
+
+/* Selectable Card */
+.sel-card {
+  flex: 1;
+  padding: 24px;
+  border: 2px solid var(--color-mid-alpha);
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s;
+  background: #fff;
+}
+.sel-card:hover { border-color: var(--color-mid); }
+.sel-card.selected { border-color: var(--color-dark); background: var(--color-bg); }
+
+/* Summary card for review */
+.summary-card {
+  background: #fff;
+  border: 1px solid var(--color-mid-alpha);
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 16px;
+}
+.summary-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.summary-card-header h4 {
+  font-family: 'Playfair Display', serif;
+  font-size: 16px;
+}
+.edit-link {
+  font-size: 13px;
+  color: var(--color-mid);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.edit-link:hover { color: var(--color-dark); }
+
+/* Upload drop zone */
+.drop-zone {
+  border: 2px dashed var(--color-mid-alpha);
+  border-radius: 12px;
+  padding: 40px;
+  text-align: center;
+  background: var(--color-bg);
+  transition: border-color 0.2s;
+  cursor: pointer;
+}
+.drop-zone:hover { border-color: var(--color-mid); }
+
+/* Image thumbnails */
+.img-thumb {
+  aspect-ratio: 4/3;
+  background: var(--color-mid);
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+}
+.img-thumb .badge-cover {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: #27ae60;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+.img-thumb .btn-del {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.5);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  border: none;
+  transition: background 0.2s;
+}
+.img-thumb .btn-del:hover { background: rgba(0,0,0,0.75); }
+.img-thumb .drag-handle {
+  position: absolute;
+  top: 6px;
+  right: 34px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  color: #fff;
+  opacity: 0.8;
+}
+
+/* Timeline */
+.timeline-line {
+  position: absolute;
+  left: 5px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--color-mid);
+}
+.timeline-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--color-dark);
+  position: absolute;
+  left: 0;
+  top: 4px;
+  z-index: 1;
+}
+.duration-pill {
+  display: inline-flex;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--color-dark-alpha);
+  color: var(--color-dark);
+}
+
+/* Location card for multi-route */
+.loc-card {
+  border: 1px solid var(--color-mid-alpha);
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+}
+.loc-card:not(:last-child) { margin-bottom: 0; }
+.loc-badge {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: 50%;
+  background: var(--color-dark);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+.route-connector {
+  width: 2px;
+  height: 20px;
+  border-left: 2px dashed var(--color-mid);
+  margin-left: 40px;
+}
+
+/* Warning banner */
+.warning-banner {
+  background: #fef3cd;
+  border: 1px solid #ffc107;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: #856404;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+/* Published badge */
+.badge-published {
+  display: inline-flex;
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #d4edda;
+  color: #155724;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--color-bg); }
+::-webkit-scrollbar-thumb { background: var(--color-mid-alpha); border-radius: 3px; }
+
+/* Page container */
+.page-container { width: 1280px; margin: 0 auto; }
+</style>
+</head>
+<body>
+
+<!-- ===== NAVBAR ===== -->
+<nav style="background: var(--color-dark); color: #fff; padding: 0 32px; height: 56px; display: flex; align-items: center; justify-content: space-between;">
+  <div style="display: flex; align-items: center; gap: 12px;">
+    <svg width="24" height="24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/></svg>
+    <span class="font-heading" style="font-size: 18px; font-weight: 600; letter-spacing: 0.3px;">Social Event Mapper</span>
+  </div>
+  <div style="flex: 1; max-width: 420px; margin: 0 48px;">
+    <div style="display: flex; align-items: center; background: rgba(255,255,255,0.12); border-radius: 8px; padding: 6px 12px; gap: 8px;">
+      <svg width="16" height="16" fill="none" stroke="#ccc" stroke-width="2" stroke-linecap="round"><circle cx="7" cy="7" r="5"/><path d="m14 14-3.5-3.5"/></svg>
+      <input type="text" placeholder="Search events, places..." style="background: none; border: none; color: #fff; font-size: 13px; width: 100%; outline: none; font-family: 'Lato', sans-serif;" />
+    </div>
+  </div>
+  <div style="display: flex; align-items: center; gap: 20px;">
+    <div style="position: relative; cursor: pointer;">
+      <svg width="20" height="20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <span style="position: absolute; top: -4px; right: -4px; width: 8px; height: 8px; background: #e74c3c; border-radius: 50;"></span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+      <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--color-mid); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #fff;">AT</div>
+      <span style="font-size: 13px; font-weight: 600;">Arda T.</span>
+    </div>
+  </div>
+</nav>
+
+<!-- ===== TAB NAVIGATION ===== -->
+<div class="tab-nav" id="tabNav">
+  <button class="tab-group-btn active" data-group="create" onclick="switchGroup('create')">Create Event</button>
+  <div class="tab-divider"></div>
+  <button class="tab-group-btn" data-group="edit" onclick="switchGroup('edit')">Edit &amp; Advanced</button>
+</div>
+
+<!-- Sub-tabs: Create -->
+<div class="sub-tab-bar" id="subTabCreate">
+  <button class="sub-tab-btn active" data-tab="c01" onclick="switchTab('c01')">C-01 Basics</button>
+  <button class="sub-tab-btn" data-tab="c02" onclick="switchTab('c02')">C-02 Schedule</button>
+  <button class="sub-tab-btn" data-tab="c03" onclick="switchTab('c03')">C-03 Location</button>
+  <button class="sub-tab-btn" data-tab="c04" onclick="switchTab('c04')">C-04 Images</button>
+  <button class="sub-tab-btn" data-tab="c05" onclick="switchTab('c05')">C-05 Venue</button>
+  <button class="sub-tab-btn" data-tab="c06" onclick="switchTab('c06')">C-06 Settings</button>
+  <button class="sub-tab-btn" data-tab="c07" onclick="switchTab('c07')">C-07 Review</button>
+</div>
+
+<!-- Sub-tabs: Edit -->
+<div class="sub-tab-bar" id="subTabEdit" style="display: none;">
+  <button class="sub-tab-btn active" data-tab="c08" onclick="switchTab('c08')">C-08 Edit Event</button>
+  <button class="sub-tab-btn" data-tab="c09" onclick="switchTab('c09')">C-09 Multi-Location</button>
+  <button class="sub-tab-btn" data-tab="c10" onclick="switchTab('c10')">C-10 Itinerary</button>
+</div>
+
+<!-- ===== BACK LINK ===== -->
+<div class="page-container" style="padding: 16px 0 0 0;">
+  <a href="#" style="color: var(--color-mid); font-size: 13px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; transition: color 0.2s;" onmouseover="this.style.color='var(--color-dark)'" onmouseout="this.style.color='var(--color-mid)'">
+    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 8H1m0 0 6-6M1 8l6 6"/></svg>
+    Back to Discovery
+  </a>
+</div>
+
+<!-- =================== CONTENT PANELS =================== -->
+<div class="page-container" style="padding-bottom: 64px;">
+
+<!-- ======================== C-01: BASICS ======================== -->
+<div class="tab-content" id="panel-c01">
+  <div style="display: flex; gap: 32px; padding-top: 24px;">
+    <!-- Stepper -->
+    <div class="stepper">
+      <div class="step-item active">
+        <div class="step-circle">1</div>
+        <div class="step-label">Basics</div>
+      </div>
+      <div class="step-item">
+        <div class="step-circle">2</div>
+        <div class="step-label">Schedule</div>
+      </div>
+      <div class="step-item">
+        <div class="step-circle">3</div>
+        <div class="step-label">Location</div>
+      </div>
+      <div class="step-item">
+        <div class="step-circle">4</div>
+        <div class="step-label">Media</div>
+      </div>
+      <div class="step-item">
+        <div class="step-circle">5</div>
+        <div class="step-label">Venue</div>
+      </div>
+      <div class="step-item">
+        <div class="step-circle">6</div>
+        <div class="step-label">Settings</div>
+      </div>
+      <div class="step-item">
+        <div class="step-circle">7</div>
+        <div class="step-label">Review</div>
+      </div>
+    </div>
+    <!-- Form -->
+    <div style="flex: 1; max-width: 800px;">
+      <div style="margin-bottom: 8px; font-size: 12px; color: #999; font-weight: 600;">Step 1 of 7</div>
+      <h2 class="font-heading" style="font-size: 28px; margin-bottom: 24px;">Event Basics</h2>
+      <div class="card">
+        <!-- Event Title -->
+        <div style="margin-bottom: 24px;">
+          <label class="form-label">Event Title <span class="req">*</span></label>
+          <input class="form-input" type="text" value="Kadıkoy Beach Party Night" placeholder="Give your event a catchy name" maxlength="100" oninput="this.nextElementSibling.textContent=this.value.length+'/100'">
+          <div class="char-counter">27/100</div>
+        </div>
+        <!-- Description -->
+        <div style="margin-bottom: 24px;">
+          <label class="form-label">Description <span class="req">*</span></label>
+          <textarea class="form-input" rows="5" placeholder="Tell people what your event is about..." maxlength="2000" oninput="this.nextElementSibling.textContent=this.value.length+'/2000'">Join us for an unforgettable night at Kadikoy Beach! Live DJ sets, great food, and amazing vibes by the sea.</textarea>
+          <div class="char-counter">108/2000</div>
+        </div>
+        <!-- Category -->
+        <div style="margin-bottom: 8px;">
+          <label class="form-label">Category <span class="req">*</span> <span style="font-weight: 400; color: #999; font-size: 12px;">(select at least one)</span></label>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">
+            <span class="pill selected">Music / Party</span>
+            <span class="pill">Sports</span>
+            <span class="pill">Art</span>
+            <span class="pill">Food</span>
+            <span class="pill">Education</span>
+            <span class="pill">Technology</span>
+            <span class="pill">Nature</span>
+            <span class="pill">Entertainment</span>
+            <span class="pill">Wellness</span>
+            <span class="pill">Business</span>
+            <span class="pill">Community</span>
+            <span class="pill">Other</span>
+          </div>
+          <a href="#" style="display: inline-block; margin-top: 10px; font-size: 13px; color: var(--color-mid); font-weight: 600; text-decoration: none;">+ Create custom category</a>
+        </div>
+      </div>
+      <!-- Buttons -->
+      <div style="display: flex; justify-content: flex-end; margin-top: 24px;">
+        <button class="btn-primary" onclick="switchTab('c02')">Next <svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M1 7h12m0 0-5-5m5 5-5 5"/></svg></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================== C-02: SCHEDULE ======================== -->
+<div class="tab-content" id="panel-c02" style="display:none;">
+  <div style="display: flex; gap: 32px; padding-top: 24px;">
+    <!-- Stepper -->
+    <div class="stepper">
+      <div class="step-item completed">
+        <div class="step-circle"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M2 7.5l3.5 3.5L12 4"/></svg></div>
+        <div class="step-label">Basics</div>
+      </div>
+      <div class="step-item active">
+        <div class="step-circle">2</div>
+        <div class="step-label">Schedule</div>
+      </div>
+      <div class="step-item">
+        <div class="step-circle">3</div>
+        <div class="step-label">Location</div>
+      </div>
+      <div class="step-item">
+        <div class="step-circle">4</div>
+        <div class="step-label">Media</div>
+      </div>
+      <div class="step-item">
+        <div class="step-circle">5</div>
+        <div class="step-label">Venue</div>
+      </div>
+      <div class="step-item">
+        <div class="step-circle">6</div>
+        <div class="step-label">Settings</div>
+      </div>
+      <div class="step-item">
+        <div class="step-circle">7</div>
+        <div class="step-label">Review</div>
+      </div>
+    </div>
+    <!-- Form -->
+    <div style="flex: 1; max-width: 800px;">
+      <div style="margin-bottom: 8px; font-size: 12px; color: #999; font-weight: 600;">Step 2 of 7</div>
+      <h2 class="font-heading" style="font-size: 28px; margin-bottom: 24px;">Schedule</h2>
+      <div class="card">
+        <!-- Start -->
+        <div style="margin-bottom: 24px;">
+          <label class="form-label">Start Date &amp; Time <span class="req">*</span></label>
+          <div style="display: flex; gap: 12px;">
+            <div style="flex: 1; position: relative;">
+              <input class="form-input" type="date" value="2026-03-28" style="padding-right: 36px;">
+            </div>
+            <div style="flex: 1; position: relative;">
+              <input class="form-input" type="time" value="21:00">
+            </div>
+          </div>
+        </div>
+        <!-- End -->
+        <div style="margin-bottom: 16px;">
+          <label class="form-label">End Date &amp; Time <span class="req">*</span></label>
+          <div style="display: flex; gap: 12px;">
+            <div style="flex: 1;">
+              <input class="form-input" type="date" value="2026-03-29">
+            </div>
+            <div style="flex: 1;">
+              <input class="form-input" type="time" value="02:00">
+            </div>
+          </div>
+          <div style="margin-top: 8px; font-size: 13px; color: #27ae60; display: flex; align-items: center; gap: 4px;">
+            <svg width="14" height="14" fill="none" stroke="#27ae60" stroke-width="2" stroke-linecap="round"><path d="M2 7.5l3.5 3.5L12 4"/></svg>
+            End time is after start time
+          </div>
+        </div>
+        <!-- Duration -->
+        <div style="padding: 12px 16px; background: var(--color-bg); border-radius: 8px; display: flex; align-items: center; gap: 8px;">
+          <svg width="16" height="16" fill="none" stroke="var(--color-mid)" stroke-width="2" stroke-linecap="round"><circle cx="8" cy="8" r="7"/><path d="M8 4v4l3 2"/></svg>
+          <span style="font-size: 14px; font-weight: 600; color: var(--color-dark);">Duration: 5 hours</span>
+        </div>
+      </div>
+      <!-- Buttons -->
+      <div style="display: flex; justify-content: space-between; margin-top: 24px;">
+        <button class="btn-outline" onclick="switchTab('c01')"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M13 7H1m0 0 5-5M1 7l5 5"/></svg> Back</button>
+        <button class="btn-primary" onclick="switchTab('c03')">Next <svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M1 7h12m0 0-5-5m5 5-5 5"/></svg></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================== C-03: LOCATION ======================== -->
+<div class="tab-content" id="panel-c03" style="display:none;">
+  <div style="display: flex; gap: 32px; padding-top: 24px;">
+    <!-- Stepper -->
+    <div class="stepper">
+      <div class="step-item completed">
+        <div class="step-circle"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M2 7.5l3.5 3.5L12 4"/></svg></div>
+        <div class="step-label">Basics</div>
+      </div>
+      <div class="step-item completed">
+        <div class="step-circle"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M2 7.5l3.5 3.5L12 4"/></svg></div>
+        <div class="step-label">Schedule</div>
+      </div>
+      <div class="step-item active">
+        <div class="step-circle">3</div>
+        <div class="step-label">Location</div>
+      </div>
+      <div class="step-item">
+        <div class="step-circle">4</div>
+        <div class="step-label">Media</div>
+      </div>
+      <div class="step-item">
+        <div class="step-circle">5</div>
+        <div class="step-label">Venue</div>
+      </div>
+      <div class="step-item">
+        <div class="step-circle">6</div>
+        <div class="step-label">Settings</div>
+      </div>
+      <div class="step-item">
+        <div class="step-circle">7</div>
+        <div class="step-label">Review</div>
+      </div>
+    </div>
+    <!-- Form -->
+    <div style="flex: 1; max-width: 800px;">
+      <div style="margin-bottom: 8px; font-size: 12px; color: #999; font-weight: 600;">Step 3 of 7</div>
+      <h2 class="font-heading" style="font-size: 28px; margin-bottom: 24px;">Location</h2>
+      <div class="card">
+        <!-- Search -->
+        <div style="margin-bottom: 20px;">
+          <label class="form-label">Search for a venue</label>
+          <div style="position: relative;">
+            <svg width="16" height="16" fill="none" stroke="var(--color-mid)" stroke-width="2" stroke-linecap="round" style="position: absolute; top: 12px; left: 12px;"><path d="M12 10.5 8 14l-4-3.5C2.5 9 2 7.2 2 6a5 5 0 0 1 10 0c0 1.2-.5 3-2 4.5z"/><circle cx="7" cy="6" r="1.5"/></svg>
+            <input class="form-input" type="text" value="Kadikoy Beach Park" placeholder="Search location..." style="padding-left: 36px;">
+          </div>
+          <span style="font-size: 12px; color: #999; margin-top: 4px; display: block;">Or click on the map to pin a location</span>
+        </div>
+        <!-- Map -->
+        <div style="width: 100%; height: 300px; background: var(--color-surface); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; margin-bottom: 24px; border: 1px solid var(--color-mid-alpha);">
+          <svg width="48" height="48" fill="none" stroke="var(--color-dark)" stroke-width="1.5" stroke-linecap="round"><rect x="4" y="4" width="40" height="40" rx="4"/><path d="M4 14h40M14 4v40"/><circle cx="30" cy="28" r="3" fill="var(--color-dark)" stroke="none"/><path d="M30 22c-3.3 0-6 2.7-6 6 0 4.5 6 10 6 10s6-5.5 6-10c0-3.3-2.7-6-6-6z" fill="var(--color-dark)" opacity="0.2"/></svg>
+          <span style="margin-top: 12px; font-size: 14px; font-weight: 600; color: var(--color-dark);">MAP — Click to place pin</span>
+          <!-- Pin indicator -->
+          <div style="position: absolute; top: 100px; left: 55%; display: flex; flex-direction: column; align-items: center;">
+            <svg width="28" height="36" fill="var(--color-dark)" stroke="none"><path d="M14 0C6.3 0 0 6.3 0 14c0 10.5 14 22 14 22s14-11.5 14-22C28 6.3 21.7 0 14 0zm0 19a5 5 0 1 1 0-10 5 5 0 0 1 0 10z"/><circle cx="14" cy="14" r="4" fill="#fff"/></svg>
+          </div>
+        </div>
+        <!-- Venue Name -->
+        <div style="margin-bottom: 20px;">
+          <label class="form-label">Venue Name <span class="req">*</span></label>
+          <input class="form-input" type="text" value="Kadikoy Beach Park">
+        </div>
+        <!-- Address -->
+        <div>
+          <label class="form-label">Address</label>
+          <input class="form-input" type="text" value="Caferaga Mah., Kadikoy, Istanbul">
+        </div>
+      </div>
+      <!-- Buttons -->
+      <div style="display: flex; justify-content: space-between; margin-top: 24px;">
+        <button class="btn-outline" onclick="switchTab('c02')"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M13 7H1m0 0 5-5M1 7l5 5"/></svg> Back</button>
+        <button class="btn-primary" onclick="switchTab('c04')">Next <svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M1 7h12m0 0-5-5m5 5-5 5"/></svg></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================== C-04: IMAGES ======================== -->
+<div class="tab-content" id="panel-c04" style="display:none;">
+  <div style="display: flex; gap: 32px; padding-top: 24px;">
+    <!-- Stepper -->
+    <div class="stepper">
+      <div class="step-item completed">
+        <div class="step-circle"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M2 7.5l3.5 3.5L12 4"/></svg></div>
+        <div class="step-label">Basics</div>
+      </div>
+      <div class="step-item completed">
+        <div class="step-circle"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M2 7.5l3.5 3.5L12 4"/></svg></div>
+        <div class="step-label">Schedule</div>
+      </div>
+      <div class="step-item completed">
+        <div class="step-circle"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M2 7.5l3.5 3.5L12 4"/></svg></div>
+        <div class="step-label">Location</div>
+      </div>
+      <div class="step-item active">
+        <div class="step-circle">4</div>
+        <div class="step-label">Media</div>
+      </div>
+      <div class="step-item">
+        <div class="step-circle">5</div>
+        <div class="step-label">Venue</div>
+      </div>
+      <div class="step-item">
+        <div class="step-circle">6</div>
+        <div class="step-label">Settings</div>
+      </div>
+      <div class="step-item">
+        <div class="step-circle">7</div>
+        <div class="step-label">Review</div>
+      </div>
+    </div>
+    <!-- Form -->
+    <div style="flex: 1; max-width: 800px;">
+      <div style="margin-bottom: 8px; font-size: 12px; color: #999; font-weight: 600;">Step 4 of 7</div>
+      <h2 class="font-heading" style="font-size: 28px; margin-bottom: 24px;">Event Images</h2>
+      <div class="card">
+        <!-- Upload Zone -->
+        <div class="drop-zone" style="margin-bottom: 24px;">
+          <svg width="40" height="40" fill="none" stroke="var(--color-mid)" stroke-width="1.5" stroke-linecap="round" style="margin-bottom: 8px;"><path d="M20 26V14m0 0-6 6m6-6 6 6"/><path d="M34 26v6a4 4 0 0 1-4 4H10a4 4 0 0 1-4-4v-6"/></svg>
+          <div style="font-size: 15px; font-weight: 600; color: var(--color-dark); margin-bottom: 4px;">Drag &amp; drop images here</div>
+          <div style="font-size: 13px; color: #999; margin-bottom: 12px;">or</div>
+          <button class="btn-outline" style="padding: 8px 20px;">Browse Files</button>
+          <div style="font-size: 12px; color: #999; margin-top: 12px;">PNG, JPG up to 5MB each. At least 1 image required.</div>
+        </div>
+        <!-- Uploaded Images Grid -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 12px;">
+          <div class="img-thumb">
+            <span class="badge-cover">Cover</span>
+            <span class="drag-handle">
+              <svg width="14" height="14" fill="#fff" stroke="none"><circle cx="4" cy="3" r="1.5"/><circle cx="10" cy="3" r="1.5"/><circle cx="4" cy="7" r="1.5"/><circle cx="10" cy="7" r="1.5"/><circle cx="4" cy="11" r="1.5"/><circle cx="10" cy="11" r="1.5"/></svg>
+            </span>
+            <button class="btn-del">&times;</button>
+          </div>
+          <div class="img-thumb">
+            <span class="drag-handle">
+              <svg width="14" height="14" fill="#fff" stroke="none"><circle cx="4" cy="3" r="1.5"/><circle cx="10" cy="3" r="1.5"/><circle cx="4" cy="7" r="1.5"/><circle cx="10" cy="7" r="1.5"/><circle cx="4" cy="11" r="1.5"/><circle cx="10" cy="11" r="1.5"/></svg>
+            </span>
+            <button class="btn-del">&times;</button>
+          </div>
+          <div class="img-thumb">
+            <span class="drag-handle">
+              <svg width="14" height="14" fill="#fff" stroke="none"><circle cx="4" cy="3" r="1.5"/><circle cx="10" cy="3" r="1.5"/><circle cx="4" cy="7" r="1.5"/><circle cx="10" cy="7" r="1.5"/><circle cx="4" cy="11" r="1.5"/><circle cx="10" cy="11" r="1.5"/></svg>
+            </span>
+            <button class="btn-del">&times;</button>
+          </div>
+        </div>
+        <div style="font-size: 12px; color: #999; margin-bottom: 12px;">Drag to reorder. First image is the cover.</div>
+        <button class="btn-outline" style="padding: 8px 16px; font-size: 13px;">+ Add more</button>
+      </div>
+      <!-- Buttons -->
+      <div style="display: flex; justify-content: space-between; margin-top: 24px;">
+        <button class="btn-outline" onclick="switchTab('c03')"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M13 7H1m0 0 5-5M1 7l5 5"/></svg> Back</button>
+        <button class="btn-primary" onclick="switchTab('c05')">Next <svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M1 7h12m0 0-5-5m5 5-5 5"/></svg></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================== C-05: VENUE METADATA ======================== -->
+<div class="tab-content" id="panel-c05" style="display:none;">
+  <div style="display: flex; gap: 32px; padding-top: 24px;">
+    <!-- Stepper -->
+    <div class="stepper">
+      <div class="step-item completed">
+        <div class="step-circle"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M2 7.5l3.5 3.5L12 4"/></svg></div>
+        <div class="step-label">Basics</div>
+      </div>
+      <div class="step-item completed">
+        <div class="step-circle"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M2 7.5l3.5 3.5L12 4"/></svg></div>
+        <div class="step-label">Schedule</div>
+      </div>
+      <div class="step-item completed">
+        <div class="step-circle"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M2 7.5l3.5 3.5L12 4"/></svg></div>
+        <div class="step-label">Location</div>
+      </div>
+      <div class="step-item completed">
+        <div class="step-circle"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M2 7.5l3.5 3.5L12 4"/></svg></div>
+        <div class="step-label">Media</div>
+      </div>
+      <div class="step-item active">
+        <div class="step-circle">5</div>
+        <div class="step-label">Venue</div>
+      </div>
+      <div class="step-item">
+        <div class="step-circle">6</div>
+        <div class="step-label">Settings</div>
+      </div>
+      <div class="step-item">
+        <div class="step-circle">7</div>
+        <div class="step-label">Review</div>
+      </div>
+    </div>
+    <!-- Form -->
+    <div style="flex: 1; max-width: 800px;">
+      <div style="margin-bottom: 8px; font-size: 12px; color: #999; font-weight: 600;">Step 5 of 7</div>
+      <h2 class="font-heading" style="font-size: 28px; margin-bottom: 24px;">Venue Details</h2>
+      <div class="card">
+        <!-- Pricing -->
+        <div style="margin-bottom: 28px;">
+          <label class="form-label" style="margin-bottom: 10px;">Pricing</label>
+          <div style="display: flex; gap: 16px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px;">
+              <input type="radio" name="pricing" value="free" checked style="accent-color: var(--color-dark); width: 16px; height: 16px;"> Free
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px;">
+              <input type="radio" name="pricing" value="paid" style="accent-color: var(--color-dark); width: 16px; height: 16px;"> Paid
+            </label>
+          </div>
+        </div>
+        <!-- Language -->
+        <div style="margin-bottom: 28px;">
+          <label class="form-label">Language</label>
+          <select class="form-input" style="cursor: pointer;">
+            <option selected>Turkish</option>
+            <option>English</option>
+            <option>German</option>
+            <option>French</option>
+            <option>Mixed</option>
+          </select>
+        </div>
+        <!-- Health -->
+        <div style="margin-bottom: 28px;">
+          <label class="form-label">Health Requirements</label>
+          <textarea class="form-input" rows="2" placeholder="Any health notes for attendees...">N/A</textarea>
+        </div>
+        <!-- Accessibility -->
+        <div style="margin-bottom: 28px;">
+          <label class="form-label" style="margin-bottom: 12px;">Accessibility Features</label>
+          <div style="display: flex; flex-direction: column; gap: 14px;">
+            <div class="toggle-wrap">
+              <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+              <span style="font-size: 14px;">Wheelchair accessible</span>
+            </div>
+            <div class="toggle-wrap">
+              <div class="toggle" onclick="this.classList.toggle('on')"></div>
+              <span style="font-size: 14px;">Accessible restroom</span>
+            </div>
+            <div class="toggle-wrap">
+              <div class="toggle" onclick="this.classList.toggle('on')"></div>
+              <span style="font-size: 14px;">Elevator available</span>
+            </div>
+            <div class="toggle-wrap">
+              <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+              <span style="font-size: 14px;">Seating available</span>
+            </div>
+            <div class="toggle-wrap">
+              <div class="toggle" onclick="this.classList.toggle('on')"></div>
+              <span style="font-size: 14px;">Captions / Sign language</span>
+            </div>
+            <div class="toggle-wrap">
+              <div class="toggle" onclick="this.classList.toggle('on')"></div>
+              <span style="font-size: 14px;">Quiet-friendly</span>
+            </div>
+          </div>
+        </div>
+        <!-- Equipment -->
+        <div>
+          <label class="form-label" style="margin-bottom: 12px;">Equipment / What to bring</label>
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <input class="form-input" type="text" value="Valid ID" style="flex: 1;">
+              <div style="display: flex; gap: 4px;">
+                <button class="pill selected" style="padding: 4px 12px; font-size: 12px;">Required</button>
+                <button class="pill" style="padding: 4px 12px; font-size: 12px;">Optional</button>
+              </div>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <input class="form-input" type="text" value="Beach towel" style="flex: 1;">
+              <div style="display: flex; gap: 4px;">
+                <button class="pill" style="padding: 4px 12px; font-size: 12px;">Required</button>
+                <button class="pill selected" style="padding: 4px 12px; font-size: 12px;">Optional</button>
+              </div>
+            </div>
+          </div>
+          <button class="btn-outline" style="margin-top: 12px; padding: 6px 14px; font-size: 13px;">+ Add item</button>
+        </div>
+      </div>
+      <!-- Buttons -->
+      <div style="display: flex; justify-content: space-between; margin-top: 24px;">
+        <button class="btn-outline" onclick="switchTab('c04')"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M13 7H1m0 0 5-5M1 7l5 5"/></svg> Back</button>
+        <button class="btn-primary" onclick="switchTab('c06')">Next <svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M1 7h12m0 0-5-5m5 5-5 5"/></svg></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================== C-06: SETTINGS ======================== -->
+<div class="tab-content" id="panel-c06" style="display:none;">
+  <div style="display: flex; gap: 32px; padding-top: 24px;">
+    <!-- Stepper -->
+    <div class="stepper">
+      <div class="step-item completed">
+        <div class="step-circle"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M2 7.5l3.5 3.5L12 4"/></svg></div>
+        <div class="step-label">Basics</div>
+      </div>
+      <div class="step-item completed">
+        <div class="step-circle"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M2 7.5l3.5 3.5L12 4"/></svg></div>
+        <div class="step-label">Schedule</div>
+      </div>
+      <div class="step-item completed">
+        <div class="step-circle"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M2 7.5l3.5 3.5L12 4"/></svg></div>
+        <div class="step-label">Location</div>
+      </div>
+      <div class="step-item completed">
+        <div class="step-circle"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M2 7.5l3.5 3.5L12 4"/></svg></div>
+        <div class="step-label">Media</div>
+      </div>
+      <div class="step-item completed">
+        <div class="step-circle"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M2 7.5l3.5 3.5L12 4"/></svg></div>
+        <div class="step-label">Venue</div>
+      </div>
+      <div class="step-item active">
+        <div class="step-circle">6</div>
+        <div class="step-label">Settings</div>
+      </div>
+      <div class="step-item">
+        <div class="step-circle">7</div>
+        <div class="step-label">Review</div>
+      </div>
+    </div>
+    <!-- Form -->
+    <div style="flex: 1; max-width: 800px;">
+      <div style="margin-bottom: 8px; font-size: 12px; color: #999; font-weight: 600;">Step 6 of 7</div>
+      <h2 class="font-heading" style="font-size: 28px; margin-bottom: 24px;">Event Settings</h2>
+      <div class="card">
+        <!-- Visibility -->
+        <div style="margin-bottom: 28px;">
+          <label class="form-label" style="margin-bottom: 12px;">Visibility</label>
+          <div style="display: flex; gap: 16px;">
+            <div class="sel-card selected" onclick="selectCard(this)">
+              <svg width="32" height="32" fill="none" stroke="var(--color-dark)" stroke-width="1.5" stroke-linecap="round" style="margin-bottom: 8px;"><circle cx="16" cy="16" r="12"/><path d="M2 16h28M16 4a19.4 19.4 0 0 1 5 12 19.4 19.4 0 0 1-5 12 19.4 19.4 0 0 1-5-12A19.4 19.4 0 0 1 16 4z"/></svg>
+              <div style="font-weight: 700; font-size: 15px; margin-bottom: 4px;">Public</div>
+              <div style="font-size: 12px; color: #888;">Anyone can see event details</div>
+              <div style="margin-top: 10px;">
+                <svg width="18" height="18" fill="var(--color-dark)" stroke="none"><path d="M9 0a9 9 0 1 0 0 18A9 9 0 0 0 9 0zm4.3 7.3l-5 5a1 1 0 0 1-1.4 0l-2.2-2.2a1 1 0 0 1 1.4-1.4L7.6 10l4.3-4.3a1 1 0 1 1 1.4 1.4z"/></svg>
+              </div>
+            </div>
+            <div class="sel-card" onclick="selectCard(this)">
+              <svg width="32" height="32" fill="none" stroke="var(--color-mid)" stroke-width="1.5" stroke-linecap="round" style="margin-bottom: 8px;"><rect x="6" y="14" width="20" height="14" rx="3"/><path d="M10 14V9a6 6 0 0 1 12 0v5"/></svg>
+              <div style="font-weight: 700; font-size: 15px; margin-bottom: 4px;">Private</div>
+              <div style="font-size: 12px; color: #888;">Only you can see full details</div>
+              <div style="margin-top: 10px; height: 18px;"></div>
+            </div>
+          </div>
+        </div>
+        <!-- Age -->
+        <div style="margin-bottom: 28px;">
+          <label class="form-label" style="margin-bottom: 10px;">Age Restriction</label>
+          <div class="toggle-wrap">
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+            <span style="font-size: 14px; font-weight: 600;">This is an 18+ event</span>
+          </div>
+          <div style="margin-top: 8px; font-size: 13px; color: #e67e22; display: flex; align-items: center; gap: 6px;">
+            <svg width="14" height="14" fill="none" stroke="#e67e22" stroke-width="2" stroke-linecap="round"><path d="M7 1 1 13h12L7 1zM7 5v4m0 2v1"/></svg>
+            Attendees will need to verify their age
+          </div>
+        </div>
+        <!-- Capacity -->
+        <div>
+          <label class="form-label" style="margin-bottom: 8px;">Maximum attendees</label>
+          <input class="form-input" type="number" value="50" style="max-width: 180px;">
+          <label style="display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 14px; cursor: pointer;">
+            <input type="checkbox" checked style="accent-color: var(--color-dark); width: 16px; height: 16px;"> Set attendee limit
+          </label>
+          <span style="font-size: 12px; color: #999;">Leave unchecked for unlimited capacity</span>
+        </div>
+      </div>
+      <!-- Buttons -->
+      <div style="display: flex; justify-content: space-between; margin-top: 24px;">
+        <button class="btn-outline" onclick="switchTab('c05')"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M13 7H1m0 0 5-5M1 7l5 5"/></svg> Back</button>
+        <button class="btn-primary" onclick="switchTab('c07')">Review &amp; Publish <svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M1 7h12m0 0-5-5m5 5-5 5"/></svg></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================== C-07: REVIEW ======================== -->
+<div class="tab-content" id="panel-c07" style="display:none;">
+  <div style="display: flex; gap: 32px; padding-top: 24px;">
+    <!-- Stepper -->
+    <div class="stepper">
+      <div class="step-item completed">
+        <div class="step-circle"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M2 7.5l3.5 3.5L12 4"/></svg></div>
+        <div class="step-label">Basics</div>
+      </div>
+      <div class="step-item completed">
+        <div class="step-circle"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M2 7.5l3.5 3.5L12 4"/></svg></div>
+        <div class="step-label">Schedule</div>
+      </div>
+      <div class="step-item completed">
+        <div class="step-circle"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M2 7.5l3.5 3.5L12 4"/></svg></div>
+        <div class="step-label">Location</div>
+      </div>
+      <div class="step-item completed">
+        <div class="step-circle"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M2 7.5l3.5 3.5L12 4"/></svg></div>
+        <div class="step-label">Media</div>
+      </div>
+      <div class="step-item completed">
+        <div class="step-circle"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M2 7.5l3.5 3.5L12 4"/></svg></div>
+        <div class="step-label">Venue</div>
+      </div>
+      <div class="step-item completed">
+        <div class="step-circle"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M2 7.5l3.5 3.5L12 4"/></svg></div>
+        <div class="step-label">Settings</div>
+      </div>
+      <div class="step-item active">
+        <div class="step-circle">7</div>
+        <div class="step-label">Review</div>
+      </div>
+    </div>
+    <!-- Form -->
+    <div style="flex: 1; max-width: 800px;">
+      <div style="margin-bottom: 8px; font-size: 12px; color: #999; font-weight: 600;">Step 7 of 7</div>
+      <h2 class="font-heading" style="font-size: 28px; margin-bottom: 24px;">Review &amp; Publish</h2>
+
+      <!-- Basics -->
+      <div class="summary-card">
+        <div class="summary-card-header">
+          <h4>Basics</h4>
+          <a class="edit-link" onclick="switchTab('c01')">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9.5 1.5a1.4 1.4 0 0 1 2 2L4 11l-3 1 1-3z"/></svg>
+            Edit
+          </a>
+        </div>
+        <div style="font-size: 18px; font-weight: 700; margin-bottom: 6px;">Kadikoy Beach Party Night</div>
+        <span class="pill selected" style="font-size: 11px; padding: 3px 10px; cursor: default; margin-bottom: 8px;">Music / Party</span>
+        <p style="font-size: 13px; color: #666; margin-top: 8px; line-height: 1.5;">Join us for an unforgettable night at Kadikoy Beach! Live DJ sets, great food, and amazing vibes by the sea...</p>
+      </div>
+
+      <!-- Schedule -->
+      <div class="summary-card">
+        <div class="summary-card-header">
+          <h4>Schedule</h4>
+          <a class="edit-link" onclick="switchTab('c02')">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9.5 1.5a1.4 1.4 0 0 1 2 2L4 11l-3 1 1-3z"/></svg>
+            Edit
+          </a>
+        </div>
+        <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Sat, March 28, 2026 &middot; 9:00 PM &ndash; Sun, March 29 &middot; 2:00 AM</div>
+        <div style="font-size: 13px; color: #888;">Duration: 5 hours</div>
+      </div>
+
+      <!-- Location -->
+      <div class="summary-card">
+        <div class="summary-card-header">
+          <h4>Location</h4>
+          <a class="edit-link" onclick="switchTab('c03')">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9.5 1.5a1.4 1.4 0 0 1 2 2L4 11l-3 1 1-3z"/></svg>
+            Edit
+          </a>
+        </div>
+        <div style="font-size: 14px; font-weight: 600; margin-bottom: 2px;">Kadikoy Beach Park</div>
+        <div style="font-size: 13px; color: #888; margin-bottom: 10px;">Caferaga Mah., Kadikoy, Istanbul</div>
+        <div style="width: 200px; height: 100px; background: var(--color-surface); border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--color-mid-alpha);">
+          <svg width="24" height="24" fill="none" stroke="var(--color-mid)" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="3"/><path d="M2 8h20M8 2v20"/></svg>
+        </div>
+      </div>
+
+      <!-- Media -->
+      <div class="summary-card">
+        <div class="summary-card-header">
+          <h4>Media</h4>
+          <a class="edit-link" onclick="switchTab('c04')">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9.5 1.5a1.4 1.4 0 0 1 2 2L4 11l-3 1 1-3z"/></svg>
+            Edit
+          </a>
+        </div>
+        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+          <div style="width: 80px; height: 60px; background: var(--color-mid); border-radius: 6px;"></div>
+          <div style="width: 80px; height: 60px; background: var(--color-mid); border-radius: 6px;"></div>
+          <div style="width: 80px; height: 60px; background: var(--color-mid); border-radius: 6px;"></div>
+        </div>
+        <div style="font-size: 13px; color: #888;">3 images uploaded &middot; Cover: Image 1</div>
+      </div>
+
+      <!-- Venue Details -->
+      <div class="summary-card">
+        <div class="summary-card-header">
+          <h4>Venue Details</h4>
+          <a class="edit-link" onclick="switchTab('c05')">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9.5 1.5a1.4 1.4 0 0 1 2 2L4 11l-3 1 1-3z"/></svg>
+            Edit
+          </a>
+        </div>
+        <div style="font-size: 14px; margin-bottom: 4px;">Free &middot; Turkish &middot; Wheelchair accessible &middot; Seating available</div>
+        <div style="font-size: 13px; color: #888;">Equipment: Valid ID (required), Beach towel (optional)</div>
+      </div>
+
+      <!-- Settings -->
+      <div class="summary-card">
+        <div class="summary-card-header">
+          <h4>Settings</h4>
+          <a class="edit-link" onclick="switchTab('c06')">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9.5 1.5a1.4 1.4 0 0 1 2 2L4 11l-3 1 1-3z"/></svg>
+            Edit
+          </a>
+        </div>
+        <div style="font-size: 14px;">Public &middot; 18+ event &middot; Capacity: 50</div>
+      </div>
+
+      <!-- Buttons -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 28px;">
+        <button class="btn-outline" onclick="switchTab('c06')"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M13 7H1m0 0 5-5M1 7l5 5"/></svg> Back</button>
+        <div style="display: flex; gap: 12px;">
+          <button class="btn-outline">Save as Draft</button>
+          <button class="btn-primary" style="padding: 12px 32px; font-size: 15px;">Publish Event <svg width="16" height="16" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M2 8.5l4 4L14 5"/></svg></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================== C-08: EDIT EVENT ======================== -->
+<div class="tab-content" id="panel-c08" style="display:none;">
+  <div style="display: flex; gap: 32px; padding-top: 24px;">
+    <!-- Stepper (all completed) -->
+    <div class="stepper">
+      <div class="step-item completed">
+        <div class="step-circle"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M2 7.5l3.5 3.5L12 4"/></svg></div>
+        <div class="step-label">Basics</div>
+      </div>
+      <div class="step-item completed">
+        <div class="step-circle"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M2 7.5l3.5 3.5L12 4"/></svg></div>
+        <div class="step-label">Schedule</div>
+      </div>
+      <div class="step-item completed">
+        <div class="step-circle"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M2 7.5l3.5 3.5L12 4"/></svg></div>
+        <div class="step-label">Location</div>
+      </div>
+      <div class="step-item completed">
+        <div class="step-circle"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M2 7.5l3.5 3.5L12 4"/></svg></div>
+        <div class="step-label">Media</div>
+      </div>
+      <div class="step-item completed">
+        <div class="step-circle"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M2 7.5l3.5 3.5L12 4"/></svg></div>
+        <div class="step-label">Venue</div>
+      </div>
+      <div class="step-item completed">
+        <div class="step-circle"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M2 7.5l3.5 3.5L12 4"/></svg></div>
+        <div class="step-label">Settings</div>
+      </div>
+      <div class="step-item completed">
+        <div class="step-circle"><svg width="14" height="14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M2 7.5l3.5 3.5L12 4"/></svg></div>
+        <div class="step-label">Review</div>
+      </div>
+    </div>
+    <!-- Content -->
+    <div style="flex: 1; max-width: 800px;">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 4px;">
+        <h2 class="font-heading" style="font-size: 28px;">Edit Event</h2>
+        <span class="badge-published">PUBLISHED</span>
+      </div>
+      <div style="font-size: 13px; color: #888; margin-bottom: 20px;">Kadikoy Beach Party Night &middot; Published</div>
+
+      <!-- Warning -->
+      <div class="warning-banner">
+        <svg width="18" height="18" fill="none" stroke="#856404" stroke-width="2" stroke-linecap="round"><path d="M9 1 1 17h16L9 1zM9 7v4m0 2v1"/></svg>
+        Changes will notify all attendees who bookmarked or marked as going.
+      </div>
+
+      <!-- Same summary cards as C-07 -->
+      <div class="summary-card">
+        <div class="summary-card-header">
+          <h4>Basics</h4>
+          <a class="edit-link" href="#">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9.5 1.5a1.4 1.4 0 0 1 2 2L4 11l-3 1 1-3z"/></svg>
+            Edit
+          </a>
+        </div>
+        <div style="font-size: 18px; font-weight: 700; margin-bottom: 6px;">Kadikoy Beach Party Night</div>
+        <span class="pill selected" style="font-size: 11px; padding: 3px 10px; cursor: default; margin-bottom: 8px;">Music / Party</span>
+        <p style="font-size: 13px; color: #666; margin-top: 8px; line-height: 1.5;">Join us for an unforgettable night at Kadikoy Beach! Live DJ sets, great food, and amazing vibes by the sea...</p>
+      </div>
+
+      <div class="summary-card">
+        <div class="summary-card-header">
+          <h4>Schedule</h4>
+          <a class="edit-link" href="#">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9.5 1.5a1.4 1.4 0 0 1 2 2L4 11l-3 1 1-3z"/></svg>
+            Edit
+          </a>
+        </div>
+        <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Sat, March 28, 2026 &middot; 9:00 PM &ndash; Sun, March 29 &middot; 2:00 AM</div>
+        <div style="font-size: 13px; color: #888;">Duration: 5 hours</div>
+      </div>
+
+      <div class="summary-card">
+        <div class="summary-card-header">
+          <h4>Location</h4>
+          <a class="edit-link" href="#">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9.5 1.5a1.4 1.4 0 0 1 2 2L4 11l-3 1 1-3z"/></svg>
+            Edit
+          </a>
+        </div>
+        <div style="font-size: 14px; font-weight: 600; margin-bottom: 2px;">Kadikoy Beach Park</div>
+        <div style="font-size: 13px; color: #888; margin-bottom: 10px;">Caferaga Mah., Kadikoy, Istanbul</div>
+        <div style="width: 200px; height: 100px; background: var(--color-surface); border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--color-mid-alpha);">
+          <svg width="24" height="24" fill="none" stroke="var(--color-mid)" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="3"/><path d="M2 8h20M8 2v20"/></svg>
+        </div>
+      </div>
+
+      <div class="summary-card">
+        <div class="summary-card-header">
+          <h4>Media</h4>
+          <a class="edit-link" href="#">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9.5 1.5a1.4 1.4 0 0 1 2 2L4 11l-3 1 1-3z"/></svg>
+            Edit
+          </a>
+        </div>
+        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+          <div style="width: 80px; height: 60px; background: var(--color-mid); border-radius: 6px;"></div>
+          <div style="width: 80px; height: 60px; background: var(--color-mid); border-radius: 6px;"></div>
+          <div style="width: 80px; height: 60px; background: var(--color-mid); border-radius: 6px;"></div>
+        </div>
+        <div style="font-size: 13px; color: #888;">3 images uploaded &middot; Cover: Image 1</div>
+      </div>
+
+      <div class="summary-card">
+        <div class="summary-card-header">
+          <h4>Venue Details</h4>
+          <a class="edit-link" href="#">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9.5 1.5a1.4 1.4 0 0 1 2 2L4 11l-3 1 1-3z"/></svg>
+            Edit
+          </a>
+        </div>
+        <div style="font-size: 14px; margin-bottom: 4px;">Free &middot; Turkish &middot; Wheelchair accessible &middot; Seating available</div>
+        <div style="font-size: 13px; color: #888;">Equipment: Valid ID (required), Beach towel (optional)</div>
+      </div>
+
+      <div class="summary-card">
+        <div class="summary-card-header">
+          <h4>Settings</h4>
+          <a class="edit-link" href="#">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9.5 1.5a1.4 1.4 0 0 1 2 2L4 11l-3 1 1-3z"/></svg>
+            Edit
+          </a>
+        </div>
+        <div style="font-size: 14px;">Public &middot; 18+ event &middot; Capacity: 50</div>
+      </div>
+
+      <!-- Buttons -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 28px;">
+        <button class="btn-outline">Cancel Changes</button>
+        <button class="btn-primary" style="padding: 12px 32px; font-size: 15px;">Save Changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================== C-09: MULTI-LOCATION ======================== -->
+<div class="tab-content" id="panel-c09" style="display:none;">
+  <div style="padding-top: 24px;">
+    <div style="display: flex; gap: 32px; min-height: 600px;">
+      <!-- Left: Route List -->
+      <div style="flex: 1;">
+        <h2 class="font-heading" style="font-size: 28px; margin-bottom: 4px;">Event Route</h2>
+        <p style="font-size: 14px; color: #888; margin-bottom: 24px;">Define the path for your event</p>
+
+        <!-- Location 1 -->
+        <div class="loc-card">
+          <div style="cursor: grab; opacity: 0.4;">
+            <svg width="14" height="14" fill="var(--color-dark)" stroke="none"><circle cx="4" cy="2" r="1.5"/><circle cx="10" cy="2" r="1.5"/><circle cx="4" cy="7" r="1.5"/><circle cx="10" cy="7" r="1.5"/><circle cx="4" cy="12" r="1.5"/><circle cx="10" cy="12" r="1.5"/></svg>
+          </div>
+          <div class="loc-badge">1</div>
+          <div style="flex: 1;">
+            <div style="font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 8px;">
+              Bebek Park
+              <span style="font-size: 10px; font-weight: 700; background: #d4edda; color: #155724; padding: 2px 8px; border-radius: 10px; text-transform: uppercase;">Primary</span>
+            </div>
+            <div style="font-size: 12px; color: #888;">Bebek, Istanbul</div>
+          </div>
+          <button style="background: none; border: none; cursor: pointer; color: #ccc; font-size: 18px; padding: 4px;" onmouseover="this.style.color='#c0392b'" onmouseout="this.style.color='#ccc'">&times;</button>
+        </div>
+        <div class="route-connector"></div>
+
+        <!-- Location 2 -->
+        <div class="loc-card">
+          <div style="cursor: grab; opacity: 0.4;">
+            <svg width="14" height="14" fill="var(--color-dark)" stroke="none"><circle cx="4" cy="2" r="1.5"/><circle cx="10" cy="2" r="1.5"/><circle cx="4" cy="7" r="1.5"/><circle cx="10" cy="7" r="1.5"/><circle cx="4" cy="12" r="1.5"/><circle cx="10" cy="12" r="1.5"/></svg>
+          </div>
+          <div class="loc-badge">2</div>
+          <div style="flex: 1;">
+            <div style="font-weight: 700; font-size: 14px;">Arnavutkoy Waterfront</div>
+            <div style="font-size: 12px; color: #888;">Arnavutkoy, Istanbul</div>
+          </div>
+          <button style="background: none; border: none; cursor: pointer; color: #ccc; font-size: 18px; padding: 4px;" onmouseover="this.style.color='#c0392b'" onmouseout="this.style.color='#ccc'">&times;</button>
+        </div>
+        <div class="route-connector"></div>
+
+        <!-- Location 3 -->
+        <div class="loc-card">
+          <div style="cursor: grab; opacity: 0.4;">
+            <svg width="14" height="14" fill="var(--color-dark)" stroke="none"><circle cx="4" cy="2" r="1.5"/><circle cx="10" cy="2" r="1.5"/><circle cx="4" cy="7" r="1.5"/><circle cx="10" cy="7" r="1.5"/><circle cx="4" cy="12" r="1.5"/><circle cx="10" cy="12" r="1.5"/></svg>
+          </div>
+          <div class="loc-badge">3</div>
+          <div style="flex: 1;">
+            <div style="font-weight: 700; font-size: 14px;">Sariyer Marina</div>
+            <div style="font-size: 12px; color: #888;">Sariyer, Istanbul</div>
+          </div>
+          <button style="background: none; border: none; cursor: pointer; color: #ccc; font-size: 18px; padding: 4px;" onmouseover="this.style.color='#c0392b'" onmouseout="this.style.color='#ccc'">&times;</button>
+        </div>
+
+        <button class="btn-outline" style="margin-top: 20px;">+ Add Location</button>
+      </div>
+
+      <!-- Right: Map -->
+      <div style="flex: 1; background: var(--color-surface); border-radius: 12px; border: 1px solid var(--color-mid-alpha); display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; min-height: 500px;">
+        <!-- Map visual -->
+        <svg width="64" height="64" fill="none" stroke="var(--color-dark)" stroke-width="1.5" stroke-linecap="round" style="margin-bottom: 12px;"><rect x="4" y="4" width="56" height="56" rx="6"/><path d="M4 18h56M18 4v56"/></svg>
+        <span style="font-size: 16px; font-weight: 600; color: var(--color-dark); margin-bottom: 24px;">ROUTE MAP</span>
+
+        <!-- Pins with connecting route -->
+        <div style="position: absolute; top: 30%; left: 25%;">
+          <div style="display: flex; flex-direction: column; align-items: center;">
+            <div style="width: 28px; height: 28px; border-radius: 50%; background: var(--color-dark); color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center;">1</div>
+          </div>
+        </div>
+        <div style="position: absolute; top: 50%; left: 50%;">
+          <div style="display: flex; flex-direction: column; align-items: center;">
+            <div style="width: 28px; height: 28px; border-radius: 50%; background: var(--color-dark); color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center;">2</div>
+          </div>
+        </div>
+        <div style="position: absolute; top: 35%; left: 72%;">
+          <div style="display: flex; flex-direction: column; align-items: center;">
+            <div style="width: 28px; height: 28px; border-radius: 50%; background: var(--color-dark); color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center;">3</div>
+          </div>
+        </div>
+
+        <!-- Dashed route line (SVG overlay) -->
+        <svg width="100%" height="100%" style="position: absolute; top: 0; left: 0; pointer-events: none;">
+          <line x1="27%" y1="33%" x2="52%" y2="53%" stroke="var(--color-dark)" stroke-width="2" stroke-dasharray="6 4" opacity="0.5"/>
+          <line x1="52%" y1="53%" x2="74%" y2="38%" stroke="var(--color-dark)" stroke-width="2" stroke-dasharray="6 4" opacity="0.5"/>
+        </svg>
+
+        <!-- Distance -->
+        <div style="position: absolute; bottom: 16px; left: 16px; background: #fff; padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--color-dark); box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+          Total route: ~12 km
+        </div>
+      </div>
+    </div>
+    <!-- Save button -->
+    <div style="display: flex; justify-content: flex-end; margin-top: 24px;">
+      <button class="btn-primary" style="padding: 12px 32px; font-size: 15px;">Save Route</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================== C-10: ITINERARY ======================== -->
+<div class="tab-content" id="panel-c10" style="display:none;">
+  <div style="padding-top: 24px; max-width: 800px;">
+    <h2 class="font-heading" style="font-size: 28px; margin-bottom: 4px;">Event Itinerary</h2>
+    <p style="font-size: 14px; color: #888; margin-bottom: 32px;">Build a timeline for your event</p>
+
+    <!-- Timeline -->
+    <div style="position: relative; padding-left: 48px;">
+      <!-- Vertical line -->
+      <div style="position: absolute; left: 5px; top: 8px; bottom: 40px; width: 2px; background: var(--color-mid);"></div>
+
+      <!-- Segment 1 -->
+      <div style="position: relative; margin-bottom: 28px;">
+        <div class="timeline-dot"></div>
+        <div style="position: absolute; left: -48px; top: 2px; font-size: 11px; font-weight: 700; color: var(--color-mid); width: 44px; text-align: right; display: none;">07:00</div>
+        <div style="background: var(--color-surface); border-radius: 12px; padding: 16px; border: 1px solid var(--color-mid-alpha);">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+            <div>
+              <div style="font-size: 12px; font-weight: 700; color: var(--color-mid); margin-bottom: 4px;">07:00 AM</div>
+              <div style="font-size: 16px; font-weight: 700; color: var(--color-dark);">Meeting Point &amp; Warm-up</div>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <button style="background: none; border: none; cursor: pointer; color: var(--color-mid); padding: 4px;" onmouseover="this.style.color='var(--color-dark)'" onmouseout="this.style.color='var(--color-mid)'">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 1.5a1.4 1.4 0 0 1 2 2L4.5 11l-3 1 1-3z"/></svg>
+              </button>
+              <button style="background: none; border: none; cursor: pointer; color: #ccc; font-size: 16px; padding: 4px;" onmouseover="this.style.color='#c0392b'" onmouseout="this.style.color='#ccc'">&times;</button>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--color-mid); margin-bottom: 6px;">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 1C3.8 1 2 2.8 2 5c0 3 4 6 4 6s4-3 4-6c0-2.2-1.8-4-4-4z"/><circle cx="6" cy="5" r="1"/></svg>
+            Bebek Park
+          </div>
+          <p style="font-size: 13px; color: #666; line-height: 1.5; margin-bottom: 8px;">Meet at the park entrance. Light stretching and warm-up exercises.</p>
+          <span class="duration-pill">30 min</span>
+        </div>
+      </div>
+
+      <!-- Segment 2 -->
+      <div style="position: relative; margin-bottom: 28px;">
+        <div class="timeline-dot"></div>
+        <div style="background: var(--color-surface); border-radius: 12px; padding: 16px; border: 1px solid var(--color-mid-alpha);">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+            <div>
+              <div style="font-size: 12px; font-weight: 700; color: var(--color-mid); margin-bottom: 4px;">07:30 AM</div>
+              <div style="font-size: 16px; font-weight: 700; color: var(--color-dark);">Sprint — Bebek to Arnavutkoy</div>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <button style="background: none; border: none; cursor: pointer; color: var(--color-mid); padding: 4px;" onmouseover="this.style.color='var(--color-dark)'" onmouseout="this.style.color='var(--color-mid)'">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 1.5a1.4 1.4 0 0 1 2 2L4.5 11l-3 1 1-3z"/></svg>
+              </button>
+              <button style="background: none; border: none; cursor: pointer; color: #ccc; font-size: 16px; padding: 4px;" onmouseover="this.style.color='#c0392b'" onmouseout="this.style.color='#ccc'">&times;</button>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--color-mid); margin-bottom: 6px;">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 1C3.8 1 2 2.8 2 5c0 3 4 6 4 6s4-3 4-6c0-2.2-1.8-4-4-4z"/><circle cx="6" cy="5" r="1"/></svg>
+            Bebek → Arnavutkoy
+          </div>
+          <p style="font-size: 13px; color: #666; line-height: 1.5; margin-bottom: 8px;">Main sprint along the Bosphorus coast. Pace: moderate to fast.</p>
+          <span class="duration-pill">45 min</span>
+        </div>
+      </div>
+
+      <!-- Segment 3 -->
+      <div style="position: relative; margin-bottom: 28px;">
+        <div class="timeline-dot"></div>
+        <div style="background: var(--color-surface); border-radius: 12px; padding: 16px; border: 1px solid var(--color-mid-alpha);">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+            <div>
+              <div style="font-size: 12px; font-weight: 700; color: var(--color-mid); margin-bottom: 4px;">08:15 AM</div>
+              <div style="font-size: 16px; font-weight: 700; color: var(--color-dark);">Water Break &amp; Photos</div>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <button style="background: none; border: none; cursor: pointer; color: var(--color-mid); padding: 4px;" onmouseover="this.style.color='var(--color-dark)'" onmouseout="this.style.color='var(--color-mid)'">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 1.5a1.4 1.4 0 0 1 2 2L4.5 11l-3 1 1-3z"/></svg>
+              </button>
+              <button style="background: none; border: none; cursor: pointer; color: #ccc; font-size: 16px; padding: 4px;" onmouseover="this.style.color='#c0392b'" onmouseout="this.style.color='#ccc'">&times;</button>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--color-mid); margin-bottom: 6px;">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 1C3.8 1 2 2.8 2 5c0 3 4 6 4 6s4-3 4-6c0-2.2-1.8-4-4-4z"/><circle cx="6" cy="5" r="1"/></svg>
+            Arnavutkoy Waterfront
+          </div>
+          <p style="font-size: 13px; color: #666; line-height: 1.5; margin-bottom: 8px;">Quick break at the waterfront. Photo opportunity!</p>
+          <span class="duration-pill">15 min</span>
+        </div>
+      </div>
+
+      <!-- Segment 4 -->
+      <div style="position: relative; margin-bottom: 28px;">
+        <div class="timeline-dot"></div>
+        <div style="background: var(--color-surface); border-radius: 12px; padding: 16px; border: 1px solid var(--color-mid-alpha);">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+            <div>
+              <div style="font-size: 12px; font-weight: 700; color: var(--color-mid); margin-bottom: 4px;">08:30 AM</div>
+              <div style="font-size: 16px; font-weight: 700; color: var(--color-dark);">Final Sprint — Arnavutkoy to Sariyer</div>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <button style="background: none; border: none; cursor: pointer; color: var(--color-mid); padding: 4px;" onmouseover="this.style.color='var(--color-dark)'" onmouseout="this.style.color='var(--color-mid)'">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 1.5a1.4 1.4 0 0 1 2 2L4.5 11l-3 1 1-3z"/></svg>
+              </button>
+              <button style="background: none; border: none; cursor: pointer; color: #ccc; font-size: 16px; padding: 4px;" onmouseover="this.style.color='#c0392b'" onmouseout="this.style.color='#ccc'">&times;</button>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--color-mid); margin-bottom: 6px;">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 1C3.8 1 2 2.8 2 5c0 3 4 6 4 6s4-3 4-6c0-2.2-1.8-4-4-4z"/><circle cx="6" cy="5" r="1"/></svg>
+            Arnavutkoy → Sariyer
+          </div>
+          <p style="font-size: 13px; color: #666; line-height: 1.5; margin-bottom: 8px;">Final push to the finish line at Sariyer Marina.</p>
+          <span class="duration-pill">50 min</span>
+        </div>
+      </div>
+
+      <!-- Segment 5 -->
+      <div style="position: relative; margin-bottom: 12px;">
+        <div class="timeline-dot"></div>
+        <div style="background: var(--color-surface); border-radius: 12px; padding: 16px; border: 1px solid var(--color-mid-alpha);">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+            <div>
+              <div style="font-size: 12px; font-weight: 700; color: var(--color-mid); margin-bottom: 4px;">09:20 AM</div>
+              <div style="font-size: 16px; font-weight: 700; color: var(--color-dark);">Cool-down &amp; Wrap-up</div>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <button style="background: none; border: none; cursor: pointer; color: var(--color-mid); padding: 4px;" onmouseover="this.style.color='var(--color-dark)'" onmouseout="this.style.color='var(--color-mid)'">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 1.5a1.4 1.4 0 0 1 2 2L4.5 11l-3 1 1-3z"/></svg>
+              </button>
+              <button style="background: none; border: none; cursor: pointer; color: #ccc; font-size: 16px; padding: 4px;" onmouseover="this.style.color='#c0392b'" onmouseout="this.style.color='#ccc'">&times;</button>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--color-mid); margin-bottom: 6px;">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 1C3.8 1 2 2.8 2 5c0 3 4 6 4 6s4-3 4-6c0-2.2-1.8-4-4-4z"/><circle cx="6" cy="5" r="1"/></svg>
+            Sariyer Marina
+          </div>
+          <p style="font-size: 13px; color: #666; line-height: 1.5; margin-bottom: 8px;">Cool-down stretches and group photo. Refreshments provided.</p>
+          <span class="duration-pill">20 min</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add + Save -->
+    <div style="padding-left: 48px; margin-top: 16px;">
+      <button class="btn-outline" style="margin-bottom: 16px;">+ Add Segment</button>
+    </div>
+    <div style="display: flex; justify-content: flex-end; margin-top: 8px;">
+      <button class="btn-primary" style="padding: 12px 32px; font-size: 15px;">Save Itinerary</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- end page-container -->
+
+<script>
+// Tab group switching
+function switchGroup(group) {
+  document.querySelectorAll('.tab-group-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.tab-group-btn[data-group="${group}"]`).classList.add('active');
+
+  if (group === 'create') {
+    document.getElementById('subTabCreate').style.display = 'flex';
+    document.getElementById('subTabEdit').style.display = 'none';
+    // Switch to first tab in group
+    const activeSubTab = document.querySelector('#subTabCreate .sub-tab-btn.active');
+    switchTab(activeSubTab ? activeSubTab.dataset.tab : 'c01');
+  } else {
+    document.getElementById('subTabCreate').style.display = 'none';
+    document.getElementById('subTabEdit').style.display = 'flex';
+    const activeSubTab = document.querySelector('#subTabEdit .sub-tab-btn.active');
+    switchTab(activeSubTab ? activeSubTab.dataset.tab : 'c08');
+  }
+}
+
+// Sub-tab switching
+function switchTab(tabId) {
+  // Hide all panels
+  document.querySelectorAll('.tab-content').forEach(p => p.style.display = 'none');
+  // Show target panel
+  const panel = document.getElementById('panel-' + tabId);
+  if (panel) panel.style.display = 'block';
+
+  // Update sub-tab buttons in the active group
+  const createTabs = ['c01','c02','c03','c04','c05','c06','c07'];
+  const editTabs = ['c08','c09','c10'];
+
+  if (createTabs.includes(tabId)) {
+    // Make sure create group is active
+    document.querySelectorAll('.tab-group-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('.tab-group-btn[data-group="create"]').classList.add('active');
+    document.getElementById('subTabCreate').style.display = 'flex';
+    document.getElementById('subTabEdit').style.display = 'none';
+
+    document.querySelectorAll('#subTabCreate .sub-tab-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.tab === tabId);
+    });
+  } else {
+    document.querySelectorAll('.tab-group-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('.tab-group-btn[data-group="edit"]').classList.add('active');
+    document.getElementById('subTabCreate').style.display = 'none';
+    document.getElementById('subTabEdit').style.display = 'flex';
+
+    document.querySelectorAll('#subTabEdit .sub-tab-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.tab === tabId);
+    });
+  }
+
+  // Scroll to top
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Selectable card (visibility)
+function selectCard(el) {
+  const parent = el.parentElement;
+  parent.querySelectorAll('.sel-card').forEach(c => {
+    c.classList.remove('selected');
+    // Remove checkmark
+    const check = c.querySelector('.check-icon');
+    if (check) check.remove();
+  });
+  el.classList.add('selected');
+}
+
+// Category pill toggle
+document.querySelectorAll('.pill').forEach(pill => {
+  if (pill.closest('.summary-card') || pill.closest('.loc-card') || pill.closest('[style*="gap: 4px"]')) return;
+  pill.addEventListener('click', function() {
+    // Only for category pills in C-01
+    if (this.closest('#panel-c01') && !this.textContent.includes('+')) {
+      this.classList.toggle('selected');
+    }
+  });
+});
+</script>
+
+</body>
+</html>
