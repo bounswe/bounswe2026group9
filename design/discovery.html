@@ -1,0 +1,1732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Community Event Platform — Discovery Screens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<style>
+  :root {
+    --color-bg: #E4E0E1;
+    --color-surface: #D6C0B3;
+    --color-mid: #AB886D;
+    --color-dark: #493628;
+    --color-bg-alpha: rgba(228, 224, 225, 0.7);
+    --color-surface-alpha: rgba(214, 192, 179, 0.6);
+    --color-mid-alpha: rgba(171, 136, 109, 0.3);
+    --color-dark-alpha: rgba(73, 54, 40, 0.15);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Lato', sans-serif;
+    background: var(--color-bg);
+    color: var(--color-dark);
+    min-height: 100vh;
+  }
+
+  h1, h2, h3, h4, h5, h6 { font-family: 'Playfair Display', serif; }
+
+  /* ======== TAB NAVIGATION ======== */
+  .tab-nav {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    padding: 16px 24px;
+    background: var(--color-dark);
+    border-bottom: 2px solid var(--color-mid);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+  }
+  .tab-btn {
+    font-family: 'Lato', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 10px 24px;
+    border: 1px solid var(--color-mid-alpha);
+    border-radius: 8px;
+    background: transparent;
+    color: rgba(255,255,255,0.6);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .tab-btn:hover { color: #fff; background: rgba(171,136,109,0.2); }
+  .tab-btn.active {
+    background: var(--color-mid);
+    color: #fff;
+    border-color: var(--color-mid);
+  }
+
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* ======== NAVBAR ======== */
+  .navbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 48px;
+    height: 64px;
+    background: var(--color-dark);
+    color: #fff;
+    position: sticky;
+    top: 0;
+    z-index: 900;
+  }
+  .navbar-logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    font-weight: 600;
+    white-space: nowrap;
+    color: #fff;
+  }
+  .navbar-search {
+    display: flex;
+    align-items: center;
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    padding: 8px 16px;
+    width: 420px;
+    gap: 8px;
+  }
+  .navbar-search i { color: rgba(255,255,255,0.5); flex-shrink: 0; }
+  .navbar-search input {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #fff;
+    font-family: 'Lato', sans-serif;
+    font-size: 14px;
+    width: 100%;
+  }
+  .navbar-search input::placeholder { color: rgba(255,255,255,0.45); }
+  .navbar-right { display: flex; align-items: center; gap: 16px; }
+  .btn-sign-in {
+    font-family: 'Lato', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 8px 20px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.3);
+    background: transparent;
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-sign-in:hover { background: rgba(255,255,255,0.1); }
+  .btn-sign-up {
+    font-family: 'Lato', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 8px 20px;
+    border-radius: 8px;
+    border: none;
+    background: var(--color-mid);
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-sign-up:hover { background: #97764f; }
+
+  .user-area { display: flex; align-items: center; gap: 16px; }
+  .notif-bell {
+    position: relative;
+    cursor: pointer;
+    color: rgba(255,255,255,0.7);
+    transition: color 0.2s;
+  }
+  .notif-bell:hover { color: #fff; }
+  .notif-dot {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 8px;
+    height: 8px;
+    background: #e74c3c;
+    border-radius: 50%;
+    border: 2px solid var(--color-dark);
+  }
+  .user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--color-mid);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+    color: #fff;
+    cursor: pointer;
+  }
+  .user-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.85);
+  }
+
+  /* ======== ACTION BAR ======== */
+  .action-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 48px;
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-mid-alpha);
+  }
+  .action-left { display: flex; align-items: center; gap: 8px; }
+  .toggle-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Lato', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--color-mid-alpha);
+    background: transparent;
+    color: var(--color-dark);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .toggle-btn:hover { background: var(--color-mid-alpha); }
+  .toggle-btn.active {
+    background: var(--color-dark);
+    color: #fff;
+    border-color: var(--color-dark);
+  }
+  .toggle-btn i { width: 16px; height: 16px; }
+  .create-event-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Lato', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 10px 24px;
+    border-radius: 8px;
+    border: none;
+    background: var(--color-mid);
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-left: 24px;
+  }
+  .create-event-btn:hover { background: #97764f; }
+  .sort-select {
+    font-family: 'Lato', sans-serif;
+    font-size: 13px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--color-mid-alpha);
+    background: #fff;
+    color: var(--color-dark);
+    cursor: pointer;
+    outline: none;
+  }
+
+  /* ======== BANNER ======== */
+  .guest-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 10px 48px;
+    background: var(--color-mid);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 400;
+  }
+  .guest-banner a {
+    color: #fff;
+    font-weight: 700;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .guest-banner .banner-close {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.7);
+    cursor: pointer;
+    transition: color 0.2s;
+  }
+  .guest-banner .banner-close:hover { color: #fff; }
+
+  /* ======== MAP AREA ======== */
+  .map-container {
+    position: relative;
+    background: var(--color-surface);
+    min-height: calc(100vh - 200px);
+    overflow: hidden;
+  }
+  .map-container.with-sidebar { margin-left: 280px; }
+  .map-bg {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    color: var(--color-mid);
+    opacity: 0.4;
+    font-weight: 700;
+    letter-spacing: 4px;
+    font-family: 'Lato', sans-serif;
+    user-select: none;
+  }
+
+  /* Map grid lines for realism */
+  .map-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(171,136,109,0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(171,136,109,0.08) 1px, transparent 1px);
+    background-size: 80px 80px;
+  }
+  .map-roads {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+  }
+  .map-road {
+    position: absolute;
+    background: rgba(171,136,109,0.12);
+    border-radius: 2px;
+  }
+
+  /* ======== MAP PINS ======== */
+  .pin {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    z-index: 10;
+    transition: transform 0.15s;
+  }
+  .pin:hover { transform: scale(1.15); z-index: 20; }
+  .pin-circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--color-dark);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(73,54,40,0.3);
+    position: relative;
+  }
+  .pin-circle::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 8px solid var(--color-dark);
+  }
+  .pin-circle i { width: 16px; height: 16px; }
+  .pin-label {
+    margin-top: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--color-dark);
+    background: rgba(255,255,255,0.85);
+    padding: 2px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ======== PIN POPUP CARD ======== */
+  .pin-popup {
+    position: absolute;
+    width: 280px;
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid var(--color-mid-alpha);
+    overflow: hidden;
+    z-index: 50;
+    box-shadow: 0 8px 32px rgba(73,54,40,0.15);
+  }
+  .pin-popup-img {
+    width: 100%;
+    height: 80px;
+    background: var(--color-mid);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255,255,255,0.5);
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .pin-popup-body { padding: 16px; }
+  .pin-popup-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: var(--color-dark);
+  }
+  .pin-popup-date {
+    font-size: 12px;
+    color: var(--color-mid);
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .pin-popup-tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 99px;
+    background: var(--color-mid-alpha);
+    color: var(--color-dark);
+    margin-bottom: 10px;
+  }
+  .pin-popup-host {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    margin-bottom: 8px;
+  }
+  .host-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--color-mid);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .host-rating { color: var(--color-mid); font-weight: 700; }
+  .pin-popup-attendees {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--color-dark);
+    margin-bottom: 12px;
+  }
+  .pin-popup-attendees i { width: 14px; height: 14px; color: var(--color-mid); }
+  .pin-popup-link {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--color-mid);
+    text-decoration: none;
+    cursor: pointer;
+    transition: color 0.2s;
+  }
+  .pin-popup-link:hover { color: var(--color-dark); }
+  .pin-popup-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--color-mid-alpha);
+  }
+  .btn-bookmark {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Lato', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--color-mid);
+    background: transparent;
+    color: var(--color-dark);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-bookmark:hover { background: var(--color-mid-alpha); }
+  .btn-bookmark i { width: 14px; height: 14px; }
+  .btn-going {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Lato', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: none;
+    background: var(--color-mid);
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex: 1;
+    justify-content: center;
+  }
+  .btn-going:hover { background: #97764f; }
+  .btn-going i { width: 14px; height: 14px; }
+
+  /* ======== FILTER SIDEBAR ======== */
+  .filter-sidebar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 280px;
+    height: calc(100vh - 200px);
+    background: #fff;
+    border-right: 1px solid var(--color-mid-alpha);
+    overflow-y: auto;
+    z-index: 40;
+    padding: 24px 20px;
+  }
+  .filter-sidebar::-webkit-scrollbar { width: 4px; }
+  .filter-sidebar::-webkit-scrollbar-track { background: transparent; }
+  .filter-sidebar::-webkit-scrollbar-thumb { background: var(--color-mid-alpha); border-radius: 2px; }
+  .filter-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Playfair Display', serif;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 24px;
+    color: var(--color-dark);
+  }
+  .filter-header i { width: 20px; height: 20px; color: var(--color-mid); }
+  .filter-badge {
+    font-family: 'Lato', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    background: var(--color-mid);
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 99px;
+    margin-left: auto;
+  }
+  .filter-section { margin-bottom: 24px; }
+  .filter-section-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--color-mid);
+    margin-bottom: 12px;
+  }
+
+  /* Quick filters */
+  .quick-filters { display: flex; gap: 8px; flex-wrap: wrap; }
+  .quick-pill {
+    font-family: 'Lato', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 6px 16px;
+    border-radius: 99px;
+    border: 1px solid var(--color-mid-alpha);
+    background: transparent;
+    color: var(--color-dark);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .quick-pill:hover { background: var(--color-mid-alpha); }
+  .quick-pill.active {
+    background: var(--color-dark);
+    color: #fff;
+    border-color: var(--color-dark);
+  }
+
+  /* Category checkboxes */
+  .cat-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .cat-checkbox {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    border: 2px solid var(--color-mid-alpha);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.2s;
+  }
+  .cat-checkbox.checked {
+    background: var(--color-dark);
+    border-color: var(--color-dark);
+  }
+  .cat-checkbox.checked i { color: #fff; width: 12px; height: 12px; }
+  .cat-count {
+    margin-left: auto;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--color-mid);
+    background: var(--color-mid-alpha);
+    padding: 1px 8px;
+    border-radius: 99px;
+  }
+
+  /* Slider */
+  .slider-wrap { padding: 4px 0; }
+  .slider-track {
+    width: 100%;
+    height: 4px;
+    background: var(--color-mid-alpha);
+    border-radius: 2px;
+    position: relative;
+    margin-bottom: 8px;
+  }
+  .slider-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 4px;
+    background: var(--color-mid);
+    border-radius: 2px;
+  }
+  .slider-thumb {
+    position: absolute;
+    top: -6px;
+    width: 16px;
+    height: 16px;
+    background: var(--color-dark);
+    border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  }
+  .slider-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--color-mid);
+    font-weight: 600;
+  }
+  .slider-value {
+    text-align: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--color-dark);
+    margin-top: 4px;
+  }
+
+  /* Date inputs */
+  .date-row { display: flex; gap: 8px; }
+  .date-input {
+    flex: 1;
+    font-family: 'Lato', sans-serif;
+    font-size: 12px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--color-mid-alpha);
+    background: var(--color-bg);
+    color: var(--color-dark);
+    outline: none;
+  }
+
+  /* Toggle switches */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
+  }
+  .toggle-label { font-size: 13px; color: var(--color-dark); }
+  .toggle-switch {
+    width: 40px;
+    height: 22px;
+    background: var(--color-mid-alpha);
+    border-radius: 11px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .toggle-switch.on { background: var(--color-mid); }
+  .toggle-knob {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    background: #fff;
+    border-radius: 50%;
+    transition: left 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  }
+  .toggle-switch.on .toggle-knob { left: 20px; }
+
+  /* Radio buttons */
+  .radio-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .radio-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .radio-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid var(--color-mid-alpha);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .radio-dot.active { border-color: var(--color-dark); }
+  .radio-dot.active::after {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-dark);
+  }
+
+  /* Language dropdown */
+  .lang-select {
+    font-family: 'Lato', sans-serif;
+    font-size: 12px;
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--color-mid-alpha);
+    background: var(--color-bg);
+    color: var(--color-dark);
+    cursor: pointer;
+    outline: none;
+  }
+
+  /* Filter buttons */
+  .btn-apply {
+    width: 100%;
+    font-family: 'Lato', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 12px;
+    border-radius: 8px;
+    border: none;
+    background: var(--color-dark);
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 8px;
+  }
+  .btn-apply:hover { background: #5c4433; }
+  .btn-clear {
+    display: block;
+    width: 100%;
+    text-align: center;
+    font-family: 'Lato', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-mid);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    margin-top: 4px;
+    transition: color 0.2s;
+  }
+  .btn-clear:hover { color: var(--color-dark); }
+
+  /* ======== LIST VIEW GRID ======== */
+  .list-container {
+    margin-left: 280px;
+    padding: 32px;
+  }
+  .event-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+  .event-card {
+    background: var(--color-surface);
+    border-radius: 12px;
+    border: 1px solid var(--color-mid-alpha);
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .event-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(73,54,40,0.1);
+  }
+  .card-img {
+    width: 100%;
+    aspect-ratio: 16/10;
+    background: var(--color-mid);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255,255,255,0.4);
+    font-size: 12px;
+    font-weight: 700;
+    position: relative;
+  }
+  .card-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 3px 10px;
+    border-radius: 99px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .badge-full { background: #c0392b; color: #fff; }
+  .badge-18 { background: rgba(0,0,0,0.6); color: #fff; }
+  .badge-private {
+    background: rgba(0,0,0,0.6);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .badge-private i { width: 10px; height: 10px; }
+  .card-body { padding: 16px; }
+  .card-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--color-dark);
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .card-date {
+    font-size: 12px;
+    color: var(--color-mid);
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .card-tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 99px;
+    background: var(--color-mid-alpha);
+    color: var(--color-dark);
+    margin-bottom: 10px;
+  }
+  .card-host {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    margin-bottom: 8px;
+  }
+  .card-attendees {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--color-dark);
+    margin-bottom: 12px;
+  }
+  .card-attendees i { width: 14px; height: 14px; color: var(--color-mid); }
+  .card-actions {
+    display: flex;
+    gap: 8px;
+    padding-top: 12px;
+    border-top: 1px solid var(--color-mid-alpha);
+  }
+
+  /* ======== D-04 FILTERS DETAIL ======== */
+  .d04-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 32px;
+    min-height: calc(100vh - 80px);
+    background: var(--color-bg);
+  }
+  .d04-panel {
+    width: 400px;
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid var(--color-mid-alpha);
+    padding: 32px 28px;
+    box-shadow: 0 8px 32px rgba(73,54,40,0.08);
+  }
+  .active-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 32px;
+    justify-content: center;
+    max-width: 400px;
+  }
+  .chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 6px 14px;
+    border-radius: 99px;
+    background: var(--color-surface);
+    color: var(--color-dark);
+    border: 1px solid var(--color-mid-alpha);
+  }
+  .chip-x {
+    width: 14px;
+    height: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--color-mid);
+    transition: color 0.2s;
+  }
+  .chip-x:hover { color: var(--color-dark); }
+  .chips-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--color-mid);
+    margin-top: 32px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+
+  /* Relative positioning for map pins */
+  .map-area { position: relative; min-height: calc(100vh - 200px); }
+  .map-area.with-sidebar { margin-left: 280px; }
+
+  /* Checkbox for age */
+  .age-row { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<!-- ==================== TAB NAVIGATION ==================== -->
+<nav class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('d01')">D-01 Guest Map</button>
+  <button class="tab-btn" onclick="switchTab('d02')">D-02 Registered Map</button>
+  <button class="tab-btn" onclick="switchTab('d03')">D-03 List View</button>
+  <button class="tab-btn" onclick="switchTab('d04')">D-04 Filters Panel</button>
+</nav>
+
+<!-- ============================================================ -->
+<!-- D-01: DISCOVERY MAP VIEW (GUEST) -->
+<!-- ============================================================ -->
+<section id="d01" class="screen active">
+  <!-- Guest Banner -->
+  <div class="guest-banner">
+    <span>Sign up for the full experience — bookmark events, mark going, and more!</span>
+    <a href="#">Sign Up</a>
+    <button class="banner-close"><i data-lucide="x" style="width:16px;height:16px;"></i></button>
+  </div>
+
+  <!-- Navbar Guest -->
+  <div class="navbar">
+    <div class="navbar-logo">Social Event Mapper</div>
+    <div class="navbar-search">
+      <i data-lucide="search" style="width:16px;height:16px;"></i>
+      <input type="text" placeholder="Search events, categories, places...">
+    </div>
+    <div class="navbar-right">
+      <button class="btn-sign-in">Sign In</button>
+      <button class="btn-sign-up">Sign Up</button>
+    </div>
+  </div>
+
+  <!-- Action Bar -->
+  <div class="action-bar">
+    <div class="action-left">
+      <button class="toggle-btn active"><i data-lucide="map" style="width:16px;height:16px;"></i> Map</button>
+      <button class="toggle-btn"><i data-lucide="list" style="width:16px;height:16px;"></i> List</button>
+      <button class="create-event-btn"><i data-lucide="plus" style="width:16px;height:16px;"></i> Create Event</button>
+    </div>
+    <select class="sort-select">
+      <option>Nearest first</option>
+      <option>Starting soon</option>
+      <option>Popular</option>
+    </select>
+  </div>
+
+  <!-- Map -->
+  <div class="map-area" style="position:relative; height:calc(100vh - 200px); background:var(--color-surface); overflow:hidden;">
+    <div class="map-grid"></div>
+    <div class="map-roads">
+      <div class="map-road" style="top:30%;left:0;width:100%;height:3px;"></div>
+      <div class="map-road" style="top:55%;left:0;width:100%;height:2px;"></div>
+      <div class="map-road" style="top:78%;left:0;width:100%;height:2px;"></div>
+      <div class="map-road" style="top:0;left:25%;width:3px;height:100%;"></div>
+      <div class="map-road" style="top:0;left:55%;width:2px;height:100%;"></div>
+      <div class="map-road" style="top:0;left:80%;width:2px;height:100%;"></div>
+      <div class="map-road" style="top:15%;left:10%;width:45%;height:2px;transform:rotate(12deg);"></div>
+      <div class="map-road" style="top:65%;left:30%;width:50%;height:2px;transform:rotate(-8deg);"></div>
+    </div>
+    <div class="map-bg">MAP VIEW</div>
+
+    <!-- Pins -->
+    <div class="pin" style="top:20%;left:18%;">
+      <div class="pin-circle"><i data-lucide="music" style="width:16px;height:16px;"></i></div>
+      <div class="pin-label">Jazz Night</div>
+    </div>
+    <div class="pin" style="top:35%;left:42%;">
+      <div class="pin-circle"><i data-lucide="utensils" style="width:16px;height:16px;"></i></div>
+      <div class="pin-label">Street Food Festival</div>
+    </div>
+    <div class="pin" style="top:22%;left:65%;">
+      <div class="pin-circle"><i data-lucide="dumbbell" style="width:16px;height:16px;"></i></div>
+      <div class="pin-label">Yoga at Sunset</div>
+    </div>
+    <div class="pin" style="top:60%;left:28%;">
+      <div class="pin-circle"><i data-lucide="palette" style="width:16px;height:16px;"></i></div>
+      <div class="pin-label">Art Exhibition</div>
+    </div>
+    <div class="pin" style="top:70%;left:72%;">
+      <div class="pin-circle"><i data-lucide="laptop" style="width:16px;height:16px;"></i></div>
+      <div class="pin-label">Startup Pitch Night</div>
+    </div>
+    <div class="pin" style="top:50%;left:85%;">
+      <div class="pin-circle"><i data-lucide="bird" style="width:16px;height:16px;"></i></div>
+      <div class="pin-label">Bird Watching</div>
+    </div>
+    <div class="pin" style="top:80%;left:50%;">
+      <div class="pin-circle"><i data-lucide="gamepad-2" style="width:16px;height:16px;"></i></div>
+      <div class="pin-label">Board Game Night</div>
+    </div>
+
+    <!-- Pin highlighted -->
+    <div class="pin" style="top:44%;left:56%;">
+      <div class="pin-circle" style="background:#97764f;box-shadow:0 0 0 4px rgba(171,136,109,0.3),0 2px 8px rgba(73,54,40,0.3);"><i data-lucide="music" style="width:16px;height:16px;"></i></div>
+      <div class="pin-label" style="background:var(--color-dark);color:#fff;">Beach Party Night</div>
+    </div>
+
+    <!-- Popup Card (Guest — no bookmark/going) -->
+    <div class="pin-popup" style="top:26%;left:54%;z-index:50;">
+      <div class="pin-popup-img">EVENT PHOTO</div>
+      <div class="pin-popup-body">
+        <div class="pin-popup-title">Kadikoy Beach Party Night</div>
+        <div class="pin-popup-date">Sat, Mar 28 &middot; 21:00 – 02:00</div>
+        <div class="pin-popup-tag">Music / Party</div>
+        <div class="pin-popup-host">
+          <div class="host-avatar">A</div>
+          <span>Arda T.</span>
+          <span class="host-rating">&#9733; 4.8</span>
+        </div>
+        <div class="pin-popup-attendees">
+          <i data-lucide="users" style="width:14px;height:14px;"></i>
+          <span>12/50 going</span>
+        </div>
+        <a class="pin-popup-link" href="#">View Details &rarr;</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- D-02: DISCOVERY MAP VIEW (REGISTERED) -->
+<!-- ============================================================ -->
+<section id="d02" class="screen">
+  <!-- Navbar Registered -->
+  <div class="navbar">
+    <div class="navbar-logo">Social Event Mapper</div>
+    <div class="navbar-search">
+      <i data-lucide="search" style="width:16px;height:16px;"></i>
+      <input type="text" placeholder="Search events, categories, places...">
+    </div>
+    <div class="navbar-right">
+      <div class="user-area">
+        <div class="notif-bell">
+          <i data-lucide="bell" style="width:20px;height:20px;"></i>
+          <div class="notif-dot"></div>
+        </div>
+        <div class="user-avatar">E</div>
+        <span class="user-name">Ece Y.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action Bar -->
+  <div class="action-bar">
+    <div class="action-left">
+      <button class="toggle-btn active"><i data-lucide="map" style="width:16px;height:16px;"></i> Map</button>
+      <button class="toggle-btn"><i data-lucide="list" style="width:16px;height:16px;"></i> List</button>
+      <button class="create-event-btn"><i data-lucide="plus" style="width:16px;height:16px;"></i> Create Event</button>
+    </div>
+    <select class="sort-select">
+      <option>Nearest first</option>
+      <option>Starting soon</option>
+      <option>Popular</option>
+    </select>
+  </div>
+
+  <!-- Content with sidebar -->
+  <div style="position:relative;">
+    <!-- Filter Sidebar -->
+    <div class="filter-sidebar">
+      <div class="filter-header">
+        <i data-lucide="sliders-horizontal"></i>
+        Filters
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Quick Filters</div>
+        <div class="quick-filters">
+          <button class="quick-pill">Now</button>
+          <button class="quick-pill">Today</button>
+          <button class="quick-pill">Weekend</button>
+        </div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Category</div>
+        <div class="cat-item"><div class="cat-checkbox"></div> Music / Party <span class="cat-count">14</span></div>
+        <div class="cat-item"><div class="cat-checkbox"></div> Sports <span class="cat-count">8</span></div>
+        <div class="cat-item"><div class="cat-checkbox"></div> Art <span class="cat-count">6</span></div>
+        <div class="cat-item"><div class="cat-checkbox"></div> Food <span class="cat-count">11</span></div>
+        <div class="cat-item"><div class="cat-checkbox"></div> Education <span class="cat-count">5</span></div>
+        <div class="cat-item"><div class="cat-checkbox"></div> Technology <span class="cat-count">7</span></div>
+        <div class="cat-item"><div class="cat-checkbox"></div> Nature <span class="cat-count">9</span></div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Distance</div>
+        <div class="slider-wrap">
+          <div class="slider-track">
+            <div class="slider-fill" style="width:30%;"></div>
+            <div class="slider-thumb" style="left:28%;"></div>
+          </div>
+          <div class="slider-labels"><span>1 km</span><span>50 km</span></div>
+          <div class="slider-value">15 km</div>
+        </div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Date Range</div>
+        <div class="date-row">
+          <input class="date-input" type="text" placeholder="Start date">
+          <input class="date-input" type="text" placeholder="End date">
+        </div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Accessibility</div>
+        <div class="toggle-row">
+          <span class="toggle-label">Wheelchair</span>
+          <div class="toggle-switch"><div class="toggle-knob"></div></div>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label">Elevator</span>
+          <div class="toggle-switch"><div class="toggle-knob"></div></div>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label">Seating</span>
+          <div class="toggle-switch"><div class="toggle-knob"></div></div>
+        </div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Price</div>
+        <div class="radio-row">
+          <div class="radio-item"><div class="radio-dot"></div> Free</div>
+          <div class="radio-item"><div class="radio-dot"></div> Paid</div>
+          <div class="radio-item"><div class="radio-dot active"></div> All</div>
+        </div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Language</div>
+        <select class="lang-select">
+          <option>All languages</option>
+          <option>English</option>
+          <option>Turkish</option>
+        </select>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Age</div>
+        <div class="age-row">
+          <div class="cat-checkbox" style="border-color:var(--color-mid-alpha);"></div>
+          <span style="font-size:13px;">All ages</span>
+        </div>
+        <div class="age-row" style="margin-top:6px;">
+          <div class="cat-checkbox" style="border-color:var(--color-mid-alpha);"></div>
+          <span style="font-size:13px;">18+ only</span>
+        </div>
+      </div>
+
+      <button class="btn-apply">Apply Filters</button>
+      <button class="btn-clear">Clear All</button>
+    </div>
+
+    <!-- Map -->
+    <div class="map-area with-sidebar" style="height:calc(100vh - 200px); background:var(--color-surface); overflow:hidden;">
+      <div class="map-grid"></div>
+      <div class="map-roads">
+        <div class="map-road" style="top:30%;left:0;width:100%;height:3px;"></div>
+        <div class="map-road" style="top:55%;left:0;width:100%;height:2px;"></div>
+        <div class="map-road" style="top:78%;left:0;width:100%;height:2px;"></div>
+        <div class="map-road" style="top:0;left:20%;width:3px;height:100%;"></div>
+        <div class="map-road" style="top:0;left:50%;width:2px;height:100%;"></div>
+        <div class="map-road" style="top:0;left:75%;width:2px;height:100%;"></div>
+        <div class="map-road" style="top:20%;left:5%;width:40%;height:2px;transform:rotate(8deg);"></div>
+        <div class="map-road" style="top:68%;left:25%;width:55%;height:2px;transform:rotate(-5deg);"></div>
+      </div>
+      <div class="map-bg">MAP VIEW</div>
+
+      <!-- Pins -->
+      <div class="pin" style="top:15%;left:12%;"><div class="pin-circle"><i data-lucide="music" style="width:16px;height:16px;"></i></div><div class="pin-label">Jazz Night</div></div>
+      <div class="pin" style="top:30%;left:38%;"><div class="pin-circle"><i data-lucide="utensils" style="width:16px;height:16px;"></i></div><div class="pin-label">Street Food Festival</div></div>
+      <div class="pin" style="top:18%;left:62%;"><div class="pin-circle"><i data-lucide="dumbbell" style="width:16px;height:16px;"></i></div><div class="pin-label">Yoga at Sunset</div></div>
+      <div class="pin" style="top:55%;left:22%;"><div class="pin-circle"><i data-lucide="palette" style="width:16px;height:16px;"></i></div><div class="pin-label">Art Exhibition</div></div>
+      <div class="pin" style="top:65%;left:68%;"><div class="pin-circle"><i data-lucide="laptop" style="width:16px;height:16px;"></i></div><div class="pin-label">Startup Pitch</div></div>
+      <div class="pin" style="top:42%;left:82%;"><div class="pin-circle"><i data-lucide="bird" style="width:16px;height:16px;"></i></div><div class="pin-label">Bird Watching</div></div>
+      <div class="pin" style="top:78%;left:45%;"><div class="pin-circle"><i data-lucide="gamepad-2" style="width:16px;height:16px;"></i></div><div class="pin-label">Board Game Night</div></div>
+      <div class="pin" style="top:25%;left:88%;"><div class="pin-circle"><i data-lucide="camera" style="width:16px;height:16px;"></i></div><div class="pin-label">Photography Walk</div></div>
+      <div class="pin" style="top:72%;left:15%;"><div class="pin-circle"><i data-lucide="chef-hat" style="width:16px;height:16px;"></i></div><div class="pin-label">Cooking Workshop</div></div>
+      <div class="pin" style="top:85%;left:80%;"><div class="pin-circle"><i data-lucide="footprints" style="width:16px;height:16px;"></i></div><div class="pin-label">Morning Run Club</div></div>
+
+      <!-- Active pin -->
+      <div class="pin" style="top:40%;left:50%;">
+        <div class="pin-circle" style="background:#97764f;box-shadow:0 0 0 4px rgba(171,136,109,0.3),0 2px 8px rgba(73,54,40,0.3);"><i data-lucide="music" style="width:16px;height:16px;"></i></div>
+        <div class="pin-label" style="background:var(--color-dark);color:#fff;">Beach Party Night</div>
+      </div>
+
+      <!-- Popup Card (Registered — with bookmark/going) -->
+      <div class="pin-popup" style="top:20%;left:47%;">
+        <div class="pin-popup-img">EVENT PHOTO</div>
+        <div class="pin-popup-body">
+          <div class="pin-popup-title">Kadikoy Beach Party Night</div>
+          <div class="pin-popup-date">Sat, Mar 28 &middot; 21:00 – 02:00</div>
+          <div class="pin-popup-tag">Music / Party</div>
+          <div class="pin-popup-host">
+            <div class="host-avatar">A</div>
+            <span>Arda T.</span>
+            <span class="host-rating">&#9733; 4.8</span>
+          </div>
+          <div class="pin-popup-attendees">
+            <i data-lucide="users" style="width:14px;height:14px;"></i>
+            <span>12/50 going</span>
+          </div>
+          <a class="pin-popup-link" href="#">View Details &rarr;</a>
+          <div class="pin-popup-actions">
+            <button class="btn-bookmark"><i data-lucide="heart" style="width:14px;height:14px;"></i> Bookmark</button>
+            <button class="btn-going"><i data-lucide="check" style="width:14px;height:14px;"></i> Going</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- D-03: DISCOVERY LIST VIEW (REGISTERED) -->
+<!-- ============================================================ -->
+<section id="d03" class="screen">
+  <!-- Navbar Registered -->
+  <div class="navbar">
+    <div class="navbar-logo">Social Event Mapper</div>
+    <div class="navbar-search">
+      <i data-lucide="search" style="width:16px;height:16px;"></i>
+      <input type="text" placeholder="Search events, categories, places...">
+    </div>
+    <div class="navbar-right">
+      <div class="user-area">
+        <div class="notif-bell">
+          <i data-lucide="bell" style="width:20px;height:20px;"></i>
+          <div class="notif-dot"></div>
+        </div>
+        <div class="user-avatar">E</div>
+        <span class="user-name">Ece Y.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action Bar — List active -->
+  <div class="action-bar">
+    <div class="action-left">
+      <button class="toggle-btn"><i data-lucide="map" style="width:16px;height:16px;"></i> Map</button>
+      <button class="toggle-btn active"><i data-lucide="list" style="width:16px;height:16px;"></i> List</button>
+      <button class="create-event-btn"><i data-lucide="plus" style="width:16px;height:16px;"></i> Create Event</button>
+    </div>
+    <select class="sort-select">
+      <option>Nearest first</option>
+      <option>Starting soon</option>
+      <option>Popular</option>
+    </select>
+  </div>
+
+  <div style="position:relative;">
+    <!-- Filter Sidebar -->
+    <div class="filter-sidebar" style="height:auto;min-height:calc(100vh - 140px);position:fixed;top:auto;">
+      <div class="filter-header">
+        <i data-lucide="sliders-horizontal"></i>
+        Filters
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Quick Filters</div>
+        <div class="quick-filters">
+          <button class="quick-pill">Now</button>
+          <button class="quick-pill">Today</button>
+          <button class="quick-pill">Weekend</button>
+        </div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Category</div>
+        <div class="cat-item"><div class="cat-checkbox"></div> Music / Party <span class="cat-count">14</span></div>
+        <div class="cat-item"><div class="cat-checkbox"></div> Sports <span class="cat-count">8</span></div>
+        <div class="cat-item"><div class="cat-checkbox"></div> Art <span class="cat-count">6</span></div>
+        <div class="cat-item"><div class="cat-checkbox"></div> Food <span class="cat-count">11</span></div>
+        <div class="cat-item"><div class="cat-checkbox"></div> Education <span class="cat-count">5</span></div>
+        <div class="cat-item"><div class="cat-checkbox"></div> Technology <span class="cat-count">7</span></div>
+        <div class="cat-item"><div class="cat-checkbox"></div> Nature <span class="cat-count">9</span></div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Distance</div>
+        <div class="slider-wrap">
+          <div class="slider-track">
+            <div class="slider-fill" style="width:30%;"></div>
+            <div class="slider-thumb" style="left:28%;"></div>
+          </div>
+          <div class="slider-labels"><span>1 km</span><span>50 km</span></div>
+          <div class="slider-value">15 km</div>
+        </div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Date Range</div>
+        <div class="date-row">
+          <input class="date-input" type="text" placeholder="Start date">
+          <input class="date-input" type="text" placeholder="End date">
+        </div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Accessibility</div>
+        <div class="toggle-row">
+          <span class="toggle-label">Wheelchair</span>
+          <div class="toggle-switch"><div class="toggle-knob"></div></div>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label">Elevator</span>
+          <div class="toggle-switch"><div class="toggle-knob"></div></div>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label">Seating</span>
+          <div class="toggle-switch"><div class="toggle-knob"></div></div>
+        </div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Price</div>
+        <div class="radio-row">
+          <div class="radio-item"><div class="radio-dot"></div> Free</div>
+          <div class="radio-item"><div class="radio-dot"></div> Paid</div>
+          <div class="radio-item"><div class="radio-dot active"></div> All</div>
+        </div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Language</div>
+        <select class="lang-select">
+          <option>All languages</option>
+          <option>English</option>
+          <option>Turkish</option>
+        </select>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Age</div>
+        <div class="age-row">
+          <div class="cat-checkbox" style="border-color:var(--color-mid-alpha);"></div>
+          <span style="font-size:13px;">All ages</span>
+        </div>
+        <div class="age-row" style="margin-top:6px;">
+          <div class="cat-checkbox" style="border-color:var(--color-mid-alpha);"></div>
+          <span style="font-size:13px;">18+ only</span>
+        </div>
+      </div>
+
+      <button class="btn-apply">Apply Filters</button>
+      <button class="btn-clear">Clear All</button>
+    </div>
+
+    <!-- List Grid -->
+    <div class="list-container">
+      <div class="event-grid">
+
+        <!-- Card 1 -->
+        <div class="event-card">
+          <div class="card-img">EVENT PHOTO</div>
+          <div class="card-body">
+            <div class="card-title">Kadikoy Beach Party Night</div>
+            <div class="card-date">Sat, Mar 28 &middot; 21:00</div>
+            <div class="card-tag">Music / Party</div>
+            <div class="card-host"><div class="host-avatar">A</div><span>Arda T.</span><span class="host-rating">&#9733; 4.8</span></div>
+            <div class="card-attendees"><i data-lucide="users"></i><span>12/50 going</span></div>
+            <div class="card-actions">
+              <button class="btn-bookmark"><i data-lucide="heart" style="width:14px;height:14px;"></i> Bookmark</button>
+              <button class="btn-going"><i data-lucide="check" style="width:14px;height:14px;"></i> Going</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="event-card">
+          <div class="card-img">EVENT PHOTO</div>
+          <div class="card-body">
+            <div class="card-title">Bird Watching in Belgrad Forest</div>
+            <div class="card-date">Sun, Mar 29 &middot; 08:00</div>
+            <div class="card-tag">Nature</div>
+            <div class="card-host"><div class="host-avatar">S</div><span>Selin K.</span><span class="host-rating">&#9733; 4.9</span></div>
+            <div class="card-attendees"><i data-lucide="users"></i><span>8/20 going</span></div>
+            <div class="card-actions">
+              <button class="btn-bookmark"><i data-lucide="heart" style="width:14px;height:14px;"></i> Bookmark</button>
+              <button class="btn-going"><i data-lucide="check" style="width:14px;height:14px;"></i> Going</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="event-card">
+          <div class="card-img">EVENT PHOTO</div>
+          <div class="card-body">
+            <div class="card-title">Startup Pitch Night</div>
+            <div class="card-date">Fri, Mar 27 &middot; 19:00</div>
+            <div class="card-tag">Technology</div>
+            <div class="card-host"><div class="host-avatar">M</div><span>Mert B.</span><span class="host-rating">&#9733; 4.6</span></div>
+            <div class="card-attendees"><i data-lucide="users"></i><span>35/60 going</span></div>
+            <div class="card-actions">
+              <button class="btn-bookmark"><i data-lucide="heart" style="width:14px;height:14px;"></i> Bookmark</button>
+              <button class="btn-going"><i data-lucide="check" style="width:14px;height:14px;"></i> Going</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 4 — with 18+ badge -->
+        <div class="event-card">
+          <div class="card-img">EVENT PHOTO<span class="card-badge badge-18">18+</span></div>
+          <div class="card-body">
+            <div class="card-title">Open Mic Comedy</div>
+            <div class="card-date">Sat, Mar 28 &middot; 21:30</div>
+            <div class="card-tag">Entertainment</div>
+            <div class="card-host"><div class="host-avatar">D</div><span>Deniz A.</span><span class="host-rating">&#9733; 4.7</span></div>
+            <div class="card-attendees"><i data-lucide="users"></i><span>22/40 going</span></div>
+            <div class="card-actions">
+              <button class="btn-bookmark"><i data-lucide="heart" style="width:14px;height:14px;"></i> Bookmark</button>
+              <button class="btn-going"><i data-lucide="check" style="width:14px;height:14px;"></i> Going</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 5 -->
+        <div class="event-card">
+          <div class="card-img">EVENT PHOTO</div>
+          <div class="card-body">
+            <div class="card-title">Yoga at Sunset</div>
+            <div class="card-date">Sat, Mar 28 &middot; 17:00</div>
+            <div class="card-tag">Sports / Wellness</div>
+            <div class="card-host"><div class="host-avatar">Z</div><span>Zeynep D.</span><span class="host-rating">&#9733; 5.0</span></div>
+            <div class="card-attendees"><i data-lucide="users"></i><span>18/25 going</span></div>
+            <div class="card-actions">
+              <button class="btn-bookmark"><i data-lucide="heart" style="width:14px;height:14px;"></i> Bookmark</button>
+              <button class="btn-going"><i data-lucide="check" style="width:14px;height:14px;"></i> Going</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 6 -->
+        <div class="event-card">
+          <div class="card-img">EVENT PHOTO</div>
+          <div class="card-body">
+            <div class="card-title">Street Food Festival</div>
+            <div class="card-date">Sat, Mar 28 &middot; 12:00</div>
+            <div class="card-tag">Food</div>
+            <div class="card-host"><div class="host-avatar">B</div><span>Burak C.</span><span class="host-rating">&#9733; 4.5</span></div>
+            <div class="card-attendees"><i data-lucide="users"></i><span>45/100 going</span></div>
+            <div class="card-actions">
+              <button class="btn-bookmark"><i data-lucide="heart" style="width:14px;height:14px;"></i> Bookmark</button>
+              <button class="btn-going"><i data-lucide="check" style="width:14px;height:14px;"></i> Going</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 7 — FULL badge -->
+        <div class="event-card">
+          <div class="card-img">EVENT PHOTO<span class="card-badge badge-full">FULL</span></div>
+          <div class="card-body">
+            <div class="card-title">Contemporary Art Exhibition</div>
+            <div class="card-date">Thu, Mar 26 &middot; 10:00</div>
+            <div class="card-tag">Art</div>
+            <div class="card-host"><div class="host-avatar">E</div><span>Elif N.</span><span class="host-rating">&#9733; 4.9</span></div>
+            <div class="card-attendees"><i data-lucide="users"></i><span>30/30 going</span></div>
+            <div class="card-actions">
+              <button class="btn-bookmark"><i data-lucide="heart" style="width:14px;height:14px;"></i> Bookmark</button>
+              <button class="btn-going" style="opacity:0.5;cursor:not-allowed;"><i data-lucide="check" style="width:14px;height:14px;"></i> Full</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 8 -->
+        <div class="event-card">
+          <div class="card-img">EVENT PHOTO</div>
+          <div class="card-body">
+            <div class="card-title">Istanbul Photography Walk</div>
+            <div class="card-date">Sun, Mar 29 &middot; 14:00</div>
+            <div class="card-tag">Art / Nature</div>
+            <div class="card-host"><div class="host-avatar">C</div><span>Can O.</span><span class="host-rating">&#9733; 4.7</span></div>
+            <div class="card-attendees"><i data-lucide="users"></i><span>10/15 going</span></div>
+            <div class="card-actions">
+              <button class="btn-bookmark"><i data-lucide="heart" style="width:14px;height:14px;"></i> Bookmark</button>
+              <button class="btn-going"><i data-lucide="check" style="width:14px;height:14px;"></i> Going</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 9 — Private badge -->
+        <div class="event-card">
+          <div class="card-img">EVENT PHOTO<span class="card-badge badge-private"><i data-lucide="lock" style="width:10px;height:10px;"></i> Private</span></div>
+          <div class="card-body">
+            <div class="card-title">Board Game Night</div>
+            <div class="card-date">Fri, Mar 27 &middot; 20:00</div>
+            <div class="card-tag">Entertainment</div>
+            <div class="card-host"><div class="host-avatar">O</div><span>Onur Y.</span><span class="host-rating">&#9733; 4.4</span></div>
+            <div class="card-attendees"><i data-lucide="users"></i><span>6/8 going</span></div>
+            <div class="card-actions">
+              <button class="btn-bookmark"><i data-lucide="heart" style="width:14px;height:14px;"></i> Bookmark</button>
+              <button class="btn-going"><i data-lucide="check" style="width:14px;height:14px;"></i> Going</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 10 -->
+        <div class="event-card">
+          <div class="card-img">EVENT PHOTO</div>
+          <div class="card-body">
+            <div class="card-title">Morning Run Club</div>
+            <div class="card-date">Sun, Mar 29 &middot; 07:00</div>
+            <div class="card-tag">Sports</div>
+            <div class="card-host"><div class="host-avatar">K</div><span>Kerem H.</span><span class="host-rating">&#9733; 4.8</span></div>
+            <div class="card-attendees"><i data-lucide="users"></i><span>14/30 going</span></div>
+            <div class="card-actions">
+              <button class="btn-bookmark"><i data-lucide="heart" style="width:14px;height:14px;"></i> Bookmark</button>
+              <button class="btn-going"><i data-lucide="check" style="width:14px;height:14px;"></i> Going</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 11 -->
+        <div class="event-card">
+          <div class="card-img">EVENT PHOTO</div>
+          <div class="card-body">
+            <div class="card-title">Turkish Cooking Workshop</div>
+            <div class="card-date">Sat, Mar 28 &middot; 14:00</div>
+            <div class="card-tag">Food / Education</div>
+            <div class="card-host"><div class="host-avatar">A</div><span>Ayse M.</span><span class="host-rating">&#9733; 4.9</span></div>
+            <div class="card-attendees"><i data-lucide="users"></i><span>9/12 going</span></div>
+            <div class="card-actions">
+              <button class="btn-bookmark"><i data-lucide="heart" style="width:14px;height:14px;"></i> Bookmark</button>
+              <button class="btn-going"><i data-lucide="check" style="width:14px;height:14px;"></i> Going</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 12 -->
+        <div class="event-card">
+          <div class="card-img">EVENT PHOTO</div>
+          <div class="card-body">
+            <div class="card-title">Jazz Night at Kadikoy</div>
+            <div class="card-date">Fri, Mar 27 &middot; 21:00</div>
+            <div class="card-tag">Music</div>
+            <div class="card-host"><div class="host-avatar">T</div><span>Tuna R.</span><span class="host-rating">&#9733; 4.6</span></div>
+            <div class="card-attendees"><i data-lucide="users"></i><span>28/35 going</span></div>
+            <div class="card-actions">
+              <button class="btn-bookmark"><i data-lucide="heart" style="width:14px;height:14px;"></i> Bookmark</button>
+              <button class="btn-going"><i data-lucide="check" style="width:14px;height:14px;"></i> Going</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- D-04: FILTERS PANEL (DETAIL VIEW) -->
+<!-- ============================================================ -->
+<section id="d04" class="screen">
+  <!-- Minimal navbar -->
+  <div class="navbar">
+    <div class="navbar-logo">Social Event Mapper</div>
+    <div class="navbar-search">
+      <i data-lucide="search" style="width:16px;height:16px;"></i>
+      <input type="text" placeholder="Search events, categories, places...">
+    </div>
+    <div class="navbar-right">
+      <div class="user-area">
+        <div class="notif-bell">
+          <i data-lucide="bell" style="width:20px;height:20px;"></i>
+          <div class="notif-dot"></div>
+        </div>
+        <div class="user-avatar">E</div>
+        <span class="user-name">Ece Y.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="d04-wrapper">
+    <div class="d04-panel">
+      <div class="filter-header">
+        <i data-lucide="sliders-horizontal"></i>
+        Filters
+        <span class="filter-badge">5</span>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Quick Filters</div>
+        <div class="quick-filters">
+          <button class="quick-pill">Now</button>
+          <button class="quick-pill">Today</button>
+          <button class="quick-pill active">Weekend</button>
+        </div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Category</div>
+        <div class="cat-item">
+          <div class="cat-checkbox checked"><i data-lucide="check" style="width:12px;height:12px;"></i></div>
+          Music / Party <span class="cat-count">14</span>
+        </div>
+        <div class="cat-item"><div class="cat-checkbox"></div> Sports <span class="cat-count">8</span></div>
+        <div class="cat-item"><div class="cat-checkbox"></div> Art <span class="cat-count">6</span></div>
+        <div class="cat-item"><div class="cat-checkbox"></div> Food <span class="cat-count">11</span></div>
+        <div class="cat-item"><div class="cat-checkbox"></div> Education <span class="cat-count">5</span></div>
+        <div class="cat-item"><div class="cat-checkbox"></div> Technology <span class="cat-count">7</span></div>
+        <div class="cat-item">
+          <div class="cat-checkbox checked"><i data-lucide="check" style="width:12px;height:12px;"></i></div>
+          Nature <span class="cat-count">9</span>
+        </div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Distance</div>
+        <div class="slider-wrap">
+          <div class="slider-track">
+            <div class="slider-fill" style="width:28%;"></div>
+            <div class="slider-thumb" style="left:26%;"></div>
+          </div>
+          <div class="slider-labels"><span>1 km</span><span>50 km</span></div>
+          <div class="slider-value">15 km</div>
+        </div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Date Range</div>
+        <div class="date-row">
+          <input class="date-input" type="text" value="Mar 27, 2026" readonly>
+          <input class="date-input" type="text" value="Mar 30, 2026" readonly>
+        </div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Accessibility</div>
+        <div class="toggle-row">
+          <span class="toggle-label">Wheelchair</span>
+          <div class="toggle-switch on"><div class="toggle-knob"></div></div>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label">Elevator</span>
+          <div class="toggle-switch"><div class="toggle-knob"></div></div>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label">Seating</span>
+          <div class="toggle-switch"><div class="toggle-knob"></div></div>
+        </div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Price</div>
+        <div class="radio-row">
+          <div class="radio-item"><div class="radio-dot active"></div> Free</div>
+          <div class="radio-item"><div class="radio-dot"></div> Paid</div>
+          <div class="radio-item"><div class="radio-dot"></div> All</div>
+        </div>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Language</div>
+        <select class="lang-select">
+          <option>English</option>
+          <option>Turkish</option>
+          <option>All languages</option>
+        </select>
+      </div>
+
+      <div class="filter-section">
+        <div class="filter-section-title">Age</div>
+        <div class="age-row">
+          <div class="cat-checkbox checked"><i data-lucide="check" style="width:12px;height:12px;"></i></div>
+          <span style="font-size:13px;">All ages</span>
+        </div>
+        <div class="age-row" style="margin-top:6px;">
+          <div class="cat-checkbox"></div>
+          <span style="font-size:13px;">18+ only</span>
+        </div>
+      </div>
+
+      <button class="btn-apply">Apply Filters</button>
+      <button class="btn-clear">Clear All</button>
+    </div>
+
+    <div class="chips-label">Active Filters</div>
+    <div class="active-chips">
+      <div class="chip">Weekend <span class="chip-x"><i data-lucide="x" style="width:12px;height:12px;"></i></span></div>
+      <div class="chip">Music / Party <span class="chip-x"><i data-lucide="x" style="width:12px;height:12px;"></i></span></div>
+      <div class="chip">Nature <span class="chip-x"><i data-lucide="x" style="width:12px;height:12px;"></i></span></div>
+      <div class="chip">&lt; 15 km <span class="chip-x"><i data-lucide="x" style="width:12px;height:12px;"></i></span></div>
+      <div class="chip">Free <span class="chip-x"><i data-lucide="x" style="width:12px;height:12px;"></i></span></div>
+    </div>
+  </div>
+</section>
+
+<script>
+  // Tab switching
+  function switchTab(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    const tabs = ['d01','d02','d03','d04'];
+    const idx = tabs.indexOf(id);
+    if (idx >= 0) document.querySelectorAll('.tab-btn')[idx].classList.add('active');
+    // Re-init icons for newly visible section
+    if (window.lucide) lucide.createIcons();
+  }
+
+  // Initialize Lucide icons
+  document.addEventListener('DOMContentLoaded', () => {
+    if (window.lucide) lucide.createIcons();
+  });
+</script>
+</body>
+</html>

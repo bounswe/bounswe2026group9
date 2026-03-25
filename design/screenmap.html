@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Social Event Mapper — Screen Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --color-bg: #E4E0E1;
+    --color-surface: #D6C0B3;
+    --color-mid: #AB886D;
+    --color-dark: #493628;
+    --grp-landing: #493628;
+    --grp-auth: #6B4C3B;
+    --grp-discovery: #AB886D;
+    --grp-event: #8B6F56;
+    --grp-create: #7A5D45;
+    --grp-profile: #C4A882;
+    --grp-notification: #B8956E;
+    --grp-admin: #5C3D2E;
+    --grp-error: #3D2A1C;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--color-bg);
+    font-family: 'Lato', sans-serif;
+    color: var(--color-dark);
+    overflow: auto;
+  }
+
+  #canvas {
+    position: relative;
+    width: 3500px;
+    height: 3050px;
+  }
+
+  /* ── SVG arrow layer ── */
+  #arrows {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* ── Group labels ── */
+  .group-label {
+    position: absolute;
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-size: 22px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 4px 14px;
+    border-radius: 4px;
+    color: #fff;
+    z-index: 2;
+    white-space: nowrap;
+  }
+
+  /* ── Screen card ── */
+  .card {
+    position: absolute;
+    width: 220px;
+    height: 180px;
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(73,54,40,.18), 0 1px 3px rgba(73,54,40,.10);
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow .2s;
+  }
+  .card:hover {
+    box-shadow: 0 6px 20px rgba(73,54,40,.28);
+    z-index: 4;
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 8px;
+    color: #fff;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: .5px;
+    flex-shrink: 0;
+  }
+  .card-header .screen-id {
+    font-family: 'Lato', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .role-badge {
+    display: inline-block;
+    background: rgba(255,255,255,.25);
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 7px;
+    border-radius: 9px;
+    letter-spacing: .5px;
+  }
+
+  .card-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 8px 2px;
+    color: var(--color-dark);
+    line-height: 1.25;
+    flex-shrink: 0;
+  }
+
+  .card-wireframe {
+    flex: 1;
+    margin: 3px 8px;
+    border: 1.5px solid var(--color-surface);
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+    background: #faf8f6;
+  }
+
+  /* wireframe inner helpers */
+  .wf { position: absolute; border: 1px solid; border-radius: 2px; }
+  .wf-nav   { top:0;left:0;right:0;height:10%;background:var(--color-surface);border:none;border-bottom:1px solid var(--color-mid); }
+  .wf-side  { top:10%;right:0;width:28%;bottom:0;background:rgba(214,192,179,.3);border:none;border-left:1px solid var(--color-surface); }
+  .wf-main  { border-color:var(--color-mid); background:rgba(171,136,109,.08); }
+  .wf-btn   { border-color:var(--color-mid); background:var(--color-mid); border-radius:3px; }
+  .wf-txt   { border:none;border-bottom:1px solid var(--color-surface); }
+  .wf-img   { border-color:var(--color-surface); background:repeating-linear-gradient(45deg,transparent,transparent 3px,rgba(214,192,179,.25) 3px,rgba(214,192,179,.25) 4px); }
+  .wf-badge { border-radius:6px; background:var(--color-mid); border:none; }
+  .wf-lock  { border:2px solid var(--color-dark); border-radius:50%; }
+  .wf-overlay { background:rgba(73,54,40,.12); border:none; }
+  .wf-banner { background:#c0392b; border:none; }
+  .wf-map   { border-color:var(--color-mid); background:rgba(171,136,109,.12); }
+  .wf-pin   { width:5px;height:5px;border-radius:50%;background:var(--color-dark);border:none; }
+  .wf-list-row { left:4%;right:4%;height:14%;border:1px solid var(--color-surface);border-radius:2px;background:#fff; }
+  .wf-form-field { left:8%;right:8%;height:10%;border:none;border-bottom:1px solid var(--color-surface); }
+  .wf-step { width:8%;height:8%;border-radius:50%;background:var(--color-mid);border:none; }
+  .wf-step.inactive { background:var(--color-surface); }
+  .wf-table { border:1px solid var(--color-surface); border-collapse:collapse; }
+  .wf-route { border:none;border-top:2px dashed var(--color-mid); }
+
+  .card-desc {
+    font-size: 9px;
+    color: #7a6b5d;
+    padding: 2px 8px 5px;
+    line-height: 1.3;
+    flex-shrink: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ── Legend (fixed) ── */
+  #legend {
+    position: fixed;
+    bottom: 16px;
+    left: 16px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(73,54,40,.18);
+    padding: 14px 18px;
+    z-index: 100;
+    font-size: 11px;
+    max-width: 220px;
+  }
+  #legend h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 14px;
+    margin-bottom: 8px;
+    color: var(--color-dark);
+  }
+  #legend .leg-row { display:flex; align-items:center; gap:6px; margin-bottom:4px; }
+  #legend .leg-swatch { width:14px;height:14px;border-radius:3px;flex-shrink:0; }
+  #legend .leg-line { width:20px;height:0;flex-shrink:0; }
+
+  /* ── Title banner ── */
+  #title-banner {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 48px;
+    background: var(--color-dark);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    z-index: 100;
+    gap: 16px;
+    box-shadow: 0 2px 8px rgba(73,54,40,.3);
+  }
+  #title-banner h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 1px;
+  }
+  #title-banner span {
+    font-size: 12px;
+    opacity: .7;
+  }
+</style>
+</head>
+<body>
+
+<div id="title-banner">
+  <h1>Social Event Mapper</h1>
+  <span>Screen Map &middot; Community Event Platform</span>
+  <span style="margin-left:auto;font-size:11px;opacity:.5">Scroll / pan to explore all screens</span>
+</div>
+
+<div id="canvas">
+
+<!-- ═══════════════ SVG ARROWS ═══════════════ -->
+<svg id="arrows" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="ah-solid" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#493628"/>
+    </marker>
+    <marker id="ah-dashed" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#AB886D"/>
+    </marker>
+  </defs>
+
+  <!-- L-01 → A-01 "Sign In" -->
+  <line x1="210" y1="170" x2="130" y2="310" stroke="#493628" stroke-width="2" marker-end="url(#ah-solid)"/>
+  <text x="140" y="240" fill="#493628" font-size="10" font-family="Lato">Sign In</text>
+
+  <!-- L-01 → A-02 "Sign Up" -->
+  <line x1="150" y1="250" x2="130" y2="520" stroke="#493628" stroke-width="2" marker-end="url(#ah-solid)"/>
+  <text x="105" y="400" fill="#493628" font-size="10" font-family="Lato">Sign Up</text>
+
+  <!-- L-01 → D-01 "Browse as Guest" -->
+  <path d="M280,170 Q450,200 620,170" fill="none" stroke="#493628" stroke-width="2" marker-end="url(#ah-solid)"/>
+  <text x="380" y="198" fill="#493628" font-size="10" font-family="Lato">Browse as Guest</text>
+
+  <!-- A-01 → D-02 "login success" -->
+  <path d="M260,380 Q450,340 620,380" fill="none" stroke="#493628" stroke-width="2" marker-end="url(#ah-solid)"/>
+  <text x="390" y="345" fill="#493628" font-size="10" font-family="Lato">login success</text>
+
+  <!-- A-02 → A-03 "next step" -->
+  <line x1="260" y1="600" x2="260" y2="710" stroke="#493628" stroke-width="2" marker-end="url(#ah-solid)"/>
+  <text x="268" y="660" fill="#493628" font-size="10" font-family="Lato">next step</text>
+
+  <!-- A-03 → A-01 "register complete" -->
+  <path d="M60,780 Q20,580 60,380" fill="none" stroke="#493628" stroke-width="2" marker-end="url(#ah-solid)"/>
+  <text x="8" y="580" fill="#493628" font-size="10" font-family="Lato" writing-mode="tb">register complete</text>
+
+  <!-- D-01 → D-03 "list view toggle" -->
+  <line x1="730" y1="250" x2="640" y2="520" stroke="#493628" stroke-width="2" marker-end="url(#ah-solid)"/>
+  <text x="645" y="390" fill="#493628" font-size="10" font-family="Lato">list view</text>
+
+  <!-- D-02 → D-03 "list view toggle" -->
+  <line x1="730" y1="460" x2="700" y2="520" stroke="#493628" stroke-width="2" marker-end="url(#ah-solid)"/>
+  <text x="735" y="498" fill="#493628" font-size="10" font-family="Lato">list view</text>
+
+  <!-- D-02 → D-04 "open filters" -->
+  <line x1="870" y1="460" x2="900" y2="520" stroke="#493628" stroke-width="2" marker-end="url(#ah-solid)"/>
+  <text x="880" y="498" fill="#493628" font-size="10" font-family="Lato">filters</text>
+
+  <!-- D-01/D-02 → E-02 "click pin (guest)" -->
+  <path d="M850,180 Q1020,160 1170,280" fill="none" stroke="#493628" stroke-width="2" marker-end="url(#ah-solid)"/>
+  <text x="960" y="185" fill="#493628" font-size="10" font-family="Lato">click pin (guest)</text>
+
+  <!-- D-02 → E-01 "click pin (user)" -->
+  <path d="M870,380 Q1020,310 1130,170" fill="none" stroke="#493628" stroke-width="2" marker-end="url(#ah-solid)"/>
+  <text x="960" y="280" fill="#493628" font-size="10" font-family="Lato">click pin (user)</text>
+
+  <!-- E-02 → A-01 "sign in to interact" (dashed) -->
+  <path d="M1170,380 Q600,460 260,400" fill="none" stroke="#AB886D" stroke-width="1.5" stroke-dasharray="6,4" marker-end="url(#ah-dashed)"/>
+  <text x="680" y="440" fill="#AB886D" font-size="10" font-family="Lato">sign in to interact</text>
+
+  <!-- D-02 → E-03 "private event" (dashed) -->
+  <path d="M870,420 Q1050,480 1170,480" fill="none" stroke="#AB886D" stroke-width="1.5" stroke-dasharray="6,4" marker-end="url(#ah-dashed)"/>
+  <text x="960" y="470" fill="#AB886D" font-size="10" font-family="Lato">private event</text>
+
+  <!-- E-01 → E-07 "capacity full" (dashed) -->
+  <path d="M1310,250 Q1380,400 1310,620" fill="none" stroke="#AB886D" stroke-width="1.5" stroke-dasharray="6,4" marker-end="url(#ah-dashed)"/>
+  <text x="1355" y="440" fill="#AB886D" font-size="10" font-family="Lato">capacity full</text>
+
+  <!-- E-04 → E-05 "host cancels" (dashed) -->
+  <line x1="1410" y1="570" x2="1410" y2="620" stroke="#AB886D" stroke-width="1.5" stroke-dasharray="6,4" marker-end="url(#ah-dashed)"/>
+  <text x="1418" y="600" fill="#AB886D" font-size="10" font-family="Lato">host cancels</text>
+
+  <!-- E-01 → E-06 "time passed" (dashed) -->
+  <line x1="1230" y1="290" x2="1230" y2="740" stroke="#AB886D" stroke-width="1.5" stroke-dasharray="6,4" marker-end="url(#ah-dashed)"/>
+  <text x="1190" y="520" fill="#AB886D" font-size="10" font-family="Lato">time passed</text>
+
+  <!-- D-02 → C-01 "create event" -->
+  <path d="M870,360 Q1400,200 1700,160" fill="none" stroke="#493628" stroke-width="2" marker-end="url(#ah-solid)"/>
+  <text x="1250" y="210" fill="#493628" font-size="10" font-family="Lato">create event</text>
+
+  <!-- C-01→C-02 sequential -->
+  <line x1="1920" y1="240" x2="1960" y2="310" stroke="#493628" stroke-width="2" marker-end="url(#ah-solid)"/>
+  <text x="1940" y="280" fill="#493628" font-size="9" font-family="Lato">next</text>
+
+  <!-- C-02→C-03 -->
+  <line x1="1920" y1="440" x2="1780" y2="510" stroke="#493628" stroke-width="2" marker-end="url(#ah-solid)"/>
+  <text x="1830" y="480" fill="#493628" font-size="9" font-family="Lato">next</text>
+
+  <!-- C-03→C-04 -->
+  <line x1="1780" y1="640" x2="1960" y2="710" stroke="#493628" stroke-width="2" marker-end="url(#ah-solid)"/>
+  <text x="1860" y="678" fill="#493628" font-size="9" font-family="Lato">next</text>
+
+  <!-- C-04→C-05 -->
+  <line x1="2100" y1="840" x2="2100" y2="910" stroke="#493628" stroke-width="2" marker-end="url(#ah-solid)"/>
+  <text x="2108" y="880" fill="#493628" font-size="9" font-family="Lato">next</text>
+
+  <!-- C-05→C-06 -->
+  <line x1="1960" y1="1040" x2="1820" y2="1110" stroke="#493628" stroke-width="2" marker-end="url(#ah-solid)"/>
+  <text x="1870" y="1078" fill="#493628" font-size="9" font-family="Lato">next</text>
+
+  <!-- C-06→C-07 -->
+  <line x1="1820" y1="1240" x2="1960" y2="1310" stroke="#493628" stroke-width="2" marker-end="url(#ah-solid)"/>
+  <text x="1870" y="1278" fill="#493628" font-size="9" font-family="Lato">next</text>
+
+  <!-- C-07 → E-04 "published" -->
+  <path d="M1960,1400 Q1600,1300 1400,570" fill="none" stroke="#493628" stroke-width="2" marker-end="url(#ah-solid)"/>
+  <text x="1580" y="1000" fill="#493628" font-size="10" font-family="Lato">published</text>
+
+  <!-- E-04 → C-08 "edit event" -->
+  <path d="M1430,560 Q1600,620 1700,1510" fill="none" stroke="#493628" stroke-width="2" marker-end="url(#ah-solid)"/>
+  <text x="1590" y="1040" fill="#493628" font-size="10" font-family="Lato">edit event</text>
+
+  <!-- E-01 → P-01 "view host" -->
+  <path d="M1200,250 Q900,1200 350,1800" fill="none" stroke="#493628" stroke-width="2" marker-end="url(#ah-solid)"/>
+  <text x="700" y="1200" fill="#493628" font-size="10" font-family="Lato">view host</text>
+
+  <!-- D-02 → P-02 "my profile" -->
+  <path d="M700,460 Q500,1300 530,1800" fill="none" stroke="#493628" stroke-width="2" marker-end="url(#ah-solid)"/>
+  <text x="540" y="1200" fill="#493628" font-size="10" font-family="Lato">my profile</text>
+
+  <!-- D-02 → P-03 "my events" -->
+  <path d="M800,460 Q750,1300 730,1800" fill="none" stroke="#493628" stroke-width="2" marker-end="url(#ah-solid)"/>
+  <text x="790" y="1200" fill="#493628" font-size="10" font-family="Lato">my events</text>
+
+  <!-- D-02 → N-01 "notifications bell" -->
+  <path d="M850,460 Q1100,1400 1100,2050" fill="none" stroke="#493628" stroke-width="2" marker-end="url(#ah-solid)"/>
+  <text x="1010" y="1400" fill="#493628" font-size="10" font-family="Lato">notifications</text>
+
+  <!-- D-02 → ADM-01 "admin panel" (dashed) -->
+  <path d="M870,440 Q1400,1600 1480,2050" fill="none" stroke="#AB886D" stroke-width="1.5" stroke-dasharray="6,4" marker-end="url(#ah-dashed)"/>
+  <text x="1250" y="1500" fill="#AB886D" font-size="10" font-family="Lato">admin panel (admin only)</text>
+</svg>
+
+
+<!-- ═══════════════ GROUP LABELS ═══════════════ -->
+<div class="group-label" style="top:68px;left:60px;background:var(--grp-landing)">Landing</div>
+<div class="group-label" style="top:280px;left:60px;background:var(--grp-auth)">Auth</div>
+<div class="group-label" style="top:78px;left:600px;background:var(--grp-discovery)">Discovery</div>
+<div class="group-label" style="top:78px;left:1130px;background:var(--grp-event)">Event</div>
+<div class="group-label" style="top:78px;left:1700px;background:var(--grp-create)">Create / Edit</div>
+<div class="group-label" style="top:1720px;left:120px;background:var(--grp-profile)">Profile</div>
+<div class="group-label" style="top:1970px;left:1050px;background:var(--grp-notification)">Notification</div>
+<div class="group-label" style="top:1970px;left:1400px;background:var(--grp-admin)">Admin</div>
+<div class="group-label" style="top:1970px;left:2300px;background:var(--grp-error)">Error</div>
+
+
+<!-- ═══════════════ L-01 ═══════════════ -->
+<div class="card" style="top:100px;left:80px" id="L-01">
+  <div class="card-header" style="background:var(--grp-landing)">
+    <span class="screen-id">L-01</span><span class="role-badge">G / U</span>
+  </div>
+  <div class="card-name">Landing Page</div>
+  <div class="card-wireframe">
+    <div class="wf wf-nav"></div>
+    <!-- logo placeholder -->
+    <div class="wf wf-img" style="top:20%;left:30%;width:40%;height:22%"></div>
+    <!-- tagline -->
+    <div class="wf wf-txt" style="top:48%;left:20%;width:60%;height:6%"></div>
+    <!-- buttons -->
+    <div class="wf wf-btn" style="top:62%;left:12%;width:22%;height:10%"></div>
+    <div class="wf wf-btn" style="top:62%;left:40%;width:22%;height:10%"></div>
+    <div class="wf wf-btn" style="top:62%;left:68%;width:22%;height:10%"></div>
+  </div>
+  <div class="card-desc">Logo + tagline + Guest/Sign In/Sign Up</div>
+</div>
+
+<!-- ═══════════════ A-01 ═══════════════ -->
+<div class="card" style="top:320px;left:60px" id="A-01">
+  <div class="card-header" style="background:var(--grp-auth)">
+    <span class="screen-id">A-01</span><span class="role-badge">G</span>
+  </div>
+  <div class="card-name">Login</div>
+  <div class="card-wireframe">
+    <div class="wf wf-nav"></div>
+    <div class="wf wf-form-field" style="top:18%;"></div>
+    <div class="wf wf-form-field" style="top:34%;"></div>
+    <div class="wf wf-btn" style="top:50%;left:25%;width:50%;height:12%"></div>
+    <div class="wf" style="top:68%;left:15%;width:70%;height:10%;border:1px solid var(--color-surface);border-radius:3px;text-align:center;font-size:7px;color:var(--color-mid);display:flex;align-items:center;justify-content:center">
+      <span style="font-size:6px;color:var(--color-mid)">G</span>
+    </div>
+    <div class="wf wf-txt" style="top:84%;left:25%;width:50%;height:5%"></div>
+  </div>
+  <div class="card-desc">Email + password + Google OAuth + Sign Up link</div>
+</div>
+
+<!-- ═══════════════ A-02 ═══════════════ -->
+<div class="card" style="top:530px;left:60px" id="A-02">
+  <div class="card-header" style="background:var(--grp-auth)">
+    <span class="screen-id">A-02</span><span class="role-badge">G</span>
+  </div>
+  <div class="card-name">Register Step 1</div>
+  <div class="card-wireframe">
+    <div class="wf wf-nav"></div>
+    <div class="wf wf-step" style="top:14%;left:28%"></div>
+    <div class="wf wf-step inactive" style="top:14%;left:46%"></div>
+    <div class="wf wf-form-field" style="top:28%;"></div>
+    <div class="wf wf-form-field" style="top:42%;"></div>
+    <div class="wf wf-form-field" style="top:56%;"></div>
+    <div class="wf wf-btn" style="top:74%;left:30%;width:40%;height:12%"></div>
+  </div>
+  <div class="card-desc">Email, username, password + Next</div>
+</div>
+
+<!-- ═══════════════ A-03 ═══════════════ -->
+<div class="card" style="top:740px;left:60px" id="A-03">
+  <div class="card-header" style="background:var(--grp-auth)">
+    <span class="screen-id">A-03</span><span class="role-badge">G</span>
+  </div>
+  <div class="card-name">Register Step 2</div>
+  <div class="card-wireframe">
+    <div class="wf wf-nav"></div>
+    <div class="wf wf-step inactive" style="top:14%;left:28%"></div>
+    <div class="wf wf-step" style="top:14%;left:46%"></div>
+    <div class="wf wf-img" style="top:26%;left:35%;width:30%;height:20%;border-radius:50%"></div>
+    <div class="wf wf-form-field" style="top:52%;"></div>
+    <div class="wf" style="top:66%;left:8%;width:6%;height:6%;border:1px solid var(--color-mid);border-radius:1px"></div>
+    <div class="wf wf-txt" style="top:67%;left:18%;width:50%;height:4%"></div>
+    <div class="wf wf-btn" style="top:78%;left:25%;width:50%;height:12%"></div>
+  </div>
+  <div class="card-desc">Profile info, avatar, ToS + Complete</div>
+</div>
+
+<!-- ═══════════════ D-01 ═══════════════ -->
+<div class="card" style="top:110px;left:620px" id="D-01">
+  <div class="card-header" style="background:var(--grp-discovery)">
+    <span class="screen-id">D-01</span><span class="role-badge">G</span>
+  </div>
+  <div class="card-name">Discovery &#8212; Map (Guest)</div>
+  <div class="card-wireframe">
+    <div class="wf wf-nav"></div>
+    <div class="wf wf-map" style="top:10%;left:0;right:0;bottom:0"></div>
+    <div class="wf wf-pin" style="top:35%;left:30%"></div>
+    <div class="wf wf-pin" style="top:55%;left:60%"></div>
+    <div class="wf wf-pin" style="top:25%;left:70%"></div>
+    <div class="wf" style="top:40%;left:55%;width:30%;height:16%;border:1px solid var(--color-surface);background:#fff;border-radius:3px"></div>
+  </div>
+  <div class="card-desc">Map + event pins + limited tooltip</div>
+</div>
+
+<!-- ═══════════════ D-02 ═══════════════ -->
+<div class="card" style="top:320px;left:620px" id="D-02">
+  <div class="card-header" style="background:var(--grp-discovery)">
+    <span class="screen-id">D-02</span><span class="role-badge">U</span>
+  </div>
+  <div class="card-name">Discovery &#8212; Map (Registered)</div>
+  <div class="card-wireframe">
+    <div class="wf wf-nav"></div>
+    <div class="wf wf-side" style="top:10%"></div>
+    <div class="wf wf-map" style="top:10%;left:0;right:28%;bottom:0"></div>
+    <div class="wf wf-pin" style="top:35%;left:20%"></div>
+    <div class="wf wf-pin" style="top:55%;left:45%"></div>
+    <div class="wf wf-pin" style="top:25%;left:50%"></div>
+  </div>
+  <div class="card-desc">Map + pins + sidebar filters + bookmark/going</div>
+</div>
+
+<!-- ═══════════════ D-03 ═══════════════ -->
+<div class="card" style="top:530px;left:600px" id="D-03">
+  <div class="card-header" style="background:var(--grp-discovery)">
+    <span class="screen-id">D-03</span><span class="role-badge">G / U</span>
+  </div>
+  <div class="card-name">Discovery &#8212; List View</div>
+  <div class="card-wireframe">
+    <div class="wf wf-nav"></div>
+    <!-- grid of cards -->
+    <div class="wf" style="top:14%;left:4%;width:28%;height:36%;border:1px solid var(--color-surface);border-radius:3px;background:#fff"></div>
+    <div class="wf" style="top:14%;left:36%;width:28%;height:36%;border:1px solid var(--color-surface);border-radius:3px;background:#fff"></div>
+    <div class="wf" style="top:14%;left:68%;width:28%;height:36%;border:1px solid var(--color-surface);border-radius:3px;background:#fff"></div>
+    <div class="wf" style="top:56%;left:4%;width:28%;height:36%;border:1px solid var(--color-surface);border-radius:3px;background:#fff"></div>
+    <div class="wf" style="top:56%;left:36%;width:28%;height:36%;border:1px solid var(--color-surface);border-radius:3px;background:#fff"></div>
+    <div class="wf" style="top:56%;left:68%;width:28%;height:36%;border:1px solid var(--color-surface);border-radius:3px;background:#fff"></div>
+  </div>
+  <div class="card-desc">Grid of EventCards: title, date, category</div>
+</div>
+
+<!-- ═══════════════ D-04 ═══════════════ -->
+<div class="card" style="top:530px;left:860px" id="D-04">
+  <div class="card-header" style="background:var(--grp-discovery)">
+    <span class="screen-id">D-04</span><span class="role-badge">U</span>
+  </div>
+  <div class="card-name">Filters Panel (open)</div>
+  <div class="card-wireframe">
+    <div class="wf wf-nav"></div>
+    <!-- category filter -->
+    <div class="wf wf-txt" style="top:14%;left:8%;width:40%;height:5%"></div>
+    <div class="wf" style="top:22%;left:8%;right:8%;height:10%;border:1px solid var(--color-surface);border-radius:3px"></div>
+    <!-- distance slider -->
+    <div class="wf wf-txt" style="top:36%;left:8%;width:40%;height:5%"></div>
+    <div class="wf" style="top:44%;left:8%;right:8%;height:4%;border:none;background:var(--color-surface);border-radius:2px"></div>
+    <div class="wf" style="top:43%;left:40%;width:8%;height:6%;border-radius:50%;background:var(--color-mid);border:none"></div>
+    <!-- date range -->
+    <div class="wf wf-txt" style="top:54%;left:8%;width:40%;height:5%"></div>
+    <div class="wf" style="top:62%;left:8%;width:36%;height:10%;border:1px solid var(--color-surface);border-radius:3px"></div>
+    <div class="wf" style="top:62%;left:52%;width:36%;height:10%;border:1px solid var(--color-surface);border-radius:3px"></div>
+    <!-- quick filters -->
+    <div class="wf wf-badge" style="top:78%;left:8%;width:18%;height:8%"></div>
+    <div class="wf wf-badge" style="top:78%;left:30%;width:22%;height:8%"></div>
+    <div class="wf wf-badge" style="top:78%;left:56%;width:28%;height:8%"></div>
+  </div>
+  <div class="card-desc">Category, distance, date, quick filters, a11y</div>
+</div>
+
+<!-- ═══════════════ E-01 ═══════════════ -->
+<div class="card" style="top:110px;left:1130px" id="E-01">
+  <div class="card-header" style="background:var(--grp-event)">
+    <span class="screen-id">E-01</span><span class="role-badge">U</span>
+  </div>
+  <div class="card-name">Event Detail &#8212; Public (User)</div>
+  <div class="card-wireframe">
+    <div class="wf wf-nav"></div>
+    <div class="wf wf-img" style="top:12%;left:4%;width:50%;height:24%"></div>
+    <div class="wf wf-txt" style="top:12%;left:58%;width:36%;height:5%"></div>
+    <div class="wf wf-txt" style="top:20%;left:58%;width:28%;height:4%"></div>
+    <div class="wf wf-map" style="top:28%;left:58%;width:36%;height:16%"></div>
+    <div class="wf wf-btn" style="top:48%;left:4%;width:20%;height:10%"></div>
+    <div class="wf wf-btn" style="top:48%;left:28%;width:24%;height:10%"></div>
+    <div class="wf wf-main" style="top:64%;left:4%;right:4%;height:28%"></div>
+  </div>
+  <div class="card-desc">Gallery + details + Going/Bookmark + comments</div>
+</div>
+
+<!-- ═══════════════ E-02 ═══════════════ -->
+<div class="card" style="top:320px;left:1130px" id="E-02">
+  <div class="card-header" style="background:var(--grp-event)">
+    <span class="screen-id">E-02</span><span class="role-badge">G</span>
+  </div>
+  <div class="card-name">Event Detail &#8212; Public (Guest)</div>
+  <div class="card-wireframe">
+    <div class="wf wf-nav"></div>
+    <div class="wf wf-img" style="top:12%;left:4%;width:50%;height:24%"></div>
+    <div class="wf wf-txt" style="top:12%;left:58%;width:36%;height:5%"></div>
+    <div class="wf wf-txt" style="top:20%;left:58%;width:28%;height:4%"></div>
+    <div class="wf wf-map" style="top:28%;left:58%;width:36%;height:16%"></div>
+    <div class="wf wf-overlay" style="top:48%;left:4%;right:4%;height:44%;display:flex;align-items:center;justify-content:center;border-radius:3px"></div>
+    <div class="wf wf-btn" style="top:62%;left:20%;width:60%;height:10%"></div>
+  </div>
+  <div class="card-desc">Same layout + "Sign in to interact" overlay</div>
+</div>
+
+<!-- ═══════════════ E-03 ═══════════════ -->
+<div class="card" style="top:530px;left:1130px" id="E-03">
+  <div class="card-header" style="background:var(--grp-event)">
+    <span class="screen-id">E-03</span><span class="role-badge">U</span>
+  </div>
+  <div class="card-name">Event Detail &#8212; Private</div>
+  <div class="card-wireframe">
+    <div class="wf wf-nav"></div>
+    <div class="wf wf-lock" style="top:22%;left:40%;width:18%;height:22%"></div>
+    <div class="wf wf-txt" style="top:52%;left:20%;width:60%;height:5%"></div>
+    <div class="wf wf-txt" style="top:62%;left:30%;width:40%;height:4%"></div>
+    <div class="wf wf-txt" style="top:70%;left:32%;width:36%;height:4%"></div>
+  </div>
+  <div class="card-desc">Lock icon + limited info (title, category, date)</div>
+</div>
+
+<!-- ═══════════════ E-04 ═══════════════ -->
+<div class="card" style="top:530px;left:1370px" id="E-04">
+  <div class="card-header" style="background:var(--grp-event)">
+    <span class="screen-id">E-04</span><span class="role-badge">H</span>
+  </div>
+  <div class="card-name">Event Detail &#8212; Private (Host)</div>
+  <div class="card-wireframe">
+    <div class="wf wf-nav"></div>
+    <div class="wf wf-img" style="top:12%;left:4%;width:50%;height:20%"></div>
+    <div class="wf wf-txt" style="top:12%;left:58%;width:36%;height:5%"></div>
+    <div class="wf wf-btn" style="top:36%;left:4%;width:22%;height:9%"></div>
+    <div class="wf wf-btn" style="top:36%;left:30%;width:22%;height:9%"></div>
+    <div class="wf wf-main" style="top:50%;left:4%;right:4%;height:20%"></div>
+    <div class="wf" style="top:74%;left:4%;right:4%;height:20%;border:1px solid var(--color-surface);border-radius:2px"></div>
+  </div>
+  <div class="card-desc">Full detail + edit/cancel + attendee list</div>
+</div>
+
+<!-- ═══════════════ E-05 ═══════════════ -->
+<div class="card" style="top:740px;left:1370px" id="E-05">
+  <div class="card-header" style="background:var(--grp-event)">
+    <span class="screen-id">E-05</span><span class="role-badge">G / U</span>
+  </div>
+  <div class="card-name">Event &#8212; CANCELLED</div>
+  <div class="card-wireframe">
+    <div class="wf wf-nav"></div>
+    <div class="wf wf-banner" style="top:10%;left:0;right:0;height:10%"></div>
+    <div class="wf wf-img" style="top:24%;left:4%;width:50%;height:20%"></div>
+    <div class="wf wf-txt" style="top:24%;left:58%;width:36%;height:5%"></div>
+    <div class="wf wf-main" style="top:50%;left:4%;right:4%;height:40%;opacity:.4"></div>
+  </div>
+  <div class="card-desc">Red CANCELLED banner overlay</div>
+</div>
+
+<!-- ═══════════════ E-06 ═══════════════ -->
+<div class="card" style="top:740px;left:1130px" id="E-06">
+  <div class="card-header" style="background:var(--grp-event)">
+    <span class="screen-id">E-06</span><span class="role-badge">G / U</span>
+  </div>
+  <div class="card-name">Event &#8212; ENDED / Past</div>
+  <div class="card-wireframe">
+    <div class="wf wf-nav"></div>
+    <div class="wf wf-badge" style="top:12%;left:4%;width:28%;height:8%"></div>
+    <div class="wf wf-img" style="top:24%;left:4%;width:50%;height:20%;opacity:.5"></div>
+    <div class="wf wf-txt" style="top:24%;left:58%;width:36%;height:5%;opacity:.5"></div>
+    <div class="wf wf-main" style="top:50%;left:4%;right:4%;height:40%;opacity:.35"></div>
+  </div>
+  <div class="card-desc">"Event Ended" badge + past-tense styling</div>
+</div>
+
+<!-- ═══════════════ E-07 ═══════════════ -->
+<div class="card" style="top:740px;left:1600px" id="E-07">
+  <div class="card-header" style="background:var(--grp-event)">
+    <span class="screen-id">E-07</span><span class="role-badge">G / U</span>
+  </div>
+  <div class="card-name">Event &#8212; FULL / Sold Out</div>
+  <div class="card-wireframe">
+    <div class="wf wf-nav"></div>
+    <div class="wf wf-badge" style="top:12%;left:4%;width:26%;height:8%"></div>
+    <div class="wf wf-img" style="top:24%;left:4%;width:50%;height:20%"></div>
+    <div class="wf wf-txt" style="top:24%;left:58%;width:36%;height:5%"></div>
+    <div class="wf wf-btn" style="top:50%;left:4%;width:24%;height:10%;opacity:.35"></div>
+    <div class="wf wf-main" style="top:66%;left:4%;right:4%;height:28%"></div>
+  </div>
+  <div class="card-desc">"Sold Out" badge + Going btn disabled</div>
+</div>
+
+<!-- ═══════════════ C-01 ═══════════════ -->
+<div class="card" style="top:110px;left:1700px" id="C-01">
+  <div class="card-header" style="background:var(--grp-create)">
+    <span class="screen-id">C-01</span><span class="role-badge">U / H</span>
+  </div>
+  <div class="card-name">Create Step 1</div>
+  <div class="card-wireframe">
+    <div class="wf wf-nav"></div>
+    <div class="wf wf-step" style="top:14%;left:12%"></div>
+    <div class="wf wf-step inactive" style="top:14%;left:24%"></div>
+    <div class="wf wf-step inactive" style="top:14%;left:36%"></div>
+    <div class="wf wf-step inactive" style="top:14%;left:48%"></div>
+    <div class="wf wf-step inactive" style="top:14%;left:60%"></div>
+    <div class="wf wf-step inactive" style="top:14%;left:72%"></div>
+    <div class="wf wf-form-field" style="top:30%;"></div>
+    <div class="wf wf-main" style="top:44%;left:8%;right:8%;height:28%"></div>
+    <div class="wf" style="top:76%;left:8%;right:8%;height:10%;border:1px solid var(--color-surface);border-radius:3px"></div>
+  </div>
+  <div class="card-desc">Title + description + category selector</div>
+</div>
+
+<!-- ═══════════════ C-02 ═══════════════ -->
+<div class="card" style="top:320px;left:1940px" id="C-02">
+  <div class="card-header" style="background:var(--grp-create)">
+    <span class="screen-id">C-02</span><span class="role-badge">U / H</span>
+  </div>
+  <div class="card-name">Create Step 2</div>
+  <div class="card-wireframe">
+    <div class="wf wf-nav"></div>
+    <div class="wf wf-step inactive" style="top:14%;left:12%"></div>
+    <div class="wf wf-step" style="top:14%;left:24%"></div>
+    <div class="wf wf-step inactive" style="top:14%;left:36%"></div>
+    <div class="wf wf-step inactive" style="top:14%;left:48%"></div>
+    <div class="wf wf-step inactive" style="top:14%;left:60%"></div>
+    <div class="wf wf-step inactive" style="top:14%;left:72%"></div>
+    <!-- calendar -->
+    <div class="wf" style="top:28%;left:8%;right:8%;height:36%;border:1px solid var(--color-surface);border-radius:3px;background:#fff"></div>
+    <!-- time fields -->
+    <div class="wf" style="top:70%;left:8%;width:36%;height:12%;border:1px solid var(--color-surface);border-radius:3px"></div>
+    <div class="wf" style="top:70%;left:52%;width:36%;height:12%;border:1px solid var(--color-surface);border-radius:3px"></div>
+  </div>
+  <div class="card-desc">Date picker + start/end time</div>
+</div>
+
+<!-- ═══════════════ C-03 ═══════════════ -->
+<div class="card" style="top:530px;left:1700px" id="C-03">
+  <div class="card-header" style="background:var(--grp-create)">
+    <span class="screen-id">C-03</span><span class="role-badge">U / H</span>
+  </div>
+  <div class="card-name">Create Step 3</div>
+  <div class="card-wireframe">
+    <div class="wf wf-nav"></div>
+    <div class="wf wf-step inactive" style="top:14%;left:12%"></div>
+    <div class="wf wf-step inactive" style="top:14%;left:24%"></div>
+    <div class="wf wf-step" style="top:14%;left:36%"></div>
+    <div class="wf wf-step inactive" style="top:14%;left:48%"></div>
+    <div class="wf wf-step inactive" style="top:14%;left:60%"></div>
+    <div class="wf wf-step inactive" style="top:14%;left:72%"></div>
+    <div class="wf wf-form-field" style="top:28%;"></div>
+    <div class="wf wf-map" style="top:42%;left:8%;right:8%;height:48%"></div>
+    <div class="wf wf-pin" style="top:62%;left:45%"></div>
+  </div>
+  <div class="card-desc">Location picker (map + search bar)</div>
+</div>
+
+<!-- ═══════════════ C-04 ═══════════════ -->
+<div class="card" style="top:740px;left:1940px" id="C-04">
+  <div class="card-header" style="background:var(--grp-create)">
+    <span class="screen-id">C-04</span><span class="role-badge">U / H</span>
+  </div>
+  <div class="card-name">Create Step 4</div>
+  <div class="card-wireframe">
+    <div class="wf wf-nav"></div>
+    <div class="wf wf-step inactive" style="top:14%;left:12%"></div>
+    <div class="wf wf-step inactive" style="top:14%;left:24%"></div>
+    <div class="wf wf-step inactive" style="top:14%;left:36%"></div>
+    <div class="wf wf-step" style="top:14%;left:48%"></div>
+    <div class="wf wf-step inactive" style="top:14%;left:60%"></div>
+    <div class="wf wf-step inactive" style="top:14%;left:72%"></div>
+    <div class="wf wf-img" style="top:28%;left:15%;width:70%;height:50%"></div>
+    <div class="wf wf-btn" style="top:82%;left:30%;width:40%;height:10%"></div>
+  </div>
+  <div class="card-desc">Image upload area</div>
+</div>
+
+<!-- ═══════════════ C-05 ═══════════════ -->
+<div class="card" style="top:950px;left:1940px" id="C-05">
+  <div class="card-header" style="background:var(--grp-create)">
+    <span class="screen-id">C-05</span><span class="role-badge">U / H</span>
+  </div>
+  <div class="card-name">Create Step 5</div>
+  <div class="card-wireframe">
+    <div class="wf wf-nav"></div>
+    <div class="wf wf-step inactive" style="top:14%;left:12%"></div>
+    <div class="wf wf-step inactive" style="top:14%;left:24%"></div>
+    <div class="wf wf-step inactive" style="top:14%;left:36%"></div>
+    <div class="wf wf-step inactive" style="top:14%;left:48%"></div>
+    <div class="wf wf-step" style="top:14%;left:60%"></div>
+    <div class="wf wf-step inactive" style="top:14%;left:72%"></div>
+    <div class="wf wf-form-field" style="top:28%;"></div>
+    <div class="wf wf-form-field" style="top:42%;"></div>
+    <div class="wf wf-form-field" style="top:56%;"></div>
+    <!-- toggle rows -->
+    <div class="wf" style="top:72%;left:8%;width:36%;height:8%;border:none;background:var(--color-surface);border-radius:10px"></div>
+    <div class="wf" style="top:72%;left:50%;width:36%;height:8%;border:none;background:var(--color-surface);border-radius:10px"></div>
+  </div>
+  <div class="card-desc">Price, language, health, a11y toggles</div>
+</div>
+
+<!-- ═══════════════ C-06 ═══════════════ -->
+<div class="card" style="top:1160px;left:1700px" id="C-06">
+  <div class="card-header" style="background:var(--grp-create)">
+    <span class="screen-id">C-06</span><span class="role-badge">U / H</span>
+  </div>
+  <div class="card-name">Create Step 6</div>
+  <div class="card-wireframe">
+    <div class="wf wf-nav"></div>
+    <div class="wf wf-step inactive" style="top:14%;left:12%"></div>
+    <div class="wf wf-step inactive" style="top:14%;left:24%"></div>
+    <div class="wf wf-step inactive" style="top:14%;left:36%"></div>
+    <div class="wf wf-step inactive" style="top:14%;left:48%"></div>
+    <div class="wf wf-step inactive" style="top:14%;left:60%"></div>
+    <div class="wf wf-step" style="top:14%;left:72%"></div>
+    <!-- public/private toggle -->
+    <div class="wf wf-btn" style="top:32%;left:10%;width:34%;height:14%"></div>
+    <div class="wf" style="top:32%;left:50%;width:34%;height:14%;border:2px solid var(--color-mid);border-radius:3px"></div>
+    <!-- 18+ toggle -->
+    <div class="wf" style="top:54%;left:8%;width:36%;height:8%;border:none;background:var(--color-surface);border-radius:10px"></div>
+    <!-- capacity -->
+    <div class="wf wf-form-field" style="top:70%;"></div>
+  </div>
+  <div class="card-desc">Visibility, 18+ toggle, capacity input</div>
+</div>
+
+<!-- ═══════════════ C-07 ═══════════════ -->
+<div class="card" style="top:1370px;left:1940px" id="C-07">
+  <div class="card-header" style="background:var(--grp-create)">
+    <span class="screen-id">C-07</span><span class="role-badge">U / H</span>
+  </div>
+  <div class="card-name">Create &#8212; Review &amp; Publish</div>
+  <div class="card-wireframe">
+    <div class="wf wf-nav"></div>
+    <div class="wf wf-main" style="top:12%;left:4%;right:4%;height:64%"></div>
+    <!-- summary rows -->
+    <div class="wf wf-txt" style="top:18%;left:8%;width:80%;height:4%"></div>
+    <div class="wf wf-txt" style="top:26%;left:8%;width:70%;height:4%"></div>
+    <div class="wf wf-txt" style="top:34%;left:8%;width:75%;height:4%"></div>
+    <div class="wf wf-txt" style="top:42%;left:8%;width:65%;height:4%"></div>
+    <div class="wf wf-txt" style="top:50%;left:8%;width:78%;height:4%"></div>
+    <div class="wf wf-txt" style="top:58%;left:8%;width:60%;height:4%"></div>
+    <div class="wf wf-btn" style="top:82%;left:25%;width:50%;height:12%"></div>
+  </div>
+  <div class="card-desc">Summary of all steps + Publish button</div>
+</div>
+
+<!-- ═══════════════ C-08 ═══════════════ -->
+<div class="card" style="top:1580px;left:1700px" id="C-08">
+  <div class="card-header" style="background:var(--grp-create)">
+    <span class="screen-id">C-08</span><span class="role-badge">H</span>
+  </div>
+  <div class="card-name">Edit Event</div>
+  <div class="card-wireframe">
+    <div class="wf wf-nav"></div>
+    <div class="wf wf-step" style="top:14%;left:12%"></div>
+    <div class="wf wf-step" style="top:14%;left:24%"></div>
+    <div class="wf wf-step" style="top:14%;left:36%"></div>
+    <div class="wf wf-step" style="top:14%;left:48%"></div>
+    <div class="wf wf-step" style="top:14%;left:60%"></div>
+    <div class="wf wf-step" style="top:14%;left:72%"></div>
+    <div class="wf wf-form-field" style="top:30%;"></div>
+    <div class="wf wf-main" style="top:44%;left:8%;right:8%;height:28%"></div>
+    <div class="wf wf-btn" style="top:78%;left:25%;width:50%;height:12%"></div>
+  </div>
+  <div class="card-desc">Multi-step form pre-filled + Save</div>
+</div>
+
+<!-- ═══════════════ C-09 ═══════════════ -->
+<div class="card" style="top:1580px;left:1940px" id="C-09">
+  <div class="card-header" style="background:var(--grp-create)">
+    <span class="screen-id">C-09</span><span class="role-badge">U / H</span>
+  </div>
+  <div class="card-name">Multi-Location Route</div>
+  <div class="card-wireframe">
+    <div class="wf wf-nav"></div>
+    <div class="wf wf-map" style="top:10%;left:0;right:0;bottom:0"></div>
+    <div class="wf wf-pin" style="top:30%;left:20%"></div>
+    <div class="wf wf-pin" style="top:50%;left:50%"></div>
+    <div class="wf wf-pin" style="top:70%;left:75%"></div>
+    <div class="wf wf-route" style="top:35%;left:22%;width:30%;height:0"></div>
+    <div class="wf wf-route" style="top:55%;left:52%;width:25%;height:0;transform:rotate(20deg)"></div>
+  </div>
+  <div class="card-desc">Map with pins connected by route line</div>
+</div>
+
+<!-- ═══════════════ C-10 ═══════════════ -->
+<div class="card" style="top:1790px;left:1940px" id="C-10">
+  <div class="card-header" style="background:var(--grp-create)">
+    <span class="screen-id">C-10</span><span class="role-badge">U / H</span>
+  </div>
+  <div class="card-name">Itinerary Builder</div>
+  <div class="card-wireframe">
+    <div class="wf wf-nav"></div>
+    <!-- timeline -->
+    <div class="wf" style="top:14%;left:18%;width:2px;height:78%;background:var(--color-mid);border:none"></div>
+    <div class="wf" style="top:18%;left:14%;width:10px;height:10px;border-radius:50%;background:var(--color-dark);border:none"></div>
+    <div class="wf wf-main" style="top:16%;left:26%;width:66%;height:14%"></div>
+    <div class="wf" style="top:38%;left:14%;width:10px;height:10px;border-radius:50%;background:var(--color-dark);border:none"></div>
+    <div class="wf wf-main" style="top:36%;left:26%;width:66%;height:14%"></div>
+    <div class="wf" style="top:58%;left:14%;width:10px;height:10px;border-radius:50%;background:var(--color-dark);border:none"></div>
+    <div class="wf wf-main" style="top:56%;left:26%;width:66%;height:14%"></div>
+    <div class="wf" style="top:78%;left:14%;width:10px;height:10px;border-radius:50%;background:var(--color-dark);border:none"></div>
+    <div class="wf wf-main" style="top:76%;left:26%;width:66%;height:14%"></div>
+  </div>
+  <div class="card-desc">Timeline view with time segments</div>
+</div>
+
+<!-- ═══════════════ P-01 ═══════════════ -->
+<div class="card" style="top:1760px;left:120px" id="P-01">
+  <div class="card-header" style="background:var(--grp-profile)">
+    <span class="screen-id">P-01</span><span class="role-badge">G / U</span>
+  </div>
+  <div class="card-name">Host Profile</div>
+  <div class="card-wireframe">
+    <div class="wf wf-nav"></div>
+    <div class="wf wf-img" style="top:16%;left:35%;width:30%;height:24%;border-radius:50%"></div>
+    <div class="wf wf-txt" style="top:44%;left:25%;width:50%;height:5%"></div>
+    <!-- stars -->
+    <div class="wf wf-badge" style="top:52%;left:32%;width:36%;height:6%"></div>
+    <div class="wf wf-list-row" style="top:64%"></div>
+    <div class="wf wf-list-row" style="top:82%"></div>
+  </div>
+  <div class="card-desc">Avatar + name + rating + hosted events</div>
+</div>
+
+<!-- ═══════════════ P-02 ═══════════════ -->
+<div class="card" style="top:1760px;left:380px" id="P-02">
+  <div class="card-header" style="background:var(--grp-profile)">
+    <span class="screen-id">P-02</span><span class="role-badge">U</span>
+  </div>
+  <div class="card-name">My Profile / Settings</div>
+  <div class="card-wireframe">
+    <div class="wf wf-nav"></div>
+    <div class="wf wf-img" style="top:14%;left:38%;width:24%;height:18%;border-radius:50%"></div>
+    <div class="wf wf-form-field" style="top:36%;"></div>
+    <div class="wf wf-form-field" style="top:50%;"></div>
+    <div class="wf" style="top:64%;left:8%;width:36%;height:8%;border:none;background:var(--color-surface);border-radius:10px"></div>
+    <div class="wf" style="top:76%;left:8%;width:36%;height:8%;border:none;background:var(--color-surface);border-radius:10px"></div>
+    <div class="wf wf-btn" style="top:88%;left:30%;width:40%;height:9%"></div>
+  </div>
+  <div class="card-desc">Edit name, email, avatar, prefs, privacy</div>
+</div>
+
+<!-- ═══════════════ P-03 ═══════════════ -->
+<div class="card" style="top:1760px;left:640px" id="P-03">
+  <div class="card-header" style="background:var(--grp-profile)">
+    <span class="screen-id">P-03</span><span class="role-badge">U / H</span>
+  </div>
+  <div class="card-name">My Events &#8212; Upcoming</div>
+  <div class="card-wireframe">
+    <div class="wf wf-nav"></div>
+    <div class="wf wf-list-row" style="top:16%"></div>
+    <div class="wf wf-badge" style="top:18%;left:75%;width:18%;height:6%"></div>
+    <div class="wf wf-list-row" style="top:36%"></div>
+    <div class="wf wf-badge" style="top:38%;left:75%;width:18%;height:6%"></div>
+    <div class="wf wf-list-row" style="top:56%"></div>
+    <div class="wf wf-badge" style="top:58%;left:75%;width:18%;height:6%"></div>
+    <div class="wf wf-list-row" style="top:76%"></div>
+    <div class="wf wf-badge" style="top:78%;left:75%;width:18%;height:6%"></div>
+  </div>
+  <div class="card-desc">Upcoming events table with status badges</div>
+</div>
+
+<!-- ═══════════════ P-04 ═══════════════ -->
+<div class="card" style="top:1760px;left:900px" id="P-04">
+  <div class="card-header" style="background:var(--grp-profile)">
+    <span class="screen-id">P-04</span><span class="role-badge">U / H</span>
+  </div>
+  <div class="card-name">My Events &#8212; Past</div>
+  <div class="card-wireframe">
+    <div class="wf wf-nav"></div>
+    <div class="wf wf-list-row" style="top:16%;opacity:.6"></div>
+    <div class="wf wf-badge" style="top:18%;left:70%;width:22%;height:6%;opacity:.6"></div>
+    <div class="wf wf-list-row" style="top:36%;opacity:.6"></div>
+    <div class="wf wf-badge" style="top:38%;left:70%;width:22%;height:6%;opacity:.6"></div>
+    <div class="wf wf-list-row" style="top:56%;opacity:.6"></div>
+    <div class="wf wf-badge" style="top:58%;left:70%;width:22%;height:6%;opacity:.6"></div>
+  </div>
+  <div class="card-desc">Past events with "Ended" badges</div>
+</div>
+
+<!-- ═══════════════ N-01 ═══════════════ -->
+<div class="card" style="top:2010px;left:1050px" id="N-01">
+  <div class="card-header" style="background:var(--grp-notification)">
+    <span class="screen-id">N-01</span><span class="role-badge">U</span>
+  </div>
+  <div class="card-name">Notifications List</div>
+  <div class="card-wireframe">
+    <div class="wf wf-nav"></div>
+    <!-- notification rows -->
+    <div class="wf" style="top:14%;left:4%;right:4%;height:16%;border:1px solid var(--color-surface);border-radius:3px;background:#fff"></div>
+    <div class="wf wf-pin" style="top:18%;left:8%"></div>
+    <div class="wf" style="top:34%;left:4%;right:4%;height:16%;border:1px solid var(--color-surface);border-radius:3px;background:rgba(214,192,179,.2)"></div>
+    <div class="wf wf-pin" style="top:38%;left:8%"></div>
+    <div class="wf" style="top:54%;left:4%;right:4%;height:16%;border:1px solid var(--color-surface);border-radius:3px;background:rgba(214,192,179,.2)"></div>
+    <div class="wf wf-pin" style="top:58%;left:8%"></div>
+    <div class="wf" style="top:74%;left:4%;right:4%;height:16%;border:1px solid var(--color-surface);border-radius:3px;background:#fff"></div>
+    <div class="wf wf-pin" style="top:78%;left:8%"></div>
+  </div>
+  <div class="card-desc">Icon + message + timestamp + read/unread</div>
+</div>
+
+<!-- ═══════════════ ADM-01 ═══════════════ -->
+<div class="card" style="top:2010px;left:1400px" id="ADM-01">
+  <div class="card-header" style="background:var(--grp-admin)">
+    <span class="screen-id">ADM-01</span><span class="role-badge">A</span>
+  </div>
+  <div class="card-name">Admin Dashboard</div>
+  <div class="card-wireframe">
+    <div class="wf wf-nav"></div>
+    <div class="wf wf-side" style="top:10%;left:0;width:24%;right:auto;border-right:1px solid var(--color-surface);border-left:none"></div>
+    <div class="wf wf-list-row" style="top:16%;left:28%;right:4%"></div>
+    <div class="wf wf-list-row" style="top:34%;left:28%;right:4%"></div>
+    <div class="wf wf-list-row" style="top:52%;left:28%;right:4%"></div>
+    <div class="wf wf-list-row" style="top:70%;left:28%;right:4%"></div>
+  </div>
+  <div class="card-desc">Reports queue with event/user report cards</div>
+</div>
+
+<!-- ═══════════════ ADM-02 ═══════════════ -->
+<div class="card" style="top:2010px;left:1660px" id="ADM-02">
+  <div class="card-header" style="background:var(--grp-admin)">
+    <span class="screen-id">ADM-02</span><span class="role-badge">A</span>
+  </div>
+  <div class="card-name">Category Moderation</div>
+  <div class="card-wireframe">
+    <div class="wf wf-nav"></div>
+    <div class="wf wf-list-row" style="top:16%"></div>
+    <div class="wf wf-btn" style="top:18%;left:62%;width:14%;height:8%"></div>
+    <div class="wf" style="top:18%;left:78%;width:14%;height:8%;border:1px solid #c0392b;border-radius:3px"></div>
+    <div class="wf wf-list-row" style="top:36%"></div>
+    <div class="wf wf-btn" style="top:38%;left:62%;width:14%;height:8%"></div>
+    <div class="wf" style="top:38%;left:78%;width:14%;height:8%;border:1px solid #c0392b;border-radius:3px"></div>
+    <div class="wf wf-list-row" style="top:56%"></div>
+    <div class="wf wf-btn" style="top:58%;left:62%;width:14%;height:8%"></div>
+    <div class="wf" style="top:58%;left:78%;width:14%;height:8%;border:1px solid #c0392b;border-radius:3px"></div>
+  </div>
+  <div class="card-desc">Pending categories + approve/reject</div>
+</div>
+
+<!-- ═══════════════ ADM-03 ═══════════════ -->
+<div class="card" style="top:2230px;left:1400px" id="ADM-03">
+  <div class="card-header" style="background:var(--grp-admin)">
+    <span class="screen-id">ADM-03</span><span class="role-badge">A</span>
+  </div>
+  <div class="card-name">User Management</div>
+  <div class="card-wireframe">
+    <div class="wf wf-nav"></div>
+    <!-- table header -->
+    <div class="wf" style="top:14%;left:4%;right:4%;height:10%;background:var(--color-surface);border:none;border-radius:2px 2px 0 0"></div>
+    <!-- table rows -->
+    <div class="wf" style="top:24%;left:4%;right:4%;height:14%;border:none;border-bottom:1px solid var(--color-surface)"></div>
+    <div class="wf wf-btn" style="top:26%;left:72%;width:22%;height:8%"></div>
+    <div class="wf" style="top:38%;left:4%;right:4%;height:14%;border:none;border-bottom:1px solid var(--color-surface)"></div>
+    <div class="wf wf-btn" style="top:40%;left:72%;width:22%;height:8%"></div>
+    <div class="wf" style="top:52%;left:4%;right:4%;height:14%;border:none;border-bottom:1px solid var(--color-surface)"></div>
+    <div class="wf wf-btn" style="top:54%;left:72%;width:22%;height:8%"></div>
+    <div class="wf" style="top:66%;left:4%;right:4%;height:14%;border:none;border-bottom:1px solid var(--color-surface)"></div>
+    <div class="wf wf-btn" style="top:68%;left:72%;width:22%;height:8%"></div>
+  </div>
+  <div class="card-desc">User table with suspend/ban actions</div>
+</div>
+
+<!-- ═══════════════ ADM-04 ═══════════════ -->
+<div class="card" style="top:2230px;left:1660px" id="ADM-04">
+  <div class="card-header" style="background:var(--grp-admin)">
+    <span class="screen-id">ADM-04</span><span class="role-badge">A</span>
+  </div>
+  <div class="card-name">Rate Limit Settings</div>
+  <div class="card-wireframe">
+    <div class="wf wf-nav"></div>
+    <div class="wf wf-form-field" style="top:18%;"></div>
+    <div class="wf wf-form-field" style="top:34%;"></div>
+    <div class="wf wf-form-field" style="top:50%;"></div>
+    <div class="wf wf-form-field" style="top:66%;"></div>
+    <div class="wf wf-btn" style="top:82%;left:25%;width:50%;height:12%"></div>
+  </div>
+  <div class="card-desc">Config form for rate limits per user</div>
+</div>
+
+<!-- ═══════════════ ERR-01 ═══════════════ -->
+<div class="card" style="top:2010px;left:2300px" id="ERR-01">
+  <div class="card-header" style="background:var(--grp-error)">
+    <span class="screen-id">ERR-01</span><span class="role-badge">G / U</span>
+  </div>
+  <div class="card-name">404 Not Found</div>
+  <div class="card-wireframe">
+    <div class="wf wf-nav"></div>
+    <div class="wf wf-img" style="top:18%;left:25%;width:50%;height:30%"></div>
+    <div class="wf wf-txt" style="top:54%;left:22%;width:56%;height:6%"></div>
+    <div class="wf wf-txt" style="top:64%;left:28%;width:44%;height:4%"></div>
+    <div class="wf wf-btn" style="top:76%;left:30%;width:40%;height:12%"></div>
+  </div>
+  <div class="card-desc">Illustration + "Page not found" + back</div>
+</div>
+
+<!-- ═══════════════ ERR-02 ═══════════════ -->
+<div class="card" style="top:2230px;left:2300px" id="ERR-02">
+  <div class="card-header" style="background:var(--grp-error)">
+    <span class="screen-id">ERR-02</span><span class="role-badge">G / U</span>
+  </div>
+  <div class="card-name">Access Denied</div>
+  <div class="card-wireframe">
+    <div class="wf wf-nav"></div>
+    <div class="wf wf-lock" style="top:22%;left:38%;width:24%;height:24%"></div>
+    <div class="wf wf-txt" style="top:54%;left:18%;width:64%;height:6%"></div>
+    <div class="wf wf-txt" style="top:64%;left:24%;width:52%;height:4%"></div>
+    <div class="wf wf-btn" style="top:76%;left:30%;width:40%;height:12%"></div>
+  </div>
+  <div class="card-desc">Lock icon + "No access" + back button</div>
+</div>
+
+<!-- ═══════════════ ERR-03 ═══════════════ -->
+<div class="card" style="top:2450px;left:2300px" id="ERR-03">
+  <div class="card-header" style="background:var(--grp-error)">
+    <span class="screen-id">ERR-03</span><span class="role-badge">G / U</span>
+  </div>
+  <div class="card-name">Underage Warning</div>
+  <div class="card-wireframe">
+    <div class="wf wf-nav"></div>
+    <!-- warning triangle -->
+    <div class="wf" style="top:20%;left:38%;width:0;height:0;border:none;border-left:14px solid transparent;border-right:14px solid transparent;border-bottom:24px solid #e67e22"></div>
+    <div class="wf wf-txt" style="top:54%;left:20%;width:60%;height:6%"></div>
+    <div class="wf wf-txt" style="top:64%;left:22%;width:56%;height:4%"></div>
+    <div class="wf wf-btn" style="top:76%;left:15%;width:30%;height:12%"></div>
+    <div class="wf" style="top:76%;left:55%;width:30%;height:12%;border:2px solid var(--color-mid);border-radius:3px"></div>
+  </div>
+  <div class="card-desc">Warning + "18+ event" + age verification</div>
+</div>
+
+</div><!-- end canvas -->
+
+<!-- ═══════════════ LEGEND ═══════════════ -->
+<div id="legend">
+  <h3>Legend</h3>
+  <div class="leg-row"><div class="leg-swatch" style="background:var(--grp-landing)"></div> Landing</div>
+  <div class="leg-row"><div class="leg-swatch" style="background:var(--grp-auth)"></div> Auth</div>
+  <div class="leg-row"><div class="leg-swatch" style="background:var(--grp-discovery)"></div> Discovery</div>
+  <div class="leg-row"><div class="leg-swatch" style="background:var(--grp-event)"></div> Event</div>
+  <div class="leg-row"><div class="leg-swatch" style="background:var(--grp-create)"></div> Create / Edit</div>
+  <div class="leg-row"><div class="leg-swatch" style="background:var(--grp-profile)"></div> Profile</div>
+  <div class="leg-row"><div class="leg-swatch" style="background:var(--grp-notification)"></div> Notification</div>
+  <div class="leg-row"><div class="leg-swatch" style="background:var(--grp-admin)"></div> Admin</div>
+  <div class="leg-row"><div class="leg-swatch" style="background:var(--grp-error)"></div> Error</div>
+  <hr style="margin:8px 0;border:none;border-top:1px solid var(--color-surface)">
+  <div class="leg-row"><svg width="20" height="10"><line x1="0" y1="5" x2="20" y2="5" stroke="#493628" stroke-width="2"/></svg> Main flow</div>
+  <div class="leg-row"><svg width="20" height="10"><line x1="0" y1="5" x2="20" y2="5" stroke="#AB886D" stroke-width="1.5" stroke-dasharray="4,3"/></svg> Edge / alt flow</div>
+  <hr style="margin:8px 0;border:none;border-top:1px solid var(--color-surface)">
+  <div class="leg-row"><span class="role-badge" style="background:var(--color-mid);font-size:9px">G</span> Guest</div>
+  <div class="leg-row"><span class="role-badge" style="background:var(--color-mid);font-size:9px">U</span> Registered User</div>
+  <div class="leg-row"><span class="role-badge" style="background:var(--color-mid);font-size:9px">H</span> Host</div>
+  <div class="leg-row"><span class="role-badge" style="background:var(--color-mid);font-size:9px">A</span> Admin</div>
+</div>
+
+</body>
+</html>

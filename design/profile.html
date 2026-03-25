@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Profile — Social Event Mapper</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --color-bg: #E4E0E1;
+      --color-surface: #D6C0B3;
+      --color-mid: #AB886D;
+      --color-dark: #493628;
+      --color-bg-alpha: rgba(228, 224, 225, 0.7);
+      --color-surface-alpha: rgba(214, 192, 179, 0.6);
+      --color-mid-alpha: rgba(171, 136, 109, 0.3);
+      --color-dark-alpha: rgba(73, 54, 40, 0.15);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Lato', sans-serif;
+      background: var(--color-bg);
+      color: var(--color-dark);
+      min-height: 100vh;
+    }
+
+    h1, h2, h3, h4, h5, h6, .font-heading {
+      font-family: 'Playfair Display', serif;
+    }
+
+    .font-body { font-family: 'Lato', sans-serif; }
+
+    /* Toggle switch */
+    .toggle-track {
+      width: 44px; height: 24px; border-radius: 12px;
+      background: #ccc; position: relative; cursor: pointer;
+      transition: background 0.2s;
+    }
+    .toggle-track.active { background: var(--color-mid); }
+    .toggle-track .toggle-thumb {
+      width: 20px; height: 20px; border-radius: 50%;
+      background: #fff; position: absolute; top: 2px; left: 2px;
+      transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .toggle-track.active .toggle-thumb { transform: translateX(20px); }
+
+    /* Progress bar */
+    .progress-bar { height: 6px; border-radius: 3px; background: var(--color-bg); overflow: hidden; }
+    .progress-bar .fill { height: 100%; border-radius: 3px; background: var(--color-mid); transition: width 0.3s; }
+
+    /* Card hover */
+    .event-card { transition: transform 0.2s, box-shadow 0.2s; }
+    .event-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(73,54,40,0.15); }
+
+    /* Button hover */
+    .btn-hover { transition: all 0.2s; }
+    .btn-hover:hover { opacity: 0.85; transform: translateY(-1px); }
+
+    /* Muted card for past events */
+    .muted-card { opacity: 0.75; }
+    .muted-card:hover { opacity: 1; }
+
+    /* Avatar hover for settings */
+    .avatar-upload:hover { border: 3px dashed var(--color-mid) !important; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: var(--color-bg); }
+    ::-webkit-scrollbar-thumb { background: var(--color-surface); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--color-mid); }
+
+    /* Page tab active style */
+    .page-tab { cursor: pointer; padding: 10px 24px; border-radius: 8px 8px 0 0; font-weight: 700; font-size: 14px; font-family: 'Lato', sans-serif; border: none; transition: all 0.2s; }
+    .page-tab.active { background: var(--color-bg); color: var(--color-dark); }
+    .page-tab:not(.active) { background: var(--color-surface); color: var(--color-mid); }
+    .page-tab:hover:not(.active) { background: var(--color-bg-alpha); }
+  </style>
+</head>
+<body>
+
+  <!-- ========== NAVBAR ========== -->
+  <nav style="background: var(--color-dark);" class="w-full">
+    <div class="max-w-[1280px] mx-auto flex items-center justify-between px-8 py-4">
+      <!-- Left: Logo -->
+      <a href="#" class="font-heading text-white text-xl font-bold tracking-wide" style="text-decoration:none;">Social Event Mapper</a>
+      <!-- Center: Search -->
+      <div class="flex-1 max-w-md mx-8">
+        <div class="relative">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <input type="text" placeholder="Search events..." class="w-full pl-10 pr-4 py-2 rounded-lg bg-white/10 text-white placeholder-white/50 border border-white/10 focus:outline-none focus:border-white/30 text-sm" />
+        </div>
+      </div>
+      <!-- Right: Notification + Avatar -->
+      <div class="flex items-center gap-4">
+        <button class="relative btn-hover">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+          <span class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2" style="border-color: var(--color-dark);"></span>
+        </button>
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold" style="background: var(--color-mid);">EY</div>
+          <span class="text-white text-sm font-medium">Ece Y.</span>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Back Link -->
+  <div class="max-w-[1280px] mx-auto px-8 py-3">
+    <a href="#" class="text-sm font-medium flex items-center gap-1" style="color: var(--color-mid); text-decoration: none;">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg>
+      Back to Discovery
+    </a>
+  </div>
+
+  <!-- ========== PAGE-LEVEL TABS ========== -->
+  <div class="max-w-[1280px] mx-auto px-8">
+    <div class="flex gap-1">
+      <button class="page-tab active" data-page="p01" onclick="switchPage('p01')">P-01 Host Profile</button>
+      <button class="page-tab" data-page="p02" onclick="switchPage('p02')">P-02 My Settings</button>
+      <button class="page-tab" data-page="p03" onclick="switchPage('p03')">P-03/P-04 My Events</button>
+    </div>
+  </div>
+
+  <!-- ========================================================================== -->
+  <!-- P-01: HOST PROFILE PAGE -->
+  <!-- ========================================================================== -->
+  <div id="page-p01" class="page-content">
+    <!-- Hero Banner -->
+    <div class="relative w-full" style="height: 200px; background: linear-gradient(135deg, var(--color-dark) 0%, #5e4434 50%, var(--color-mid) 100%);">
+      <div class="max-w-[1280px] mx-auto relative h-full">
+        <!-- Avatar overlapping bottom of banner -->
+        <div class="absolute left-1/2 -translate-x-1/2" style="bottom: -48px; z-index: 10;">
+          <div class="w-24 h-24 rounded-full border-4 border-white flex items-center justify-center" style="background: var(--color-mid);">
+            <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Profile Info -->
+    <div class="max-w-[1280px] mx-auto px-8 pt-16 pb-8 text-center">
+      <h1 class="font-heading text-3xl font-bold" style="color: var(--color-dark);">Arda Turan</h1>
+      <p class="text-sm mt-1" style="color: var(--color-mid);">@ardaturan</p>
+      <p class="mt-3 text-sm leading-relaxed mx-auto" style="max-width: 600px; color: var(--color-dark);">
+        Football lover &amp; party enthusiast. Organizing the best events in Istanbul since 2024.
+      </p>
+
+      <!-- Stats row -->
+      <div class="flex items-center justify-center gap-8 mt-6">
+        <div class="text-center">
+          <span class="text-xl font-bold" style="color: var(--color-dark);">12</span>
+          <span class="text-xs block" style="color: var(--color-mid);">Events</span>
+        </div>
+        <div class="w-px h-8" style="background: var(--color-surface);"></div>
+        <div class="text-center">
+          <span class="text-xl font-bold" style="color: var(--color-dark);">4.8 &#9733;</span>
+          <span class="text-xs block" style="color: var(--color-mid);">Rating</span>
+        </div>
+        <div class="w-px h-8" style="background: var(--color-surface);"></div>
+        <div class="text-center">
+          <span class="text-xl font-bold" style="color: var(--color-dark);">342</span>
+          <span class="text-xs block" style="color: var(--color-mid);">Followers</span>
+        </div>
+      </div>
+
+      <!-- Contact info -->
+      <div class="flex items-center justify-center gap-6 mt-4">
+        <span class="flex items-center gap-1 text-sm" style="color: var(--color-mid);">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 4l-10 8L2 4"/></svg>
+          arda@example.com
+        </span>
+        <span class="flex items-center gap-1 text-sm" style="color: var(--color-mid);">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          Istanbul, Turkey
+        </span>
+      </div>
+
+      <!-- Action buttons -->
+      <div class="flex items-center justify-center gap-3 mt-5">
+        <button class="btn-hover flex items-center gap-1 px-4 py-2 rounded-lg border text-sm font-medium" style="border-color: #d44; color: #d44;">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg>
+          Report
+        </button>
+      </div>
+    </div>
+
+    <!-- Content Tabs -->
+    <div class="max-w-[1280px] mx-auto px-8">
+      <div class="flex gap-0 border-b" style="border-color: var(--color-surface);">
+        <button class="profile-tab active px-6 py-3 text-sm font-bold" style="border-bottom: 3px solid var(--color-dark); color: var(--color-dark);" onclick="switchProfileTab('upcoming')" data-ptab="upcoming">Upcoming Events</button>
+        <button class="profile-tab px-6 py-3 text-sm font-medium" style="border-bottom: 3px solid transparent; color: var(--color-mid);" onclick="switchProfileTab('past')" data-ptab="past">Past Events</button>
+        <button class="profile-tab px-6 py-3 text-sm font-medium" style="border-bottom: 3px solid transparent; color: var(--color-mid);" onclick="switchProfileTab('about')" data-ptab="about">About</button>
+      </div>
+
+      <!-- Upcoming Events Grid -->
+      <div id="ptab-upcoming" class="profile-tab-content py-8 grid grid-cols-3 gap-6">
+        <!-- Card 1 -->
+        <div class="event-card rounded-xl overflow-hidden" style="background: white;">
+          <div class="relative h-40 flex items-center justify-center" style="background: var(--color-mid);">
+            <svg class="w-12 h-12 text-white/40" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="4"/><circle cx="8" cy="8" r="2"/><path d="M22 14l-5-5L2 22"/></svg>
+            <span class="absolute top-3 right-3 text-xs font-bold px-2 py-1 rounded-full bg-green-100 text-green-700">PUBLISHED</span>
+          </div>
+          <div class="p-4">
+            <span class="text-xs font-medium px-2 py-0.5 rounded-full" style="background: var(--color-bg); color: var(--color-mid);">Music / Party</span>
+            <h3 class="font-heading text-base font-semibold mt-2" style="color: var(--color-dark);">Kadikoy Beach Party Night</h3>
+            <p class="text-xs mt-1" style="color: var(--color-mid);">Sat, Mar 28 &middot; 21:00</p>
+            <div class="flex items-center justify-between mt-3">
+              <span class="text-xs font-medium" style="color: var(--color-dark);">12/50 going</span>
+            </div>
+            <div class="progress-bar mt-1"><div class="fill" style="width: 24%;"></div></div>
+          </div>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="event-card rounded-xl overflow-hidden" style="background: white;">
+          <div class="relative h-40 flex items-center justify-center" style="background: var(--color-mid);">
+            <svg class="w-12 h-12 text-white/40" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="4"/><circle cx="8" cy="8" r="2"/><path d="M22 14l-5-5L2 22"/></svg>
+            <span class="absolute top-3 right-3 text-xs font-bold px-2 py-1 rounded-full bg-green-100 text-green-700">PUBLISHED</span>
+          </div>
+          <div class="p-4">
+            <span class="text-xs font-medium px-2 py-0.5 rounded-full" style="background: var(--color-bg); color: var(--color-mid);">Wellness</span>
+            <h3 class="font-heading text-base font-semibold mt-2" style="color: var(--color-dark);">Sunset Yoga Session</h3>
+            <p class="text-xs mt-1" style="color: var(--color-mid);">Sun, Mar 29 &middot; 17:00</p>
+            <div class="flex items-center justify-between mt-3">
+              <span class="text-xs font-medium" style="color: var(--color-dark);">8/30 going</span>
+            </div>
+            <div class="progress-bar mt-1"><div class="fill" style="width: 27%;"></div></div>
+          </div>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="event-card rounded-xl overflow-hidden" style="background: white;">
+          <div class="relative h-40 flex items-center justify-center" style="background: var(--color-mid);">
+            <svg class="w-12 h-12 text-white/40" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="4"/><circle cx="8" cy="8" r="2"/><path d="M22 14l-5-5L2 22"/></svg>
+            <span class="absolute top-3 right-3 text-xs font-bold px-2 py-1 rounded-full bg-gray-100 text-gray-500">DRAFT</span>
+          </div>
+          <div class="p-4">
+            <span class="text-xs font-medium px-2 py-0.5 rounded-full" style="background: var(--color-bg); color: var(--color-mid);">Music</span>
+            <h3 class="font-heading text-base font-semibold mt-2" style="color: var(--color-dark);">Acoustic Night</h3>
+            <p class="text-xs mt-1" style="color: var(--color-mid);">Fri, Apr 3 &middot; 20:00</p>
+            <div class="flex items-center justify-between mt-3">
+              <span class="text-xs font-medium" style="color: var(--color-dark);">0/40 going</span>
+            </div>
+            <div class="progress-bar mt-1"><div class="fill" style="width: 0%;"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Past Events content -->
+      <div id="ptab-past" class="profile-tab-content py-8 hidden">
+        <p class="text-sm" style="color: var(--color-mid);">Past events would appear here with "ENDED" badges, showing completed event history.</p>
+      </div>
+
+      <!-- About content -->
+      <div id="ptab-about" class="profile-tab-content py-8 hidden">
+        <div class="max-w-lg">
+          <h3 class="font-heading text-lg font-semibold mb-3" style="color: var(--color-dark);">About Arda</h3>
+          <p class="text-sm leading-relaxed mb-4" style="color: var(--color-dark);">Football lover &amp; party enthusiast. Organizing the best events in Istanbul since 2024. Passionate about bringing people together through great social experiences.</p>
+          <div class="flex flex-col gap-2 text-sm" style="color: var(--color-mid);">
+            <span>Member since January 2024</span>
+            <span>Languages: Turkish, English</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================== -->
+  <!-- P-02: MY PROFILE / SETTINGS -->
+  <!-- ========================================================================== -->
+  <div id="page-p02" class="page-content hidden">
+    <div class="max-w-[600px] mx-auto px-8 py-8">
+      <!-- Heading -->
+      <h1 class="font-heading text-3xl font-bold" style="color: var(--color-dark);">My Profile</h1>
+      <p class="text-sm mt-1 mb-8" style="color: var(--color-mid);">Manage your account settings</p>
+
+      <!-- Avatar Section -->
+      <div class="flex flex-col items-center mb-8">
+        <div class="avatar-upload w-[120px] h-[120px] rounded-full border-4 border-white flex items-center justify-center relative cursor-pointer" style="background: var(--color-mid); transition: border 0.2s;">
+          <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
+          <!-- Camera overlay -->
+          <div class="absolute bottom-0 right-0 w-8 h-8 rounded-full flex items-center justify-center" style="background: var(--color-dark);">
+            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          </div>
+        </div>
+        <a href="#" class="text-xs mt-2 font-medium" style="color: var(--color-mid); text-decoration: none;">Change Photo</a>
+      </div>
+
+      <!-- Form Fields -->
+      <div class="flex flex-col gap-5">
+        <!-- Display Name -->
+        <div>
+          <label class="block text-sm font-medium mb-1" style="color: var(--color-dark);">Display Name</label>
+          <input type="text" value="Ece Yilmaz" class="w-full px-4 py-3 rounded-xl border text-sm focus:outline-none" style="background: white; border-color: var(--color-surface); color: var(--color-dark);" />
+        </div>
+
+        <!-- Username -->
+        <div>
+          <label class="block text-sm font-medium mb-1" style="color: var(--color-dark);">Username</label>
+          <div class="relative">
+            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm" style="color: var(--color-mid);">@</span>
+            <input type="text" value="eceyilmaz" class="w-full pl-8 pr-4 py-3 rounded-xl border text-sm focus:outline-none" style="background: white; border-color: var(--color-surface); color: var(--color-dark);" />
+          </div>
+        </div>
+
+        <!-- Email -->
+        <div>
+          <label class="block text-sm font-medium mb-1" style="color: var(--color-dark);">Email</label>
+          <div class="relative">
+            <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4" style="color: var(--color-mid);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 4l-10 8L2 4"/></svg>
+            <input type="email" value="ece@example.com" class="w-full pl-10 pr-4 py-3 rounded-xl border text-sm focus:outline-none" style="background: white; border-color: var(--color-surface); color: var(--color-dark);" />
+          </div>
+          <p class="text-xs mt-1" style="color: var(--color-mid);">This email is used for login</p>
+        </div>
+
+        <!-- Bio -->
+        <div>
+          <label class="block text-sm font-medium mb-1" style="color: var(--color-dark);">Bio</label>
+          <textarea rows="3" class="w-full px-4 py-3 rounded-xl border text-sm focus:outline-none resize-none" style="background: white; border-color: var(--color-surface); color: var(--color-dark);" id="bioTextarea">Student in Istanbul. Love discovering weekend activities!</textarea>
+          <p class="text-xs mt-1 text-right" style="color: var(--color-mid);"><span id="bioCount">52</span>/200</p>
+        </div>
+
+        <!-- Date of Birth -->
+        <div>
+          <label class="block text-sm font-medium mb-1" style="color: var(--color-dark);">Date of Birth</label>
+          <input type="date" value="2002-05-14" class="w-full px-4 py-3 rounded-xl border text-sm focus:outline-none" style="background: white; border-color: var(--color-surface); color: var(--color-dark);" />
+          <p class="text-xs mt-1" style="color: var(--color-mid);">Used for age-restricted events</p>
+        </div>
+
+        <!-- Default Location -->
+        <div>
+          <label class="block text-sm font-medium mb-1" style="color: var(--color-dark);">Default Location</label>
+          <div class="relative">
+            <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4" style="color: var(--color-mid);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <select class="w-full pl-10 pr-4 py-3 rounded-xl border text-sm focus:outline-none appearance-none" style="background: white; border-color: var(--color-surface); color: var(--color-dark);">
+              <option selected>Istanbul</option>
+              <option>Ankara</option>
+              <option>Izmir</option>
+              <option>Antalya</option>
+              <option>Bursa</option>
+            </select>
+            <svg class="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style="color: var(--color-mid);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notification Preferences -->
+      <div class="mt-10">
+        <h2 class="font-heading text-lg font-semibold flex items-center gap-2 mb-4" style="color: var(--color-dark);">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+          Notifications
+        </h2>
+        <div class="flex flex-col gap-4">
+          <div class="flex items-center justify-between">
+            <span class="text-sm" style="color: var(--color-dark);">Event updates</span>
+            <div class="toggle-track active" onclick="this.classList.toggle('active')"><div class="toggle-thumb"></div></div>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-sm" style="color: var(--color-dark);">New comments on my events</span>
+            <div class="toggle-track active" onclick="this.classList.toggle('active')"><div class="toggle-thumb"></div></div>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-sm" style="color: var(--color-dark);">Booking confirmations</span>
+            <div class="toggle-track active" onclick="this.classList.toggle('active')"><div class="toggle-thumb"></div></div>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-sm" style="color: var(--color-dark);">Marketing &amp; recommendations</span>
+            <div class="toggle-track" onclick="this.classList.toggle('active')"><div class="toggle-thumb"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Privacy Settings -->
+      <div class="mt-10">
+        <h2 class="font-heading text-lg font-semibold flex items-center gap-2 mb-4" style="color: var(--color-dark);">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Privacy
+        </h2>
+        <div class="flex flex-col gap-4">
+          <div class="flex items-center justify-between">
+            <span class="text-sm" style="color: var(--color-dark);">Show my email on profile</span>
+            <div class="toggle-track" onclick="this.classList.toggle('active')"><div class="toggle-thumb"></div></div>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-sm" style="color: var(--color-dark);">Show my location on profile</span>
+            <div class="toggle-track active" onclick="this.classList.toggle('active')"><div class="toggle-thumb"></div></div>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-sm" style="color: var(--color-dark);">Allow others to see my going/bookmarked events</span>
+            <div class="toggle-track active" onclick="this.classList.toggle('active')"><div class="toggle-thumb"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Account Section -->
+      <div class="mt-10">
+        <h2 class="font-heading text-lg font-semibold flex items-center gap-2 mb-4" style="color: var(--color-dark);">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Account
+        </h2>
+        <div class="flex flex-col gap-3">
+          <button class="btn-hover w-full py-3 rounded-xl border text-sm font-medium" style="border-color: var(--color-surface); color: var(--color-dark);">Change Password</button>
+          <button class="btn-hover w-full py-3 rounded-xl border text-sm font-medium" style="border-color: var(--color-surface); color: var(--color-mid);">Sign Out</button>
+          <a href="#" class="text-xs text-center mt-2" style="color: #d44; text-decoration: none;">Delete Account</a>
+        </div>
+      </div>
+
+      <!-- Save Button -->
+      <div class="mt-10 mb-8 flex justify-center">
+        <button class="btn-hover w-full max-w-[300px] py-3 rounded-xl text-white text-sm font-bold" style="background: var(--color-dark);">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================== -->
+  <!-- P-03/P-04: MY EVENTS DASHBOARD -->
+  <!-- ========================================================================== -->
+  <div id="page-p03" class="page-content hidden">
+    <div class="max-w-[1100px] mx-auto px-8 py-8">
+      <!-- Heading Row -->
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h1 class="font-heading text-3xl font-bold" style="color: var(--color-dark);">My Events</h1>
+          <p class="text-sm mt-1" style="color: var(--color-mid);">Manage events you've created</p>
+        </div>
+        <button class="btn-hover flex items-center gap-2 px-5 py-3 rounded-xl text-white text-sm font-bold" style="background: var(--color-dark);">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+          Create New Event
+        </button>
+      </div>
+
+      <!-- Stats Bar -->
+      <div class="grid grid-cols-4 gap-4 mb-8">
+        <div class="flex items-center gap-3 p-4 rounded-xl" style="background: var(--color-surface);">
+          <svg class="w-6 h-6" style="color: var(--color-dark);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          <div>
+            <p class="text-xl font-bold" style="color: var(--color-dark);">8</p>
+            <p class="text-xs" style="color: var(--color-mid);">Total Events</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 p-4 rounded-xl" style="background: var(--color-surface);">
+          <div class="w-3 h-3 rounded-full bg-green-500"></div>
+          <div>
+            <p class="text-xl font-bold" style="color: var(--color-dark);">3</p>
+            <p class="text-xs" style="color: var(--color-mid);">Active</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 p-4 rounded-xl" style="background: var(--color-surface);">
+          <svg class="w-6 h-6" style="color: var(--color-dark);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+          <div>
+            <p class="text-xl font-bold" style="color: var(--color-dark);">187</p>
+            <p class="text-xs" style="color: var(--color-mid);">Total Attendees</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 p-4 rounded-xl" style="background: var(--color-surface);">
+          <svg class="w-6 h-6" style="color: var(--color-dark);" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <div>
+            <p class="text-xl font-bold" style="color: var(--color-dark);">4.8 &#9733;</p>
+            <p class="text-xs" style="color: var(--color-mid);">Avg Rating</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Upcoming / Past Tabs -->
+      <div class="flex gap-0 border-b mb-6" style="border-color: var(--color-surface);">
+        <button class="events-tab px-6 py-3 text-sm font-bold" style="border-bottom: 3px solid var(--color-dark); color: var(--color-dark);" onclick="switchEventsTab('upcoming')" data-etab="upcoming">
+          Upcoming <span class="ml-1 text-xs font-medium px-1.5 py-0.5 rounded-full" style="background: var(--color-dark); color: white;">3</span>
+        </button>
+        <button class="events-tab px-6 py-3 text-sm font-medium" style="border-bottom: 3px solid transparent; color: var(--color-mid);" onclick="switchEventsTab('past')" data-etab="past">
+          Past <span class="ml-1 text-xs font-medium px-1.5 py-0.5 rounded-full" style="background: var(--color-surface); color: var(--color-mid);">5</span>
+        </button>
+      </div>
+
+      <!-- P-03: Upcoming Events -->
+      <div id="etab-upcoming" class="events-tab-content grid grid-cols-3 gap-6">
+        <!-- Card 1: Beach Party -->
+        <div class="event-card rounded-xl overflow-hidden" style="background: white;">
+          <div class="relative h-40 flex items-center justify-center" style="background: var(--color-mid);">
+            <svg class="w-12 h-12 text-white/40" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="4"/><circle cx="8" cy="8" r="2"/><path d="M22 14l-5-5L2 22"/></svg>
+            <span class="absolute top-3 right-3 text-xs font-bold px-2 py-1 rounded-full bg-green-100 text-green-700">PUBLISHED</span>
+          </div>
+          <div class="p-4">
+            <span class="text-xs font-medium px-2 py-0.5 rounded-full" style="background: var(--color-bg); color: var(--color-mid);">Music / Party</span>
+            <h3 class="font-heading text-base font-semibold mt-2" style="color: var(--color-dark);">Kadikoy Beach Party Night</h3>
+            <p class="text-xs mt-1" style="color: var(--color-mid);">Sat, Mar 28 &middot; 21:00</p>
+            <div class="mt-3">
+              <span class="text-xs font-medium" style="color: var(--color-dark);">12/50 going</span>
+              <div class="progress-bar mt-1"><div class="fill" style="width: 24%;"></div></div>
+            </div>
+            <div class="flex items-center gap-2 mt-4">
+              <button class="btn-hover flex-1 flex items-center justify-center gap-1 py-2 rounded-lg border text-xs font-medium" style="border-color: var(--color-surface); color: var(--color-dark);">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Edit
+              </button>
+              <button class="btn-hover flex-1 flex items-center justify-center gap-1 py-2 rounded-lg border text-xs font-medium" style="border-color: #fca5a5; color: #dc2626;">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
+                Cancel
+              </button>
+              <button class="btn-hover flex-1 flex items-center justify-center gap-1 py-2 rounded-lg border text-xs font-medium" style="border-color: var(--color-surface); color: var(--color-dark);">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                View
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 2: Yoga -->
+        <div class="event-card rounded-xl overflow-hidden" style="background: white;">
+          <div class="relative h-40 flex items-center justify-center" style="background: var(--color-mid);">
+            <svg class="w-12 h-12 text-white/40" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="4"/><circle cx="8" cy="8" r="2"/><path d="M22 14l-5-5L2 22"/></svg>
+            <span class="absolute top-3 right-3 text-xs font-bold px-2 py-1 rounded-full bg-green-100 text-green-700">PUBLISHED</span>
+          </div>
+          <div class="p-4">
+            <span class="text-xs font-medium px-2 py-0.5 rounded-full" style="background: var(--color-bg); color: var(--color-mid);">Wellness</span>
+            <h3 class="font-heading text-base font-semibold mt-2" style="color: var(--color-dark);">Sunset Yoga Session</h3>
+            <p class="text-xs mt-1" style="color: var(--color-mid);">Sun, Mar 29 &middot; 17:00</p>
+            <div class="mt-3">
+              <span class="text-xs font-medium" style="color: var(--color-dark);">8/30 going</span>
+              <div class="progress-bar mt-1"><div class="fill" style="width: 27%;"></div></div>
+            </div>
+            <div class="flex items-center gap-2 mt-4">
+              <button class="btn-hover flex-1 flex items-center justify-center gap-1 py-2 rounded-lg border text-xs font-medium" style="border-color: var(--color-surface); color: var(--color-dark);">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Edit
+              </button>
+              <button class="btn-hover flex-1 flex items-center justify-center gap-1 py-2 rounded-lg border text-xs font-medium" style="border-color: #fca5a5; color: #dc2626;">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
+                Cancel
+              </button>
+              <button class="btn-hover flex-1 flex items-center justify-center gap-1 py-2 rounded-lg border text-xs font-medium" style="border-color: var(--color-surface); color: var(--color-dark);">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                View
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 3: Acoustic Night (DRAFT) -->
+        <div class="event-card rounded-xl overflow-hidden" style="background: white;">
+          <div class="relative h-40 flex items-center justify-center" style="background: var(--color-mid);">
+            <svg class="w-12 h-12 text-white/40" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="4"/><circle cx="8" cy="8" r="2"/><path d="M22 14l-5-5L2 22"/></svg>
+            <span class="absolute top-3 right-3 text-xs font-bold px-2 py-1 rounded-full bg-gray-100 text-gray-500">DRAFT</span>
+          </div>
+          <div class="p-4">
+            <span class="text-xs font-medium px-2 py-0.5 rounded-full" style="background: var(--color-bg); color: var(--color-mid);">Music</span>
+            <h3 class="font-heading text-base font-semibold mt-2" style="color: var(--color-dark);">Acoustic Night</h3>
+            <p class="text-xs mt-1" style="color: var(--color-mid);">Fri, Apr 3 &middot; 20:00</p>
+            <div class="mt-3">
+              <span class="text-xs font-medium" style="color: var(--color-dark);">0/40 going</span>
+              <div class="progress-bar mt-1"><div class="fill" style="width: 0%;"></div></div>
+            </div>
+            <div class="flex items-center gap-2 mt-4">
+              <button class="btn-hover flex-1 flex items-center justify-center gap-1 py-2 rounded-lg border text-xs font-medium" style="border-color: var(--color-surface); color: var(--color-dark);">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Edit
+              </button>
+              <button class="btn-hover flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-bold text-white" style="background: var(--color-dark);">
+                Publish
+              </button>
+              <button class="btn-hover flex-1 flex items-center justify-center gap-1 py-2 rounded-lg border text-xs font-medium" style="border-color: #fca5a5; color: #dc2626;">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- P-04: Past Events -->
+      <div id="etab-past" class="events-tab-content hidden grid grid-cols-3 gap-6">
+        <!-- Card 1: New Year's Eve -->
+        <div class="event-card muted-card rounded-xl overflow-hidden" style="background: white;">
+          <div class="relative h-40 flex items-center justify-center" style="background: var(--color-mid);">
+            <svg class="w-12 h-12 text-white/40" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="4"/><circle cx="8" cy="8" r="2"/><path d="M22 14l-5-5L2 22"/></svg>
+            <span class="absolute top-3 right-3 text-xs font-bold px-2 py-1 rounded-full" style="background: var(--color-bg); color: var(--color-mid);">ENDED</span>
+          </div>
+          <div class="p-4">
+            <span class="text-xs font-medium px-2 py-0.5 rounded-full" style="background: var(--color-bg); color: var(--color-mid);">Party</span>
+            <h3 class="font-heading text-base font-semibold mt-2" style="color: var(--color-dark);">New Year's Eve Party</h3>
+            <p class="text-xs mt-1" style="color: var(--color-mid);">Tue, Dec 31 &middot; 22:00</p>
+            <div class="mt-3">
+              <span class="text-xs font-medium" style="color: var(--color-dark);">48/50 attended</span>
+              <div class="progress-bar mt-1"><div class="fill" style="width: 96%;"></div></div>
+            </div>
+            <div class="flex items-center gap-2 mt-4">
+              <button class="btn-hover w-full flex items-center justify-center gap-1 py-2 rounded-lg border text-xs font-medium" style="border-color: var(--color-surface); color: var(--color-dark);">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                View
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 2: Photography Walk -->
+        <div class="event-card muted-card rounded-xl overflow-hidden" style="background: white;">
+          <div class="relative h-40 flex items-center justify-center" style="background: var(--color-mid);">
+            <svg class="w-12 h-12 text-white/40" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="4"/><circle cx="8" cy="8" r="2"/><path d="M22 14l-5-5L2 22"/></svg>
+            <span class="absolute top-3 right-3 text-xs font-bold px-2 py-1 rounded-full" style="background: var(--color-bg); color: var(--color-mid);">ENDED</span>
+          </div>
+          <div class="p-4">
+            <span class="text-xs font-medium px-2 py-0.5 rounded-full" style="background: var(--color-bg); color: var(--color-mid);">Photography</span>
+            <h3 class="font-heading text-base font-semibold mt-2" style="color: var(--color-dark);">Photography Walk — Galata</h3>
+            <p class="text-xs mt-1" style="color: var(--color-mid);">Sun, Mar 15 &middot; 14:00</p>
+            <div class="mt-3">
+              <span class="text-xs font-medium" style="color: var(--color-dark);">22/25 attended</span>
+              <div class="progress-bar mt-1"><div class="fill" style="width: 88%;"></div></div>
+            </div>
+            <div class="flex items-center gap-2 mt-4">
+              <button class="btn-hover w-full flex items-center justify-center gap-1 py-2 rounded-lg border text-xs font-medium" style="border-color: var(--color-surface); color: var(--color-dark);">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                View
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 3: Spring Bazaar (CANCELLED) -->
+        <div class="event-card muted-card rounded-xl overflow-hidden" style="background: white;">
+          <div class="relative h-40 flex items-center justify-center" style="background: var(--color-mid);">
+            <svg class="w-12 h-12 text-white/40" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="4"/><circle cx="8" cy="8" r="2"/><path d="M22 14l-5-5L2 22"/></svg>
+            <span class="absolute top-3 right-3 text-xs font-bold px-2 py-1 rounded-full bg-red-100 text-red-600">CANCELLED</span>
+          </div>
+          <div class="p-4">
+            <span class="text-xs font-medium px-2 py-0.5 rounded-full" style="background: var(--color-bg); color: var(--color-mid);">Market</span>
+            <h3 class="font-heading text-base font-semibold mt-2" style="color: var(--color-dark);">Spring Bazaar</h3>
+            <p class="text-xs mt-1" style="color: var(--color-mid);">Sat, Mar 8 &middot; 10:00</p>
+            <div class="mt-3">
+              <span class="text-xs font-medium" style="color: #dc2626;">Cancelled</span>
+            </div>
+            <div class="flex items-center gap-2 mt-4">
+              <button class="btn-hover flex-1 flex items-center justify-center gap-1 py-2 rounded-lg border text-xs font-medium" style="border-color: var(--color-surface); color: var(--color-dark);">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                View
+              </button>
+              <button class="btn-hover flex-1 flex items-center justify-center gap-1 py-2 rounded-lg border text-xs font-medium" style="border-color: #fca5a5; color: #dc2626;">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 4: Coffee Tasting -->
+        <div class="event-card muted-card rounded-xl overflow-hidden" style="background: white;">
+          <div class="relative h-40 flex items-center justify-center" style="background: var(--color-mid);">
+            <svg class="w-12 h-12 text-white/40" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="4"/><circle cx="8" cy="8" r="2"/><path d="M22 14l-5-5L2 22"/></svg>
+            <span class="absolute top-3 right-3 text-xs font-bold px-2 py-1 rounded-full" style="background: var(--color-bg); color: var(--color-mid);">ENDED</span>
+          </div>
+          <div class="p-4">
+            <span class="text-xs font-medium px-2 py-0.5 rounded-full" style="background: var(--color-bg); color: var(--color-mid);">Food &amp; Drink</span>
+            <h3 class="font-heading text-base font-semibold mt-2" style="color: var(--color-dark);">Coffee Tasting Workshop</h3>
+            <p class="text-xs mt-1" style="color: var(--color-mid);">Sat, Feb 22 &middot; 15:00</p>
+            <div class="mt-3">
+              <span class="text-xs font-medium" style="color: var(--color-dark);">15/20 attended</span>
+              <div class="progress-bar mt-1"><div class="fill" style="width: 75%;"></div></div>
+            </div>
+            <div class="flex items-center gap-2 mt-4">
+              <button class="btn-hover w-full flex items-center justify-center gap-1 py-2 rounded-lg border text-xs font-medium" style="border-color: var(--color-surface); color: var(--color-dark);">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                View
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 5: Board Game Meetup -->
+        <div class="event-card muted-card rounded-xl overflow-hidden" style="background: white;">
+          <div class="relative h-40 flex items-center justify-center" style="background: var(--color-mid);">
+            <svg class="w-12 h-12 text-white/40" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="4"/><circle cx="8" cy="8" r="2"/><path d="M22 14l-5-5L2 22"/></svg>
+            <span class="absolute top-3 right-3 text-xs font-bold px-2 py-1 rounded-full" style="background: var(--color-bg); color: var(--color-mid);">ENDED</span>
+          </div>
+          <div class="p-4">
+            <span class="text-xs font-medium px-2 py-0.5 rounded-full" style="background: var(--color-bg); color: var(--color-mid);">Social</span>
+            <h3 class="font-heading text-base font-semibold mt-2" style="color: var(--color-dark);">Board Game Meetup</h3>
+            <p class="text-xs mt-1" style="color: var(--color-mid);">Fri, Feb 14 &middot; 19:00</p>
+            <div class="mt-3">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-medium" style="color: var(--color-dark);">30/30 attended</span>
+                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">FULL</span>
+              </div>
+              <div class="progress-bar mt-1"><div class="fill" style="width: 100%;"></div></div>
+            </div>
+            <div class="flex items-center gap-2 mt-4">
+              <button class="btn-hover w-full flex items-center justify-center gap-1 py-2 rounded-lg border text-xs font-medium" style="border-color: var(--color-surface); color: var(--color-dark);">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                View
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ========== JAVASCRIPT ========== -->
+  <script>
+    // Page-level tab switching
+    function switchPage(pageId) {
+      document.querySelectorAll('.page-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.page-tab').forEach(el => el.classList.remove('active'));
+      document.getElementById('page-' + pageId).classList.remove('hidden');
+      document.querySelector('[data-page="' + pageId + '"]').classList.add('active');
+    }
+
+    // P-01 profile content tabs
+    function switchProfileTab(tabId) {
+      document.querySelectorAll('.profile-tab-content').forEach(el => el.classList.add('hidden'));
+      document.getElementById('ptab-' + tabId).classList.remove('hidden');
+
+      document.querySelectorAll('.profile-tab').forEach(el => {
+        el.style.borderBottom = '3px solid transparent';
+        el.style.color = 'var(--color-mid)';
+        el.style.fontWeight = '500';
+      });
+      const active = document.querySelector('[data-ptab="' + tabId + '"]');
+      active.style.borderBottom = '3px solid var(--color-dark)';
+      active.style.color = 'var(--color-dark)';
+      active.style.fontWeight = '700';
+    }
+
+    // P-03/P-04 events tabs
+    function switchEventsTab(tabId) {
+      document.querySelectorAll('.events-tab-content').forEach(el => el.classList.add('hidden'));
+      document.getElementById('etab-' + tabId).classList.remove('hidden');
+
+      document.querySelectorAll('.events-tab').forEach(el => {
+        el.style.borderBottom = '3px solid transparent';
+        el.style.color = 'var(--color-mid)';
+        el.style.fontWeight = '500';
+      });
+      const active = document.querySelector('[data-etab="' + tabId + '"]');
+      active.style.borderBottom = '3px solid var(--color-dark)';
+      active.style.color = 'var(--color-dark)';
+      active.style.fontWeight = '700';
+    }
+
+    // Bio character counter
+    const bioTextarea = document.getElementById('bioTextarea');
+    const bioCount = document.getElementById('bioCount');
+    if (bioTextarea && bioCount) {
+      bioTextarea.addEventListener('input', function() {
+        bioCount.textContent = this.value.length;
+      });
+    }
+  </script>
+
+</body>
+</html>

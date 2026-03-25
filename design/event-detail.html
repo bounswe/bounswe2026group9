@@ -1,0 +1,1935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Event Detail — Community Event Platform</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --color-bg: #E4E0E1;
+    --color-surface: #D6C0B3;
+    --color-mid: #AB886D;
+    --color-dark: #493628;
+    --color-bg-alpha: rgba(228, 224, 225, 0.7);
+    --color-surface-alpha: rgba(214, 192, 179, 0.6);
+    --color-mid-alpha: rgba(171, 136, 109, 0.3);
+    --color-dark-alpha: rgba(73, 54, 40, 0.15);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Lato', sans-serif; background: var(--color-bg); color: var(--color-dark); min-height: 100vh; }
+  h1, h2, h3, h4, h5 { font-family: 'Playfair Display', serif; }
+
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  .tab-group-btn {
+    padding: 10px 24px;
+    font-family: 'Playfair Display', serif;
+    font-size: 15px;
+    font-weight: 600;
+    border: 2px solid var(--color-mid);
+    background: transparent;
+    color: var(--color-dark);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .tab-group-btn:first-child { border-radius: 8px 0 0 8px; }
+  .tab-group-btn:last-child { border-radius: 0 8px 8px 0; }
+  .tab-group-btn.active {
+    background: var(--color-dark);
+    color: #fff;
+    border-color: var(--color-dark);
+  }
+
+  .sub-tab-btn {
+    padding: 8px 20px;
+    font-family: 'Lato', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    border: 1px solid var(--color-mid-alpha);
+    background: var(--color-bg-alpha);
+    color: var(--color-dark);
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .sub-tab-btn:hover { background: var(--color-surface-alpha); }
+  .sub-tab-btn.active {
+    background: var(--color-mid);
+    color: #fff;
+    border-color: var(--color-mid);
+  }
+
+  .navbar {
+    background: var(--color-dark);
+    color: #fff;
+    padding: 0 40px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+  }
+  .navbar-logo { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; white-space: nowrap; }
+  .navbar-search {
+    flex: 1;
+    max-width: 480px;
+    position: relative;
+  }
+  .navbar-search input {
+    width: 100%;
+    padding: 8px 16px 8px 40px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    font-family: 'Lato', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .navbar-search input::placeholder { color: rgba(255,255,255,0.5); }
+  .navbar-search input:focus { border-color: var(--color-mid); }
+  .navbar-search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); }
+
+  .navbar-right { display: flex; align-items: center; gap: 16px; }
+  .avatar-circle {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--color-mid);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 14px; color: #fff;
+    flex-shrink: 0;
+  }
+  .avatar-circle.sm { width: 32px; height: 32px; font-size: 12px; }
+  .avatar-circle.lg { width: 64px; height: 64px; font-size: 22px; }
+  .avatar-circle.xs { width: 28px; height: 28px; font-size: 10px; }
+
+  .btn-signin, .btn-signup {
+    padding: 7px 18px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    font-family: 'Lato', sans-serif;
+  }
+  .btn-signin { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,0.3); }
+  .btn-signin:hover { background: rgba(255,255,255,0.1); }
+  .btn-signup { background: var(--color-mid); color: #fff; }
+  .btn-signup:hover { background: #96775e; }
+
+  .info-banner {
+    padding: 10px 40px;
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .info-banner.guest { background: var(--color-surface); color: var(--color-dark); }
+  .info-banner.cancelled { background: #C45B4A; color: #fff; }
+  .info-banner.full { background: #B8572A; color: #fff; }
+
+  .back-link {
+    padding: 16px 40px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--color-mid);
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  .back-link:hover { color: var(--color-dark); }
+
+  .main-content {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 40px 64px;
+    display: flex;
+    gap: 32px;
+  }
+  .left-col { flex: 0 0 65%; max-width: 65%; }
+  .right-col { flex: 0 0 calc(35% - 32px); max-width: calc(35% - 32px); }
+  .sidebar-sticky { position: sticky; top: 24px; display: flex; flex-direction: column; gap: 16px; }
+
+  .card {
+    background: #fff;
+    border: 1px solid var(--color-mid-alpha);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .card-surface { background: var(--color-surface); border: 1px solid var(--color-mid-alpha); border-radius: 12px; padding: 20px; }
+
+  .carousel-wrap {
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    background: var(--color-mid);
+    aspect-ratio: 16/9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+  }
+  .carousel-wrap .placeholder-text {
+    color: #fff;
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    opacity: 0.7;
+  }
+  .carousel-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.85);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+    z-index: 2;
+  }
+  .carousel-arrow:hover { background: #fff; }
+  .carousel-arrow.left { left: 12px; }
+  .carousel-arrow.right { right: 12px; }
+  .carousel-dots {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+  }
+  .carousel-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.4);
+    border: none;
+    cursor: pointer;
+  }
+  .carousel-dot.active { background: #fff; }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    vertical-align: middle;
+  }
+  .badge-private { background: var(--color-dark); color: #fff; }
+  .badge-cancelled { background: #C45B4A; color: #fff; }
+  .badge-ended { background: var(--color-mid); color: #fff; }
+  .badge-full { background: #B8572A; color: #fff; }
+
+  .tag-pill {
+    display: inline-block;
+    padding: 4px 12px;
+    background: var(--color-dark-alpha);
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--color-dark);
+  }
+
+  .section-heading {
+    font-family: 'Playfair Display', serif;
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: var(--color-dark);
+  }
+
+  .action-btn {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    font-family: 'Lato', sans-serif;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s;
+    border: none;
+  }
+  .action-btn.primary { background: var(--color-dark); color: #fff; }
+  .action-btn.primary:hover { background: #3a2b20; }
+  .action-btn.outline { background: transparent; color: var(--color-dark); border: 2px solid var(--color-dark); }
+  .action-btn.outline:hover { background: var(--color-dark-alpha); }
+  .action-btn.disabled {
+    background: var(--color-mid-alpha);
+    color: rgba(73,54,40,0.4);
+    cursor: not-allowed;
+    border: none;
+  }
+  .action-btn.danger { background: transparent; color: #C45B4A; border: 2px solid #C45B4A; }
+  .action-btn.danger:hover { background: rgba(196,91,74,0.08); }
+
+  .comment-input-wrap {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 24px;
+  }
+  .comment-input-wrap textarea {
+    flex: 1;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--color-mid-alpha);
+    font-family: 'Lato', sans-serif;
+    font-size: 14px;
+    resize: none;
+    height: 48px;
+    outline: none;
+    background: #fff;
+    transition: border-color 0.2s;
+  }
+  .comment-input-wrap textarea:focus { border-color: var(--color-mid); }
+  .comment-input-wrap textarea:disabled { background: var(--color-bg); cursor: not-allowed; }
+  .send-btn {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    background: var(--color-dark);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.2s;
+  }
+  .send-btn:hover { background: #3a2b20; }
+  .send-btn:disabled { background: var(--color-mid-alpha); cursor: not-allowed; }
+
+  .comment-item {
+    display: flex;
+    gap: 12px;
+    padding: 16px 0;
+    border-top: 1px solid var(--color-dark-alpha);
+  }
+  .comment-item:first-child { border-top: none; }
+  .comment-meta { font-size: 12px; color: var(--color-mid); }
+  .comment-body { font-size: 14px; line-height: 1.5; margin: 4px 0 8px; }
+  .comment-actions { display: flex; gap: 16px; }
+  .comment-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--color-mid);
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-family: 'Lato', sans-serif;
+    transition: color 0.2s;
+  }
+  .comment-action:hover { color: var(--color-dark); }
+
+  .reply-thread {
+    margin-left: 44px;
+    padding: 12px 0 0;
+  }
+  .reply-item {
+    display: flex;
+    gap: 10px;
+  }
+  .host-badge-inline {
+    display: inline-block;
+    padding: 1px 8px;
+    background: var(--color-mid);
+    color: #fff;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    vertical-align: middle;
+    margin-left: 4px;
+  }
+
+  .star-filled { color: var(--color-mid); }
+  .star-empty { color: var(--color-mid-alpha); }
+
+  .progress-bar {
+    width: 100%;
+    height: 6px;
+    background: var(--color-dark-alpha);
+    border-radius: 3px;
+    overflow: hidden;
+    margin: 8px 0;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--color-mid);
+    border-radius: 3px;
+    transition: width 0.3s;
+  }
+
+  .attendee-stack {
+    display: flex;
+    align-items: center;
+  }
+  .attendee-stack .avatar-circle {
+    margin-left: -8px;
+    border: 2px solid #fff;
+  }
+  .attendee-stack .avatar-circle:first-child { margin-left: 0; }
+  .attendee-more {
+    margin-left: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--color-mid);
+  }
+
+  .map-placeholder {
+    width: 100%;
+    height: 120px;
+    background: var(--color-surface);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--color-dark);
+    cursor: pointer;
+    transition: background 0.2s;
+    margin-top: 8px;
+  }
+  .map-placeholder:hover { background: var(--color-mid-alpha); }
+
+  .restricted-box {
+    background: var(--color-surface);
+    border-radius: 12px;
+    padding: 64px 24px;
+    text-align: center;
+    margin-bottom: 24px;
+  }
+  .restricted-box svg { margin-bottom: 16px; opacity: 0.5; }
+  .restricted-box .title { font-family: 'Playfair Display', serif; font-size: 20px; margin-bottom: 8px; }
+  .restricted-box .sub { font-size: 14px; color: var(--color-mid); }
+
+  .sidebar-detail-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .sidebar-detail-row svg { flex-shrink: 0; margin-top: 2px; }
+
+  .muted-overlay { opacity: 0.7; }
+
+  .calendar-link, .profile-link, .manage-link {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--color-mid);
+    text-decoration: none;
+    cursor: pointer;
+    transition: color 0.2s;
+  }
+  .calendar-link:hover, .profile-link:hover, .manage-link:hover { color: var(--color-dark); }
+
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .info-grid-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+  }
+
+  .checklist-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    padding: 4px 0;
+  }
+</style>
+</head>
+<body>
+
+<!-- TAB NAVIGATION -->
+<div style="background: var(--color-surface); padding: 16px 40px; display: flex; flex-direction: column; align-items: center; gap: 12px; border-bottom: 1px solid var(--color-mid-alpha);">
+  <div style="display: flex;">
+    <button class="tab-group-btn active" onclick="switchGroup('normal')">Normal States</button>
+    <button class="tab-group-btn" onclick="switchGroup('edge')">Edge Cases</button>
+  </div>
+  <div id="normal-tabs" style="display: flex; gap: 8px;">
+    <button class="sub-tab-btn active" onclick="switchScreen('e01')">E-01 Public (Registered)</button>
+    <button class="sub-tab-btn" onclick="switchScreen('e02')">E-02 Public (Guest)</button>
+    <button class="sub-tab-btn" onclick="switchScreen('e03')">E-03 Private (Non-host)</button>
+    <button class="sub-tab-btn" onclick="switchScreen('e04')">E-04 Private (Host)</button>
+  </div>
+  <div id="edge-tabs" style="display: none; gap: 8px;">
+    <button class="sub-tab-btn" onclick="switchScreen('e05')">E-05 Cancelled</button>
+    <button class="sub-tab-btn" onclick="switchScreen('e06')">E-06 Ended</button>
+    <button class="sub-tab-btn" onclick="switchScreen('e07')">E-07 Full / Sold Out</button>
+  </div>
+</div>
+
+<!-- ============================== -->
+<!-- SVG ICON DEFINITIONS (hidden)  -->
+<!-- ============================== -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none;">
+  <symbol id="icon-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></symbol>
+  <symbol id="icon-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></symbol>
+  <symbol id="icon-arrow-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></symbol>
+  <symbol id="icon-chevron-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></symbol>
+  <symbol id="icon-chevron-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></symbol>
+  <symbol id="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></symbol>
+  <symbol id="icon-heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></symbol>
+  <symbol id="icon-bookmark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></symbol>
+  <symbol id="icon-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></symbol>
+  <symbol id="icon-map-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></symbol>
+  <symbol id="icon-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
+  <symbol id="icon-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></symbol>
+  <symbol id="icon-star" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></symbol>
+  <symbol id="icon-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></symbol>
+  <symbol id="icon-x-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></symbol>
+  <symbol id="icon-alert-triangle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></symbol>
+  <symbol id="icon-thumbs-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14z"/><path d="M7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"/></symbol>
+  <symbol id="icon-reply" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 00-4-4H4"/></symbol>
+  <symbol id="icon-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></symbol>
+  <symbol id="icon-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></symbol>
+  <symbol id="icon-wheelchair" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4" r="1.5"/><path d="M7 22a5 5 0 01-1-9.9"/><path d="M12 12v5l4 3"/><path d="M12 8v4"/><path d="M17 22a5 5 0 00-1-9.9"/></symbol>
+  <symbol id="icon-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></symbol>
+  <symbol id="icon-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></symbol>
+</svg>
+
+
+<!-- ==================== E-01 ==================== -->
+<div class="screen active" id="screen-e01">
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="navbar-logo">Social Event Mapper</div>
+    <div class="navbar-search">
+      <svg width="16" height="16" style="color:rgba(255,255,255,0.5)"><use href="#icon-search"/></svg>
+      <input type="text" placeholder="Search events...">
+    </div>
+    <div class="navbar-right">
+      <button style="background:none;border:none;cursor:pointer;position:relative;">
+        <svg width="20" height="20" style="color:#fff"><use href="#icon-bell"/></svg>
+        <span style="position:absolute;top:-2px;right:-2px;width:8px;height:8px;background:#C45B4A;border-radius:50%;border:2px solid var(--color-dark);"></span>
+      </button>
+      <div class="avatar-circle">EY</div>
+      <span style="font-size:14px;font-weight:700;">Ece Y.</span>
+    </div>
+  </nav>
+
+  <a href="#" class="back-link">
+    <svg width="16" height="16"><use href="#icon-arrow-left"/></svg>
+    Back to Discovery
+  </a>
+
+  <div class="main-content">
+    <!-- LEFT COLUMN -->
+    <div class="left-col">
+      <!-- Carousel -->
+      <div class="carousel-wrap">
+        <span class="placeholder-text">EVENT IMAGE 1 / 3</span>
+        <button class="carousel-arrow left"><svg width="20" height="20" style="color:var(--color-dark)"><use href="#icon-chevron-left"/></svg></button>
+        <button class="carousel-arrow right"><svg width="20" height="20" style="color:var(--color-dark)"><use href="#icon-chevron-right"/></svg></button>
+        <div class="carousel-dots">
+          <button class="carousel-dot active"></button>
+          <button class="carousel-dot"></button>
+          <button class="carousel-dot"></button>
+        </div>
+      </div>
+
+      <!-- Title -->
+      <div style="margin-bottom:16px;">
+        <h1 style="font-size:32px;font-weight:700;margin-bottom:8px;">Kadikoy Beach Party Night</h1>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <span class="tag-pill">Music / Party</span>
+          <span class="tag-pill">Nightlife</span>
+        </div>
+        <p style="font-size:14px;color:var(--color-mid);">Created by <strong style="color:var(--color-dark);">Arda T.</strong> &middot; Posted 2 days ago</p>
+      </div>
+
+      <!-- Description -->
+      <div style="margin-bottom:24px;">
+        <h3 class="section-heading">About this event</h3>
+        <p style="font-size:15px;line-height:1.7;">Join us for an unforgettable night at Kadikoy Beach! Live DJ sets, great food, and amazing vibes by the sea. This is the biggest beach party of the spring season. Come early to grab the best spots &mdash; music starts at 9 PM and goes until 2 AM.</p>
+      </div>
+
+      <!-- Equipment -->
+      <div style="margin-bottom:24px;">
+        <h3 class="section-heading">What to bring</h3>
+        <div class="checklist-item">
+          <svg width="16" height="16" style="color:var(--color-mid)"><use href="#icon-check"/></svg>
+          <span>Valid ID (18+ event)</span>
+        </div>
+        <div class="checklist-item">
+          <span style="display:inline-block;width:16px;height:16px;border:2px solid var(--color-mid-alpha);border-radius:50;text-align:center;line-height:12px;font-size:10px;color:var(--color-mid);border-radius:50%;">&#9675;</span>
+          <span>Beach towel (optional)</span>
+        </div>
+        <div class="checklist-item">
+          <span style="display:inline-block;width:16px;height:16px;border:2px solid var(--color-mid-alpha);border-radius:50%;text-align:center;line-height:12px;font-size:10px;color:var(--color-mid);">&#9675;</span>
+          <span>Cash for food vendors (optional)</span>
+        </div>
+      </div>
+
+      <!-- Venue Info -->
+      <div style="margin-bottom:32px;">
+        <h3 class="section-heading">Venue details</h3>
+        <div class="info-grid">
+          <div class="info-grid-item">
+            <span style="font-size:16px;">&#127915;</span>
+            <span>Free entry</span>
+          </div>
+          <div class="info-grid-item">
+            <span style="font-size:16px;">&#127760;</span>
+            <span>Turkish / English</span>
+          </div>
+          <div class="info-grid-item">
+            <svg width="16" height="16" style="color:var(--color-mid)"><use href="#icon-wheelchair"/></svg>
+            <span>Wheelchair accessible</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Comments -->
+      <div>
+        <h3 class="section-heading">Comments (8)</h3>
+
+        <div class="comment-input-wrap">
+          <div class="avatar-circle sm">EY</div>
+          <textarea placeholder="Write a comment..."></textarea>
+          <button class="send-btn"><svg width="16" height="16" style="color:#fff"><use href="#icon-send"/></svg></button>
+        </div>
+
+        <!-- Comment 1 -->
+        <div class="comment-item">
+          <div class="avatar-circle sm">EY</div>
+          <div style="flex:1;">
+            <div><strong>Ece Y.</strong> <span class="comment-meta">&middot; 2 hours ago</span></div>
+            <div class="comment-body">This sounds amazing! Will there be parking nearby?</div>
+            <div class="comment-actions">
+              <button class="comment-action"><svg width="14" height="14"><use href="#icon-thumbs-up"/></svg> 3</button>
+              <button class="comment-action"><svg width="14" height="14"><use href="#icon-reply"/></svg> Reply</button>
+            </div>
+            <!-- Reply thread -->
+            <div class="reply-thread">
+              <div class="reply-item">
+                <div class="avatar-circle xs">AT</div>
+                <div style="flex:1;">
+                  <div><strong>Arda T.</strong> <span class="host-badge-inline">Host</span> <span class="comment-meta">&middot; 1 hour ago</span></div>
+                  <div class="comment-body">Yes! There's free parking at the beach park entrance.</div>
+                  <div class="comment-actions">
+                    <button class="comment-action"><svg width="14" height="14"><use href="#icon-thumbs-up"/></svg> 1</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Comment 2 -->
+        <div class="comment-item">
+          <div class="avatar-circle sm">MK</div>
+          <div style="flex:1;">
+            <div><strong>Mehmet K.</strong> <span class="comment-meta">&middot; 5 hours ago</span></div>
+            <div class="comment-body">Can't wait! Already marked as going &#127881;</div>
+            <div class="comment-actions">
+              <button class="comment-action"><svg width="14" height="14"><use href="#icon-thumbs-up"/></svg> 7</button>
+              <button class="comment-action"><svg width="14" height="14"><use href="#icon-reply"/></svg> Reply</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Comment 3 -->
+        <div class="comment-item">
+          <div class="avatar-circle sm">ZA</div>
+          <div style="flex:1;">
+            <div><strong>Zeynep A.</strong> <span class="comment-meta">&middot; 1 day ago</span></div>
+            <div class="comment-body">Is there a dress code?</div>
+            <div class="comment-actions">
+              <button class="comment-action"><svg width="14" height="14"><use href="#icon-thumbs-up"/></svg> 2</button>
+              <button class="comment-action"><svg width="14" height="14"><use href="#icon-reply"/></svg> Reply</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Comment 4 -->
+        <div class="comment-item">
+          <div class="avatar-circle sm">CB</div>
+          <div style="flex:1;">
+            <div><strong>Can B.</strong> <span class="comment-meta">&middot; 1 day ago</span></div>
+            <div class="comment-body">Went to Arda's last event, it was incredible. Highly recommend!</div>
+            <div class="comment-actions">
+              <button class="comment-action"><svg width="14" height="14"><use href="#icon-thumbs-up"/></svg> 12</button>
+              <button class="comment-action"><svg width="14" height="14"><use href="#icon-reply"/></svg> Reply</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="right-col">
+      <div class="sidebar-sticky">
+        <!-- Action Buttons -->
+        <div class="card">
+          <button class="action-btn primary" style="margin-bottom:8px;">
+            <svg width="18" height="18"><use href="#icon-check"/></svg>
+            Going (12/50)
+          </button>
+          <button class="action-btn outline" style="margin-bottom:8px;">
+            <svg width="18" height="18"><use href="#icon-bookmark"/></svg>
+            Bookmark
+          </button>
+          <p style="font-size:12px;color:var(--color-mid);text-align:center;">12 going &middot; 24 interested</p>
+        </div>
+
+        <!-- Host Info -->
+        <div class="card-surface">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+            <div class="avatar-circle lg">AT</div>
+            <div>
+              <div style="font-weight:700;font-size:16px;">Arda T.</div>
+              <div style="font-size:13px;color:var(--color-mid);">Event Host</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">
+            <svg width="14" height="14" class="star-filled"><use href="#icon-star"/></svg>
+            <svg width="14" height="14" class="star-filled"><use href="#icon-star"/></svg>
+            <svg width="14" height="14" class="star-filled"><use href="#icon-star"/></svg>
+            <svg width="14" height="14" class="star-filled"><use href="#icon-star"/></svg>
+            <svg width="14" height="14" class="star-filled" style="opacity:0.7"><use href="#icon-star"/></svg>
+            <span style="font-size:13px;font-weight:700;margin-left:4px;">4.8</span>
+          </div>
+          <p style="font-size:13px;color:var(--color-mid);margin-bottom:8px;">12 events hosted</p>
+          <a class="profile-link" href="#">View Profile &rarr;</a>
+        </div>
+
+        <!-- Date & Time -->
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <svg width="18" height="18" style="color:var(--color-mid)"><use href="#icon-calendar"/></svg>
+            <strong style="font-size:14px;">Date &amp; Time</strong>
+          </div>
+          <p style="font-size:15px;font-weight:700;">Saturday, March 28, 2026</p>
+          <p style="font-size:14px;color:var(--color-mid);margin-bottom:8px;">9:00 PM &ndash; 2:00 AM (next day)</p>
+          <a class="calendar-link" href="#">Add to calendar</a>
+        </div>
+
+        <!-- Location -->
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <svg width="18" height="18" style="color:var(--color-mid)"><use href="#icon-map-pin"/></svg>
+            <strong style="font-size:14px;">Location</strong>
+          </div>
+          <p style="font-size:15px;font-weight:700;">Kadikoy Beach Park</p>
+          <p style="font-size:14px;color:var(--color-mid);">Kadikoy, Istanbul</p>
+          <div class="map-placeholder">&#128506; VIEW ON MAP</div>
+        </div>
+
+        <!-- Attendees -->
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+            <svg width="18" height="18" style="color:var(--color-mid)"><use href="#icon-users"/></svg>
+            <strong style="font-size:14px;">Attendees</strong>
+          </div>
+          <div class="attendee-stack" style="margin-bottom:8px;">
+            <div class="avatar-circle xs">EY</div>
+            <div class="avatar-circle xs" style="background:#96775e;">MK</div>
+            <div class="avatar-circle xs" style="background:#7a6655;">ZA</div>
+            <div class="avatar-circle xs" style="background:#bfa08a;">CB</div>
+            <div class="avatar-circle xs" style="background:#8a7060;">DL</div>
+            <span class="attendee-more">+7 more</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" style="width:24%;"></div></div>
+          <p style="font-size:13px;color:var(--color-mid);">12 of 50 spots filled</p>
+        </div>
+
+        <!-- Requirements -->
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <svg width="18" height="18" style="color:var(--color-mid)"><use href="#icon-shield"/></svg>
+            <strong style="font-size:14px;">Requirements</strong>
+          </div>
+          <p style="font-size:14px;">18+ event &middot; ID required</p>
+          <p style="font-size:14px;color:var(--color-mid);">Wheelchair accessible</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ==================== E-02 ==================== -->
+<div class="screen" id="screen-e02">
+  <!-- Navbar Guest -->
+  <nav class="navbar">
+    <div class="navbar-logo">Social Event Mapper</div>
+    <div class="navbar-search">
+      <svg width="16" height="16" style="color:rgba(255,255,255,0.5)"><use href="#icon-search"/></svg>
+      <input type="text" placeholder="Search events...">
+    </div>
+    <div class="navbar-right">
+      <button class="btn-signin">Sign In</button>
+      <button class="btn-signup">Sign Up</button>
+    </div>
+  </nav>
+
+  <!-- Guest Banner -->
+  <div class="info-banner guest">
+    <svg width="16" height="16" style="color:var(--color-dark)"><use href="#icon-info"/></svg>
+    You're browsing as a guest. Sign in for the full experience.
+  </div>
+
+  <a href="#" class="back-link">
+    <svg width="16" height="16"><use href="#icon-arrow-left"/></svg>
+    Back to Discovery
+  </a>
+
+  <div class="main-content">
+    <div class="left-col">
+      <!-- Carousel -->
+      <div class="carousel-wrap">
+        <span class="placeholder-text">EVENT IMAGE 1 / 3</span>
+        <button class="carousel-arrow left"><svg width="20" height="20" style="color:var(--color-dark)"><use href="#icon-chevron-left"/></svg></button>
+        <button class="carousel-arrow right"><svg width="20" height="20" style="color:var(--color-dark)"><use href="#icon-chevron-right"/></svg></button>
+        <div class="carousel-dots"><button class="carousel-dot active"></button><button class="carousel-dot"></button><button class="carousel-dot"></button></div>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <h1 style="font-size:32px;font-weight:700;margin-bottom:8px;">Kadikoy Beach Party Night</h1>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <span class="tag-pill">Music / Party</span>
+          <span class="tag-pill">Nightlife</span>
+        </div>
+        <p style="font-size:14px;color:var(--color-mid);">Created by <strong style="color:var(--color-dark);">Arda T.</strong> &middot; Posted 2 days ago</p>
+      </div>
+
+      <div style="margin-bottom:24px;">
+        <h3 class="section-heading">About this event</h3>
+        <p style="font-size:15px;line-height:1.7;">Join us for an unforgettable night at Kadikoy Beach! Live DJ sets, great food, and amazing vibes by the sea. This is the biggest beach party of the spring season. Come early to grab the best spots &mdash; music starts at 9 PM and goes until 2 AM.</p>
+      </div>
+
+      <div style="margin-bottom:24px;">
+        <h3 class="section-heading">What to bring</h3>
+        <div class="checklist-item"><svg width="16" height="16" style="color:var(--color-mid)"><use href="#icon-check"/></svg><span>Valid ID (18+ event)</span></div>
+        <div class="checklist-item"><span style="display:inline-block;width:16px;height:16px;border:2px solid var(--color-mid-alpha);border-radius:50%;text-align:center;line-height:12px;font-size:10px;color:var(--color-mid);">&#9675;</span><span>Beach towel (optional)</span></div>
+        <div class="checklist-item"><span style="display:inline-block;width:16px;height:16px;border:2px solid var(--color-mid-alpha);border-radius:50%;text-align:center;line-height:12px;font-size:10px;color:var(--color-mid);">&#9675;</span><span>Cash for food vendors (optional)</span></div>
+      </div>
+
+      <div style="margin-bottom:32px;">
+        <h3 class="section-heading">Venue details</h3>
+        <div class="info-grid">
+          <div class="info-grid-item"><span style="font-size:16px;">&#127915;</span><span>Free entry</span></div>
+          <div class="info-grid-item"><span style="font-size:16px;">&#127760;</span><span>Turkish / English</span></div>
+          <div class="info-grid-item"><svg width="16" height="16" style="color:var(--color-mid)"><use href="#icon-wheelchair"/></svg><span>Wheelchair accessible</span></div>
+        </div>
+      </div>
+
+      <!-- Comments (disabled input) -->
+      <div>
+        <h3 class="section-heading">Comments (8)</h3>
+        <div class="comment-input-wrap">
+          <div class="avatar-circle sm" style="background:var(--color-mid-alpha);color:var(--color-mid);">?</div>
+          <textarea disabled placeholder="Sign in to leave a comment"></textarea>
+          <button class="send-btn" disabled><svg width="16" height="16" style="color:#fff"><use href="#icon-send"/></svg></button>
+        </div>
+
+        <div class="comment-item">
+          <div class="avatar-circle sm">EY</div>
+          <div style="flex:1;">
+            <div><strong>Ece Y.</strong> <span class="comment-meta">&middot; 2 hours ago</span></div>
+            <div class="comment-body">This sounds amazing! Will there be parking nearby?</div>
+            <div class="comment-actions">
+              <button class="comment-action"><svg width="14" height="14"><use href="#icon-thumbs-up"/></svg> 3</button>
+              <button class="comment-action"><svg width="14" height="14"><use href="#icon-reply"/></svg> Reply</button>
+            </div>
+            <div class="reply-thread">
+              <div class="reply-item">
+                <div class="avatar-circle xs">AT</div>
+                <div style="flex:1;">
+                  <div><strong>Arda T.</strong> <span class="host-badge-inline">Host</span> <span class="comment-meta">&middot; 1 hour ago</span></div>
+                  <div class="comment-body">Yes! There's free parking at the beach park entrance.</div>
+                  <div class="comment-actions"><button class="comment-action"><svg width="14" height="14"><use href="#icon-thumbs-up"/></svg> 1</button></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="comment-item">
+          <div class="avatar-circle sm">MK</div>
+          <div style="flex:1;">
+            <div><strong>Mehmet K.</strong> <span class="comment-meta">&middot; 5 hours ago</span></div>
+            <div class="comment-body">Can't wait! Already marked as going &#127881;</div>
+            <div class="comment-actions"><button class="comment-action"><svg width="14" height="14"><use href="#icon-thumbs-up"/></svg> 7</button><button class="comment-action"><svg width="14" height="14"><use href="#icon-reply"/></svg> Reply</button></div>
+          </div>
+        </div>
+        <div class="comment-item">
+          <div class="avatar-circle sm">ZA</div>
+          <div style="flex:1;">
+            <div><strong>Zeynep A.</strong> <span class="comment-meta">&middot; 1 day ago</span></div>
+            <div class="comment-body">Is there a dress code?</div>
+            <div class="comment-actions"><button class="comment-action"><svg width="14" height="14"><use href="#icon-thumbs-up"/></svg> 2</button><button class="comment-action"><svg width="14" height="14"><use href="#icon-reply"/></svg> Reply</button></div>
+          </div>
+        </div>
+        <div class="comment-item">
+          <div class="avatar-circle sm">CB</div>
+          <div style="flex:1;">
+            <div><strong>Can B.</strong> <span class="comment-meta">&middot; 1 day ago</span></div>
+            <div class="comment-body">Went to Arda's last event, it was incredible. Highly recommend!</div>
+            <div class="comment-actions"><button class="comment-action"><svg width="14" height="14"><use href="#icon-thumbs-up"/></svg> 12</button><button class="comment-action"><svg width="14" height="14"><use href="#icon-reply"/></svg> Reply</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN (Guest) -->
+    <div class="right-col">
+      <div class="sidebar-sticky">
+        <div class="card">
+          <button class="action-btn disabled" style="margin-bottom:8px;">Sign in to mark as Going</button>
+          <button class="action-btn disabled" style="margin-bottom:8px;">Sign in to Bookmark</button>
+          <p style="font-size:12px;color:var(--color-mid);text-align:center;">12 going &middot; 24 interested</p>
+        </div>
+
+        <div class="card-surface">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+            <div class="avatar-circle lg">AT</div>
+            <div>
+              <div style="font-weight:700;font-size:16px;">Arda T.</div>
+              <div style="font-size:13px;color:var(--color-mid);">Event Host</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">
+            <svg width="14" height="14" class="star-filled"><use href="#icon-star"/></svg>
+            <svg width="14" height="14" class="star-filled"><use href="#icon-star"/></svg>
+            <svg width="14" height="14" class="star-filled"><use href="#icon-star"/></svg>
+            <svg width="14" height="14" class="star-filled"><use href="#icon-star"/></svg>
+            <svg width="14" height="14" class="star-filled" style="opacity:0.7"><use href="#icon-star"/></svg>
+            <span style="font-size:13px;font-weight:700;margin-left:4px;">4.8</span>
+          </div>
+          <p style="font-size:13px;color:var(--color-mid);margin-bottom:8px;">12 events hosted</p>
+          <a class="profile-link" href="#">View Profile &rarr;</a>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <svg width="18" height="18" style="color:var(--color-mid)"><use href="#icon-calendar"/></svg>
+            <strong style="font-size:14px;">Date &amp; Time</strong>
+          </div>
+          <p style="font-size:15px;font-weight:700;">Saturday, March 28, 2026</p>
+          <p style="font-size:14px;color:var(--color-mid);margin-bottom:8px;">9:00 PM &ndash; 2:00 AM (next day)</p>
+          <a class="calendar-link" href="#">Add to calendar</a>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <svg width="18" height="18" style="color:var(--color-mid)"><use href="#icon-map-pin"/></svg>
+            <strong style="font-size:14px;">Location</strong>
+          </div>
+          <p style="font-size:15px;font-weight:700;">Kadikoy Beach Park</p>
+          <p style="font-size:14px;color:var(--color-mid);">Kadikoy, Istanbul</p>
+          <div class="map-placeholder">&#128506; VIEW ON MAP</div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+            <svg width="18" height="18" style="color:var(--color-mid)"><use href="#icon-users"/></svg>
+            <strong style="font-size:14px;">Attendees</strong>
+          </div>
+          <div class="attendee-stack" style="margin-bottom:8px;">
+            <div class="avatar-circle xs">EY</div>
+            <div class="avatar-circle xs" style="background:#96775e;">MK</div>
+            <div class="avatar-circle xs" style="background:#7a6655;">ZA</div>
+            <div class="avatar-circle xs" style="background:#bfa08a;">CB</div>
+            <div class="avatar-circle xs" style="background:#8a7060;">DL</div>
+            <span class="attendee-more">+7 more</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" style="width:24%;"></div></div>
+          <p style="font-size:13px;color:var(--color-mid);">12 of 50 spots filled</p>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <svg width="18" height="18" style="color:var(--color-mid)"><use href="#icon-shield"/></svg>
+            <strong style="font-size:14px;">Requirements</strong>
+          </div>
+          <p style="font-size:14px;">18+ event &middot; ID required</p>
+          <p style="font-size:14px;color:var(--color-mid);">Wheelchair accessible</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ==================== E-03 ==================== -->
+<div class="screen" id="screen-e03">
+  <nav class="navbar">
+    <div class="navbar-logo">Social Event Mapper</div>
+    <div class="navbar-search">
+      <svg width="16" height="16" style="color:rgba(255,255,255,0.5)"><use href="#icon-search"/></svg>
+      <input type="text" placeholder="Search events...">
+    </div>
+    <div class="navbar-right">
+      <button style="background:none;border:none;cursor:pointer;position:relative;">
+        <svg width="20" height="20" style="color:#fff"><use href="#icon-bell"/></svg>
+      </button>
+      <div class="avatar-circle">EY</div>
+      <span style="font-size:14px;font-weight:700;">Ece Y.</span>
+    </div>
+  </nav>
+
+  <a href="#" class="back-link">
+    <svg width="16" height="16"><use href="#icon-arrow-left"/></svg>
+    Back to Discovery
+  </a>
+
+  <div class="main-content">
+    <div class="left-col">
+      <!-- Title with Private badge -->
+      <div style="margin-bottom:16px;">
+        <h1 style="font-size:32px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:12px;">
+          Bogazici Running Club Sprint
+          <span class="badge badge-private"><svg width="12" height="12"><use href="#icon-lock"/></svg> Private</span>
+        </h1>
+      </div>
+
+      <!-- Restricted Carousel Replacement -->
+      <div class="restricted-box">
+        <svg width="48" height="48" style="color:var(--color-mid)"><use href="#icon-lock"/></svg>
+        <div class="title">This is a private event</div>
+        <div class="sub">Event details are only visible to the host</div>
+      </div>
+
+      <div style="margin-bottom:24px;">
+        <h3 class="section-heading">About this event</h3>
+        <p style="font-size:15px;line-height:1.7;color:var(--color-mid);font-style:italic;">Description is restricted</p>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN (Private Non-host) -->
+    <div class="right-col">
+      <div class="sidebar-sticky">
+        <!-- Host Info (visible) -->
+        <div class="card-surface">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+            <div class="avatar-circle lg" style="background:#7a6655;">RK</div>
+            <div>
+              <div style="font-weight:700;font-size:16px;">Ramazan K.</div>
+              <div style="font-size:13px;color:var(--color-mid);">Event Host</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">
+            <svg width="14" height="14" class="star-filled"><use href="#icon-star"/></svg>
+            <svg width="14" height="14" class="star-filled"><use href="#icon-star"/></svg>
+            <svg width="14" height="14" class="star-filled"><use href="#icon-star"/></svg>
+            <svg width="14" height="14" class="star-filled"><use href="#icon-star"/></svg>
+            <svg width="14" height="14" class="star-filled"><use href="#icon-star"/></svg>
+            <span style="font-size:13px;font-weight:700;margin-left:4px;">5.0</span>
+          </div>
+          <p style="font-size:13px;color:var(--color-mid);margin-bottom:8px;">8 events hosted</p>
+          <a class="profile-link" href="#">View Profile &rarr;</a>
+        </div>
+
+        <!-- Date (visible) -->
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <svg width="18" height="18" style="color:var(--color-mid)"><use href="#icon-calendar"/></svg>
+            <strong style="font-size:14px;">Date &amp; Time</strong>
+          </div>
+          <p style="font-size:15px;font-weight:700;">Sunday, March 29, 2026</p>
+          <p style="font-size:14px;color:var(--color-mid);">7:00 AM &ndash; 9:00 AM</p>
+        </div>
+
+        <!-- Location (city only) -->
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <svg width="18" height="18" style="color:var(--color-mid)"><use href="#icon-map-pin"/></svg>
+            <strong style="font-size:14px;">Location</strong>
+          </div>
+          <p style="font-size:15px;font-weight:700;color:var(--color-mid);">Istanbul</p>
+          <p style="font-size:13px;color:var(--color-mid);font-style:italic;">Exact location hidden for private events</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ==================== E-04 ==================== -->
+<div class="screen" id="screen-e04">
+  <nav class="navbar">
+    <div class="navbar-logo">Social Event Mapper</div>
+    <div class="navbar-search">
+      <svg width="16" height="16" style="color:rgba(255,255,255,0.5)"><use href="#icon-search"/></svg>
+      <input type="text" placeholder="Search events...">
+    </div>
+    <div class="navbar-right">
+      <button style="background:none;border:none;cursor:pointer;position:relative;">
+        <svg width="20" height="20" style="color:#fff"><use href="#icon-bell"/></svg>
+        <span style="position:absolute;top:-2px;right:-2px;width:8px;height:8px;background:#C45B4A;border-radius:50%;border:2px solid var(--color-dark);"></span>
+      </button>
+      <div class="avatar-circle" style="background:#7a6655;">RK</div>
+      <span style="font-size:14px;font-weight:700;">Ramazan K.</span>
+    </div>
+  </nav>
+
+  <a href="#" class="back-link">
+    <svg width="16" height="16"><use href="#icon-arrow-left"/></svg>
+    Back to Discovery
+  </a>
+
+  <div class="main-content">
+    <div class="left-col">
+      <!-- Carousel -->
+      <div class="carousel-wrap" style="background:#8a7060;">
+        <span class="placeholder-text">ROUTE IMAGE 1 / 3</span>
+        <button class="carousel-arrow left"><svg width="20" height="20" style="color:var(--color-dark)"><use href="#icon-chevron-left"/></svg></button>
+        <button class="carousel-arrow right"><svg width="20" height="20" style="color:var(--color-dark)"><use href="#icon-chevron-right"/></svg></button>
+        <div class="carousel-dots"><button class="carousel-dot active"></button><button class="carousel-dot"></button><button class="carousel-dot"></button></div>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <h1 style="font-size:32px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:12px;">
+          Bogazici Running Club Sprint
+          <span class="badge badge-private"><svg width="12" height="12"><use href="#icon-lock"/></svg> Private</span>
+        </h1>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <span class="tag-pill">Running</span>
+          <span class="tag-pill">Sports</span>
+        </div>
+        <p style="font-size:14px;color:var(--color-mid);">Created by <strong style="color:var(--color-dark);">Ramazan K.</strong> &middot; Posted 3 days ago</p>
+      </div>
+
+      <div style="margin-bottom:24px;">
+        <h3 class="section-heading">About this event</h3>
+        <p style="font-size:15px;line-height:1.7;">Private sprint event from Bebek to Saryer along the Bosphorus coast. Open to Bogazici Running Club members only. Meet at Bebek Park at 7 AM sharp.</p>
+      </div>
+
+      <div style="margin-bottom:24px;">
+        <h3 class="section-heading">What to bring</h3>
+        <div class="checklist-item"><svg width="16" height="16" style="color:var(--color-mid)"><use href="#icon-check"/></svg><span>Running shoes</span></div>
+        <div class="checklist-item"><svg width="16" height="16" style="color:var(--color-mid)"><use href="#icon-check"/></svg><span>Water bottle</span></div>
+        <div class="checklist-item"><span style="display:inline-block;width:16px;height:16px;border:2px solid var(--color-mid-alpha);border-radius:50%;text-align:center;line-height:12px;font-size:10px;color:var(--color-mid);">&#9675;</span><span>Warm-up jacket (optional)</span></div>
+      </div>
+
+      <div style="margin-bottom:32px;">
+        <h3 class="section-heading">Venue details</h3>
+        <div class="info-grid">
+          <div class="info-grid-item"><span style="font-size:16px;">&#127915;</span><span>Free entry</span></div>
+          <div class="info-grid-item"><span style="font-size:16px;">&#127760;</span><span>Turkish</span></div>
+        </div>
+      </div>
+
+      <!-- Comments -->
+      <div>
+        <h3 class="section-heading">Comments (3)</h3>
+        <div class="comment-input-wrap">
+          <div class="avatar-circle sm" style="background:#7a6655;">RK</div>
+          <textarea placeholder="Write a comment..."></textarea>
+          <button class="send-btn"><svg width="16" height="16" style="color:#fff"><use href="#icon-send"/></svg></button>
+        </div>
+
+        <div class="comment-item">
+          <div class="avatar-circle sm">EY</div>
+          <div style="flex:1;">
+            <div><strong>Ece Y.</strong> <span class="comment-meta">&middot; 6 hours ago</span></div>
+            <div class="comment-body">Will there be a warm-up session before we start?</div>
+            <div class="comment-actions">
+              <button class="comment-action"><svg width="14" height="14"><use href="#icon-thumbs-up"/></svg> 2</button>
+              <button class="comment-action"><svg width="14" height="14"><use href="#icon-reply"/></svg> Reply</button>
+            </div>
+            <div class="reply-thread">
+              <div class="reply-item">
+                <div class="avatar-circle xs" style="background:#7a6655;">RK</div>
+                <div style="flex:1;">
+                  <div><strong>Ramazan K.</strong> <span class="host-badge-inline">Host</span> <span class="comment-meta">&middot; 5 hours ago</span></div>
+                  <div class="comment-body">Yes! We'll do a 15-minute group warm-up at 6:45 AM.</div>
+                  <div class="comment-actions"><button class="comment-action"><svg width="14" height="14"><use href="#icon-thumbs-up"/></svg> 1</button></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="comment-item">
+          <div class="avatar-circle sm" style="background:#96775e;">AO</div>
+          <div style="flex:1;">
+            <div><strong>Ahmet O.</strong> <span class="comment-meta">&middot; 1 day ago</span></div>
+            <div class="comment-body">Let's go! Third sprint this month. Getting faster each time.</div>
+            <div class="comment-actions"><button class="comment-action"><svg width="14" height="14"><use href="#icon-thumbs-up"/></svg> 5</button><button class="comment-action"><svg width="14" height="14"><use href="#icon-reply"/></svg> Reply</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN (Host) -->
+    <div class="right-col">
+      <div class="sidebar-sticky">
+        <!-- Host Actions -->
+        <div class="card">
+          <p style="font-size:12px;font-weight:700;color:var(--color-mid);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">Host Actions</p>
+          <button class="action-btn outline" style="margin-bottom:8px;">
+            <svg width="18" height="18"><use href="#icon-edit"/></svg>
+            Edit Event
+          </button>
+          <button class="action-btn danger">
+            <svg width="18" height="18"><use href="#icon-x-circle"/></svg>
+            Cancel Event
+          </button>
+        </div>
+
+        <!-- Host Info (self) -->
+        <div class="card-surface">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+            <div class="avatar-circle lg" style="background:#7a6655;">RK</div>
+            <div>
+              <div style="font-weight:700;font-size:16px;">Ramazan K.</div>
+              <div style="font-size:13px;color:var(--color-mid);">Event Host</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">
+            <svg width="14" height="14" class="star-filled"><use href="#icon-star"/></svg>
+            <svg width="14" height="14" class="star-filled"><use href="#icon-star"/></svg>
+            <svg width="14" height="14" class="star-filled"><use href="#icon-star"/></svg>
+            <svg width="14" height="14" class="star-filled"><use href="#icon-star"/></svg>
+            <svg width="14" height="14" class="star-filled"><use href="#icon-star"/></svg>
+            <span style="font-size:13px;font-weight:700;margin-left:4px;">5.0</span>
+          </div>
+          <p style="font-size:13px;color:var(--color-mid);margin-bottom:8px;">8 events hosted</p>
+          <p style="font-size:13px;font-weight:700;color:var(--color-mid);font-style:italic;">You are the host</p>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <svg width="18" height="18" style="color:var(--color-mid)"><use href="#icon-calendar"/></svg>
+            <strong style="font-size:14px;">Date &amp; Time</strong>
+          </div>
+          <p style="font-size:15px;font-weight:700;">Sunday, March 29, 2026</p>
+          <p style="font-size:14px;color:var(--color-mid);margin-bottom:8px;">7:00 AM &ndash; 9:00 AM</p>
+          <a class="calendar-link" href="#">Add to calendar</a>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <svg width="18" height="18" style="color:var(--color-mid)"><use href="#icon-map-pin"/></svg>
+            <strong style="font-size:14px;">Location</strong>
+          </div>
+          <p style="font-size:15px;font-weight:700;">Bebek Park</p>
+          <p style="font-size:14px;color:var(--color-mid);">Bebek, Istanbul</p>
+          <div class="map-placeholder">&#128506; VIEW ON MAP</div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+            <svg width="18" height="18" style="color:var(--color-mid)"><use href="#icon-users"/></svg>
+            <strong style="font-size:14px;">Attendees</strong>
+          </div>
+          <div class="attendee-stack" style="margin-bottom:8px;">
+            <div class="avatar-circle xs">EY</div>
+            <div class="avatar-circle xs" style="background:#96775e;">AO</div>
+            <div class="avatar-circle xs" style="background:#7a6655;">SD</div>
+            <div class="avatar-circle xs" style="background:#bfa08a;">BT</div>
+            <div class="avatar-circle xs" style="background:#8a7060;">NK</div>
+            <span class="attendee-more">+3 more</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" style="width:40%;"></div></div>
+          <p style="font-size:13px;color:var(--color-mid);margin-bottom:8px;">8 of 20 spots filled</p>
+          <a class="manage-link" href="#">Manage Attendees &rarr;</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ==================== E-05 ==================== -->
+<div class="screen" id="screen-e05">
+  <nav class="navbar">
+    <div class="navbar-logo">Social Event Mapper</div>
+    <div class="navbar-search">
+      <svg width="16" height="16" style="color:rgba(255,255,255,0.5)"><use href="#icon-search"/></svg>
+      <input type="text" placeholder="Search events...">
+    </div>
+    <div class="navbar-right">
+      <button style="background:none;border:none;cursor:pointer;position:relative;">
+        <svg width="20" height="20" style="color:#fff"><use href="#icon-bell"/></svg>
+      </button>
+      <div class="avatar-circle">EY</div>
+      <span style="font-size:14px;font-weight:700;">Ece Y.</span>
+    </div>
+  </nav>
+
+  <!-- Cancelled Banner -->
+  <div class="info-banner cancelled">
+    <svg width="16" height="16" style="color:#fff"><use href="#icon-x-circle"/></svg>
+    This event has been cancelled by the host.
+  </div>
+
+  <a href="#" class="back-link">
+    <svg width="16" height="16"><use href="#icon-arrow-left"/></svg>
+    Back to Discovery
+  </a>
+
+  <div class="main-content muted-overlay">
+    <div class="left-col">
+      <div class="carousel-wrap" style="opacity:0.6;">
+        <span class="placeholder-text">EVENT IMAGE 1 / 3</span>
+        <button class="carousel-arrow left"><svg width="20" height="20" style="color:var(--color-dark)"><use href="#icon-chevron-left"/></svg></button>
+        <button class="carousel-arrow right"><svg width="20" height="20" style="color:var(--color-dark)"><use href="#icon-chevron-right"/></svg></button>
+        <div class="carousel-dots"><button class="carousel-dot active"></button><button class="carousel-dot"></button><button class="carousel-dot"></button></div>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <h1 style="font-size:32px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:12px;">
+          Kadikoy Beach Party Night
+          <span class="badge badge-cancelled">CANCELLED</span>
+        </h1>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <span class="tag-pill">Music / Party</span>
+          <span class="tag-pill">Nightlife</span>
+        </div>
+        <p style="font-size:14px;color:var(--color-mid);">Created by <strong style="color:var(--color-dark);">Arda T.</strong> &middot; Posted 2 days ago</p>
+      </div>
+
+      <div style="margin-bottom:24px;">
+        <h3 class="section-heading">About this event</h3>
+        <p style="font-size:15px;line-height:1.7;">Join us for an unforgettable night at Kadikoy Beach! Live DJ sets, great food, and amazing vibes by the sea. This is the biggest beach party of the spring season. Come early to grab the best spots &mdash; music starts at 9 PM and goes until 2 AM.</p>
+      </div>
+
+      <div style="margin-bottom:24px;">
+        <h3 class="section-heading">What to bring</h3>
+        <div class="checklist-item"><svg width="16" height="16" style="color:var(--color-mid)"><use href="#icon-check"/></svg><span>Valid ID (18+ event)</span></div>
+        <div class="checklist-item"><span style="display:inline-block;width:16px;height:16px;border:2px solid var(--color-mid-alpha);border-radius:50%;text-align:center;line-height:12px;font-size:10px;color:var(--color-mid);">&#9675;</span><span>Beach towel (optional)</span></div>
+        <div class="checklist-item"><span style="display:inline-block;width:16px;height:16px;border:2px solid var(--color-mid-alpha);border-radius:50%;text-align:center;line-height:12px;font-size:10px;color:var(--color-mid);">&#9675;</span><span>Cash for food vendors (optional)</span></div>
+      </div>
+
+      <div style="margin-bottom:32px;">
+        <h3 class="section-heading">Venue details</h3>
+        <div class="info-grid">
+          <div class="info-grid-item"><span style="font-size:16px;">&#127915;</span><span>Free entry</span></div>
+          <div class="info-grid-item"><span style="font-size:16px;">&#127760;</span><span>Turkish / English</span></div>
+          <div class="info-grid-item"><svg width="16" height="16" style="color:var(--color-mid)"><use href="#icon-wheelchair"/></svg><span>Wheelchair accessible</span></div>
+        </div>
+      </div>
+
+      <!-- Comments (closed) -->
+      <div>
+        <h3 class="section-heading">Comments (8)</h3>
+        <div class="comment-input-wrap">
+          <div class="avatar-circle sm">EY</div>
+          <textarea disabled placeholder="Comments are closed for cancelled events"></textarea>
+          <button class="send-btn" disabled><svg width="16" height="16" style="color:#fff"><use href="#icon-send"/></svg></button>
+        </div>
+
+        <div class="comment-item">
+          <div class="avatar-circle sm">EY</div>
+          <div style="flex:1;">
+            <div><strong>Ece Y.</strong> <span class="comment-meta">&middot; 2 hours ago</span></div>
+            <div class="comment-body">This sounds amazing! Will there be parking nearby?</div>
+            <div class="comment-actions"><button class="comment-action"><svg width="14" height="14"><use href="#icon-thumbs-up"/></svg> 3</button><button class="comment-action"><svg width="14" height="14"><use href="#icon-reply"/></svg> Reply</button></div>
+            <div class="reply-thread">
+              <div class="reply-item">
+                <div class="avatar-circle xs">AT</div>
+                <div style="flex:1;">
+                  <div><strong>Arda T.</strong> <span class="host-badge-inline">Host</span> <span class="comment-meta">&middot; 1 hour ago</span></div>
+                  <div class="comment-body">Yes! There's free parking at the beach park entrance.</div>
+                  <div class="comment-actions"><button class="comment-action"><svg width="14" height="14"><use href="#icon-thumbs-up"/></svg> 1</button></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="comment-item">
+          <div class="avatar-circle sm">MK</div>
+          <div style="flex:1;">
+            <div><strong>Mehmet K.</strong> <span class="comment-meta">&middot; 5 hours ago</span></div>
+            <div class="comment-body">Can't wait! Already marked as going &#127881;</div>
+            <div class="comment-actions"><button class="comment-action"><svg width="14" height="14"><use href="#icon-thumbs-up"/></svg> 7</button><button class="comment-action"><svg width="14" height="14"><use href="#icon-reply"/></svg> Reply</button></div>
+          </div>
+        </div>
+        <div class="comment-item">
+          <div class="avatar-circle sm">ZA</div>
+          <div style="flex:1;">
+            <div><strong>Zeynep A.</strong> <span class="comment-meta">&middot; 1 day ago</span></div>
+            <div class="comment-body">Is there a dress code?</div>
+            <div class="comment-actions"><button class="comment-action"><svg width="14" height="14"><use href="#icon-thumbs-up"/></svg> 2</button><button class="comment-action"><svg width="14" height="14"><use href="#icon-reply"/></svg> Reply</button></div>
+          </div>
+        </div>
+        <div class="comment-item">
+          <div class="avatar-circle sm">CB</div>
+          <div style="flex:1;">
+            <div><strong>Can B.</strong> <span class="comment-meta">&middot; 1 day ago</span></div>
+            <div class="comment-body">Went to Arda's last event, it was incredible. Highly recommend!</div>
+            <div class="comment-actions"><button class="comment-action"><svg width="14" height="14"><use href="#icon-thumbs-up"/></svg> 12</button><button class="comment-action"><svg width="14" height="14"><use href="#icon-reply"/></svg> Reply</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="right-col">
+      <div class="sidebar-sticky">
+        <div class="card">
+          <button class="action-btn disabled" style="margin-bottom:8px;">
+            <svg width="18" height="18"><use href="#icon-x-circle"/></svg>
+            Event Cancelled
+          </button>
+          <button class="action-btn disabled">
+            <svg width="18" height="18"><use href="#icon-bookmark"/></svg>
+            Bookmark
+          </button>
+        </div>
+
+        <div class="card-surface">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+            <div class="avatar-circle lg">AT</div>
+            <div>
+              <div style="font-weight:700;font-size:16px;">Arda T.</div>
+              <div style="font-size:13px;color:var(--color-mid);">Event Host</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">
+            <svg width="14" height="14" class="star-filled"><use href="#icon-star"/></svg>
+            <svg width="14" height="14" class="star-filled"><use href="#icon-star"/></svg>
+            <svg width="14" height="14" class="star-filled"><use href="#icon-star"/></svg>
+            <svg width="14" height="14" class="star-filled"><use href="#icon-star"/></svg>
+            <svg width="14" height="14" class="star-filled" style="opacity:0.7"><use href="#icon-star"/></svg>
+            <span style="font-size:13px;font-weight:700;margin-left:4px;">4.8</span>
+          </div>
+          <p style="font-size:13px;color:var(--color-mid);margin-bottom:8px;">12 events hosted</p>
+          <a class="profile-link" href="#">View Profile &rarr;</a>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <svg width="18" height="18" style="color:var(--color-mid)"><use href="#icon-calendar"/></svg>
+            <strong style="font-size:14px;">Date &amp; Time</strong>
+          </div>
+          <p style="font-size:15px;font-weight:700;">Saturday, March 28, 2026</p>
+          <p style="font-size:14px;color:var(--color-mid);">9:00 PM &ndash; 2:00 AM (next day)</p>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <svg width="18" height="18" style="color:var(--color-mid)"><use href="#icon-map-pin"/></svg>
+            <strong style="font-size:14px;">Location</strong>
+          </div>
+          <p style="font-size:15px;font-weight:700;">Kadikoy Beach Park</p>
+          <p style="font-size:14px;color:var(--color-mid);">Kadikoy, Istanbul</p>
+          <div class="map-placeholder">&#128506; VIEW ON MAP</div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+            <svg width="18" height="18" style="color:var(--color-mid)"><use href="#icon-users"/></svg>
+            <strong style="font-size:14px;">Attendees</strong>
+          </div>
+          <div class="attendee-stack" style="margin-bottom:8px;">
+            <div class="avatar-circle xs">EY</div>
+            <div class="avatar-circle xs" style="background:#96775e;">MK</div>
+            <div class="avatar-circle xs" style="background:#7a6655;">ZA</div>
+            <div class="avatar-circle xs" style="background:#bfa08a;">CB</div>
+            <div class="avatar-circle xs" style="background:#8a7060;">DL</div>
+            <span class="attendee-more">+7 more</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" style="width:24%;"></div></div>
+          <p style="font-size:13px;color:var(--color-mid);">12 of 50 spots filled</p>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <svg width="18" height="18" style="color:var(--color-mid)"><use href="#icon-shield"/></svg>
+            <strong style="font-size:14px;">Requirements</strong>
+          </div>
+          <p style="font-size:14px;">18+ event &middot; ID required</p>
+          <p style="font-size:14px;color:var(--color-mid);">Wheelchair accessible</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ==================== E-06 ==================== -->
+<div class="screen" id="screen-e06">
+  <nav class="navbar">
+    <div class="navbar-logo">Social Event Mapper</div>
+    <div class="navbar-search">
+      <svg width="16" height="16" style="color:rgba(255,255,255,0.5)"><use href="#icon-search"/></svg>
+      <input type="text" placeholder="Search events...">
+    </div>
+    <div class="navbar-right">
+      <button style="background:none;border:none;cursor:pointer;position:relative;">
+        <svg width="20" height="20" style="color:#fff"><use href="#icon-bell"/></svg>
+      </button>
+      <div class="avatar-circle">EY</div>
+      <span style="font-size:14px;font-weight:700;">Ece Y.</span>
+    </div>
+  </nav>
+
+  <a href="#" class="back-link">
+    <svg width="16" height="16"><use href="#icon-arrow-left"/></svg>
+    Back to Discovery
+  </a>
+
+  <div class="main-content" style="opacity:0.85;">
+    <div class="left-col">
+      <div class="carousel-wrap">
+        <span class="placeholder-text">EVENT IMAGE 1 / 3</span>
+        <button class="carousel-arrow left"><svg width="20" height="20" style="color:var(--color-dark)"><use href="#icon-chevron-left"/></svg></button>
+        <button class="carousel-arrow right"><svg width="20" height="20" style="color:var(--color-dark)"><use href="#icon-chevron-right"/></svg></button>
+        <div class="carousel-dots"><button class="carousel-dot active"></button><button class="carousel-dot"></button><button class="carousel-dot"></button></div>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <h1 style="font-size:32px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:12px;">
+          Kadikoy Beach Party Night
+          <span class="badge badge-ended">ENDED</span>
+        </h1>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <span class="tag-pill">Music / Party</span>
+          <span class="tag-pill">Nightlife</span>
+        </div>
+        <p style="font-size:14px;color:var(--color-mid);">Created by <strong style="color:var(--color-dark);">Arda T.</strong> &middot; Posted 2 weeks ago</p>
+      </div>
+
+      <div style="margin-bottom:24px;">
+        <h3 class="section-heading">About this event</h3>
+        <p style="font-size:15px;line-height:1.7;">Join us for an unforgettable night at Kadikoy Beach! Live DJ sets, great food, and amazing vibes by the sea. This is the biggest beach party of the spring season. Come early to grab the best spots &mdash; music starts at 9 PM and goes until 2 AM.</p>
+      </div>
+
+      <div style="margin-bottom:24px;">
+        <h3 class="section-heading">What to bring</h3>
+        <div class="checklist-item"><svg width="16" height="16" style="color:var(--color-mid)"><use href="#icon-check"/></svg><span>Valid ID (18+ event)</span></div>
+        <div class="checklist-item"><span style="display:inline-block;width:16px;height:16px;border:2px solid var(--color-mid-alpha);border-radius:50%;text-align:center;line-height:12px;font-size:10px;color:var(--color-mid);">&#9675;</span><span>Beach towel (optional)</span></div>
+        <div class="checklist-item"><span style="display:inline-block;width:16px;height:16px;border:2px solid var(--color-mid-alpha);border-radius:50%;text-align:center;line-height:12px;font-size:10px;color:var(--color-mid);">&#9675;</span><span>Cash for food vendors (optional)</span></div>
+      </div>
+
+      <div style="margin-bottom:32px;">
+        <h3 class="section-heading">Venue details</h3>
+        <div class="info-grid">
+          <div class="info-grid-item"><span style="font-size:16px;">&#127915;</span><span>Free entry</span></div>
+          <div class="info-grid-item"><span style="font-size:16px;">&#127760;</span><span>Turkish / English</span></div>
+          <div class="info-grid-item"><svg width="16" height="16" style="color:var(--color-mid)"><use href="#icon-wheelchair"/></svg><span>Wheelchair accessible</span></div>
+        </div>
+      </div>
+
+      <!-- Comments (still open) -->
+      <div>
+        <h3 class="section-heading">Comments (8)</h3>
+        <div class="comment-input-wrap">
+          <div class="avatar-circle sm">EY</div>
+          <textarea placeholder="Write a comment..."></textarea>
+          <button class="send-btn"><svg width="16" height="16" style="color:#fff"><use href="#icon-send"/></svg></button>
+        </div>
+
+        <div class="comment-item">
+          <div class="avatar-circle sm">EY</div>
+          <div style="flex:1;">
+            <div><strong>Ece Y.</strong> <span class="comment-meta">&middot; 2 hours ago</span></div>
+            <div class="comment-body">This sounds amazing! Will there be parking nearby?</div>
+            <div class="comment-actions"><button class="comment-action"><svg width="14" height="14"><use href="#icon-thumbs-up"/></svg> 3</button><button class="comment-action"><svg width="14" height="14"><use href="#icon-reply"/></svg> Reply</button></div>
+            <div class="reply-thread">
+              <div class="reply-item">
+                <div class="avatar-circle xs">AT</div>
+                <div style="flex:1;">
+                  <div><strong>Arda T.</strong> <span class="host-badge-inline">Host</span> <span class="comment-meta">&middot; 1 hour ago</span></div>
+                  <div class="comment-body">Yes! There's free parking at the beach park entrance.</div>
+                  <div class="comment-actions"><button class="comment-action"><svg width="14" height="14"><use href="#icon-thumbs-up"/></svg> 1</button></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="comment-item">
+          <div class="avatar-circle sm">MK</div>
+          <div style="flex:1;">
+            <div><strong>Mehmet K.</strong> <span class="comment-meta">&middot; 5 hours ago</span></div>
+            <div class="comment-body">Can't wait! Already marked as going &#127881;</div>
+            <div class="comment-actions"><button class="comment-action"><svg width="14" height="14"><use href="#icon-thumbs-up"/></svg> 7</button><button class="comment-action"><svg width="14" height="14"><use href="#icon-reply"/></svg> Reply</button></div>
+          </div>
+        </div>
+        <div class="comment-item">
+          <div class="avatar-circle sm">ZA</div>
+          <div style="flex:1;">
+            <div><strong>Zeynep A.</strong> <span class="comment-meta">&middot; 1 day ago</span></div>
+            <div class="comment-body">Is there a dress code?</div>
+            <div class="comment-actions"><button class="comment-action"><svg width="14" height="14"><use href="#icon-thumbs-up"/></svg> 2</button><button class="comment-action"><svg width="14" height="14"><use href="#icon-reply"/></svg> Reply</button></div>
+          </div>
+        </div>
+        <div class="comment-item">
+          <div class="avatar-circle sm">CB</div>
+          <div style="flex:1;">
+            <div><strong>Can B.</strong> <span class="comment-meta">&middot; 1 day ago</span></div>
+            <div class="comment-body">Went to Arda's last event, it was incredible. Highly recommend!</div>
+            <div class="comment-actions"><button class="comment-action"><svg width="14" height="14"><use href="#icon-thumbs-up"/></svg> 12</button><button class="comment-action"><svg width="14" height="14"><use href="#icon-reply"/></svg> Reply</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="right-col">
+      <div class="sidebar-sticky">
+        <div class="card">
+          <button class="action-btn disabled" style="margin-bottom:8px;">Event has ended</button>
+          <button class="action-btn outline" style="margin-bottom:8px;">
+            <svg width="18" height="18"><use href="#icon-bookmark"/></svg>
+            Bookmark
+          </button>
+          <p style="font-size:12px;color:var(--color-mid);text-align:center;">43 attended &middot; 24 interested</p>
+        </div>
+
+        <div class="card-surface">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+            <div class="avatar-circle lg">AT</div>
+            <div>
+              <div style="font-weight:700;font-size:16px;">Arda T.</div>
+              <div style="font-size:13px;color:var(--color-mid);">Event Host</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">
+            <svg width="14" height="14" class="star-filled"><use href="#icon-star"/></svg>
+            <svg width="14" height="14" class="star-filled"><use href="#icon-star"/></svg>
+            <svg width="14" height="14" class="star-filled"><use href="#icon-star"/></svg>
+            <svg width="14" height="14" class="star-filled"><use href="#icon-star"/></svg>
+            <svg width="14" height="14" class="star-filled" style="opacity:0.7"><use href="#icon-star"/></svg>
+            <span style="font-size:13px;font-weight:700;margin-left:4px;">4.8</span>
+          </div>
+          <p style="font-size:13px;color:var(--color-mid);margin-bottom:8px;">12 events hosted</p>
+          <a class="profile-link" href="#">View Profile &rarr;</a>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <svg width="18" height="18" style="color:var(--color-mid)"><use href="#icon-calendar"/></svg>
+            <strong style="font-size:14px;">Date &amp; Time</strong>
+          </div>
+          <p style="font-size:15px;font-weight:700;">Saturday, March 15, 2026</p>
+          <p style="font-size:14px;color:var(--color-mid);margin-bottom:4px;">9:00 PM &ndash; 2:00 AM (next day)</p>
+          <p style="font-size:13px;font-weight:700;color:#C45B4A;">This event has ended</p>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <svg width="18" height="18" style="color:var(--color-mid)"><use href="#icon-map-pin"/></svg>
+            <strong style="font-size:14px;">Location</strong>
+          </div>
+          <p style="font-size:15px;font-weight:700;">Kadikoy Beach Park</p>
+          <p style="font-size:14px;color:var(--color-mid);">Kadikoy, Istanbul</p>
+          <div class="map-placeholder">&#128506; VIEW ON MAP</div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+            <svg width="18" height="18" style="color:var(--color-mid)"><use href="#icon-users"/></svg>
+            <strong style="font-size:14px;">Attendees</strong>
+          </div>
+          <div class="attendee-stack" style="margin-bottom:8px;">
+            <div class="avatar-circle xs">EY</div>
+            <div class="avatar-circle xs" style="background:#96775e;">MK</div>
+            <div class="avatar-circle xs" style="background:#7a6655;">ZA</div>
+            <div class="avatar-circle xs" style="background:#bfa08a;">CB</div>
+            <div class="avatar-circle xs" style="background:#8a7060;">DL</div>
+            <span class="attendee-more">+38 more</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" style="width:86%;"></div></div>
+          <p style="font-size:13px;color:var(--color-mid);">43 of 50 attended</p>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <svg width="18" height="18" style="color:var(--color-mid)"><use href="#icon-shield"/></svg>
+            <strong style="font-size:14px;">Requirements</strong>
+          </div>
+          <p style="font-size:14px;">18+ event &middot; ID required</p>
+          <p style="font-size:14px;color:var(--color-mid);">Wheelchair accessible</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ==================== E-07 ==================== -->
+<div class="screen" id="screen-e07">
+  <nav class="navbar">
+    <div class="navbar-logo">Social Event Mapper</div>
+    <div class="navbar-search">
+      <svg width="16" height="16" style="color:rgba(255,255,255,0.5)"><use href="#icon-search"/></svg>
+      <input type="text" placeholder="Search events...">
+    </div>
+    <div class="navbar-right">
+      <button style="background:none;border:none;cursor:pointer;position:relative;">
+        <svg width="20" height="20" style="color:#fff"><use href="#icon-bell"/></svg>
+        <span style="position:absolute;top:-2px;right:-2px;width:8px;height:8px;background:#C45B4A;border-radius:50%;border:2px solid var(--color-dark);"></span>
+      </button>
+      <div class="avatar-circle">EY</div>
+      <span style="font-size:14px;font-weight:700;">Ece Y.</span>
+    </div>
+  </nav>
+
+  <!-- Full Banner -->
+  <div class="info-banner full">
+    <svg width="16" height="16" style="color:#fff"><use href="#icon-alert-triangle"/></svg>
+    This event is fully booked. Bookmark it to get notified if a spot opens up.
+  </div>
+
+  <a href="#" class="back-link">
+    <svg width="16" height="16"><use href="#icon-arrow-left"/></svg>
+    Back to Discovery
+  </a>
+
+  <div class="main-content">
+    <div class="left-col">
+      <div class="carousel-wrap">
+        <span class="placeholder-text">EVENT IMAGE 1 / 3</span>
+        <button class="carousel-arrow left"><svg width="20" height="20" style="color:var(--color-dark)"><use href="#icon-chevron-left"/></svg></button>
+        <button class="carousel-arrow right"><svg width="20" height="20" style="color:var(--color-dark)"><use href="#icon-chevron-right"/></svg></button>
+        <div class="carousel-dots"><button class="carousel-dot active"></button><button class="carousel-dot"></button><button class="carousel-dot"></button></div>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <h1 style="font-size:32px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:12px;">
+          Kadikoy Beach Party Night
+          <span class="badge badge-full">FULL</span>
+        </h1>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <span class="tag-pill">Music / Party</span>
+          <span class="tag-pill">Nightlife</span>
+        </div>
+        <p style="font-size:14px;color:var(--color-mid);">Created by <strong style="color:var(--color-dark);">Arda T.</strong> &middot; Posted 2 days ago</p>
+      </div>
+
+      <div style="margin-bottom:24px;">
+        <h3 class="section-heading">About this event</h3>
+        <p style="font-size:15px;line-height:1.7;">Join us for an unforgettable night at Kadikoy Beach! Live DJ sets, great food, and amazing vibes by the sea. This is the biggest beach party of the spring season. Come early to grab the best spots &mdash; music starts at 9 PM and goes until 2 AM.</p>
+      </div>
+
+      <div style="margin-bottom:24px;">
+        <h3 class="section-heading">What to bring</h3>
+        <div class="checklist-item"><svg width="16" height="16" style="color:var(--color-mid)"><use href="#icon-check"/></svg><span>Valid ID (18+ event)</span></div>
+        <div class="checklist-item"><span style="display:inline-block;width:16px;height:16px;border:2px solid var(--color-mid-alpha);border-radius:50%;text-align:center;line-height:12px;font-size:10px;color:var(--color-mid);">&#9675;</span><span>Beach towel (optional)</span></div>
+        <div class="checklist-item"><span style="display:inline-block;width:16px;height:16px;border:2px solid var(--color-mid-alpha);border-radius:50%;text-align:center;line-height:12px;font-size:10px;color:var(--color-mid);">&#9675;</span><span>Cash for food vendors (optional)</span></div>
+      </div>
+
+      <div style="margin-bottom:32px;">
+        <h3 class="section-heading">Venue details</h3>
+        <div class="info-grid">
+          <div class="info-grid-item"><span style="font-size:16px;">&#127915;</span><span>Free entry</span></div>
+          <div class="info-grid-item"><span style="font-size:16px;">&#127760;</span><span>Turkish / English</span></div>
+          <div class="info-grid-item"><svg width="16" height="16" style="color:var(--color-mid)"><use href="#icon-wheelchair"/></svg><span>Wheelchair accessible</span></div>
+        </div>
+      </div>
+
+      <!-- Comments -->
+      <div>
+        <h3 class="section-heading">Comments (8)</h3>
+        <div class="comment-input-wrap">
+          <div class="avatar-circle sm">EY</div>
+          <textarea placeholder="Write a comment..."></textarea>
+          <button class="send-btn"><svg width="16" height="16" style="color:#fff"><use href="#icon-send"/></svg></button>
+        </div>
+
+        <div class="comment-item">
+          <div class="avatar-circle sm">EY</div>
+          <div style="flex:1;">
+            <div><strong>Ece Y.</strong> <span class="comment-meta">&middot; 2 hours ago</span></div>
+            <div class="comment-body">This sounds amazing! Will there be parking nearby?</div>
+            <div class="comment-actions"><button class="comment-action"><svg width="14" height="14"><use href="#icon-thumbs-up"/></svg> 3</button><button class="comment-action"><svg width="14" height="14"><use href="#icon-reply"/></svg> Reply</button></div>
+            <div class="reply-thread">
+              <div class="reply-item">
+                <div class="avatar-circle xs">AT</div>
+                <div style="flex:1;">
+                  <div><strong>Arda T.</strong> <span class="host-badge-inline">Host</span> <span class="comment-meta">&middot; 1 hour ago</span></div>
+                  <div class="comment-body">Yes! There's free parking at the beach park entrance.</div>
+                  <div class="comment-actions"><button class="comment-action"><svg width="14" height="14"><use href="#icon-thumbs-up"/></svg> 1</button></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="comment-item">
+          <div class="avatar-circle sm">MK</div>
+          <div style="flex:1;">
+            <div><strong>Mehmet K.</strong> <span class="comment-meta">&middot; 5 hours ago</span></div>
+            <div class="comment-body">Can't wait! Already marked as going &#127881;</div>
+            <div class="comment-actions"><button class="comment-action"><svg width="14" height="14"><use href="#icon-thumbs-up"/></svg> 7</button><button class="comment-action"><svg width="14" height="14"><use href="#icon-reply"/></svg> Reply</button></div>
+          </div>
+        </div>
+        <div class="comment-item">
+          <div class="avatar-circle sm">ZA</div>
+          <div style="flex:1;">
+            <div><strong>Zeynep A.</strong> <span class="comment-meta">&middot; 1 day ago</span></div>
+            <div class="comment-body">Is there a dress code?</div>
+            <div class="comment-actions"><button class="comment-action"><svg width="14" height="14"><use href="#icon-thumbs-up"/></svg> 2</button><button class="comment-action"><svg width="14" height="14"><use href="#icon-reply"/></svg> Reply</button></div>
+          </div>
+        </div>
+        <div class="comment-item">
+          <div class="avatar-circle sm">CB</div>
+          <div style="flex:1;">
+            <div><strong>Can B.</strong> <span class="comment-meta">&middot; 1 day ago</span></div>
+            <div class="comment-body">Went to Arda's last event, it was incredible. Highly recommend!</div>
+            <div class="comment-actions"><button class="comment-action"><svg width="14" height="14"><use href="#icon-thumbs-up"/></svg> 12</button><button class="comment-action"><svg width="14" height="14"><use href="#icon-reply"/></svg> Reply</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="right-col">
+      <div class="sidebar-sticky">
+        <div class="card">
+          <button class="action-btn disabled" style="margin-bottom:8px;">
+            Sold Out &mdash; 50/50
+          </button>
+          <button class="action-btn outline" style="margin-bottom:8px;">
+            <svg width="18" height="18"><use href="#icon-bookmark"/></svg>
+            Bookmark
+          </button>
+          <p style="font-size:12px;color:var(--color-mid);text-align:center;">50 going &middot; 38 interested</p>
+        </div>
+
+        <div class="card-surface">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+            <div class="avatar-circle lg">AT</div>
+            <div>
+              <div style="font-weight:700;font-size:16px;">Arda T.</div>
+              <div style="font-size:13px;color:var(--color-mid);">Event Host</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;">
+            <svg width="14" height="14" class="star-filled"><use href="#icon-star"/></svg>
+            <svg width="14" height="14" class="star-filled"><use href="#icon-star"/></svg>
+            <svg width="14" height="14" class="star-filled"><use href="#icon-star"/></svg>
+            <svg width="14" height="14" class="star-filled"><use href="#icon-star"/></svg>
+            <svg width="14" height="14" class="star-filled" style="opacity:0.7"><use href="#icon-star"/></svg>
+            <span style="font-size:13px;font-weight:700;margin-left:4px;">4.8</span>
+          </div>
+          <p style="font-size:13px;color:var(--color-mid);margin-bottom:8px;">12 events hosted</p>
+          <a class="profile-link" href="#">View Profile &rarr;</a>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <svg width="18" height="18" style="color:var(--color-mid)"><use href="#icon-calendar"/></svg>
+            <strong style="font-size:14px;">Date &amp; Time</strong>
+          </div>
+          <p style="font-size:15px;font-weight:700;">Saturday, March 28, 2026</p>
+          <p style="font-size:14px;color:var(--color-mid);margin-bottom:8px;">9:00 PM &ndash; 2:00 AM (next day)</p>
+          <a class="calendar-link" href="#">Add to calendar</a>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <svg width="18" height="18" style="color:var(--color-mid)"><use href="#icon-map-pin"/></svg>
+            <strong style="font-size:14px;">Location</strong>
+          </div>
+          <p style="font-size:15px;font-weight:700;">Kadikoy Beach Park</p>
+          <p style="font-size:14px;color:var(--color-mid);">Kadikoy, Istanbul</p>
+          <div class="map-placeholder">&#128506; VIEW ON MAP</div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+            <svg width="18" height="18" style="color:var(--color-mid)"><use href="#icon-users"/></svg>
+            <strong style="font-size:14px;">Attendees</strong>
+          </div>
+          <div class="attendee-stack" style="margin-bottom:8px;">
+            <div class="avatar-circle xs">EY</div>
+            <div class="avatar-circle xs" style="background:#96775e;">MK</div>
+            <div class="avatar-circle xs" style="background:#7a6655;">ZA</div>
+            <div class="avatar-circle xs" style="background:#bfa08a;">CB</div>
+            <div class="avatar-circle xs" style="background:#8a7060;">DL</div>
+            <span class="attendee-more">+45 more</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" style="width:100%;"></div></div>
+          <p style="font-size:13px;color:var(--color-dark);font-weight:700;">50 of 50 spots filled &mdash; FULL</p>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <svg width="18" height="18" style="color:var(--color-mid)"><use href="#icon-shield"/></svg>
+            <strong style="font-size:14px;">Requirements</strong>
+          </div>
+          <p style="font-size:14px;">18+ event &middot; ID required</p>
+          <p style="font-size:14px;color:var(--color-mid);">Wheelchair accessible</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ==================== JAVASCRIPT ==================== -->
+<script>
+  const groupMap = {
+    normal: ['e01', 'e02', 'e03', 'e04'],
+    edge: ['e05', 'e06', 'e07']
+  };
+
+  let currentGroup = 'normal';
+  let currentScreen = 'e01';
+
+  function switchGroup(group) {
+    currentGroup = group;
+
+    // Update group buttons
+    document.querySelectorAll('.tab-group-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-group-btn').forEach(btn => {
+      if ((group === 'normal' && btn.textContent.includes('Normal')) ||
+          (group === 'edge' && btn.textContent.includes('Edge'))) {
+        btn.classList.add('active');
+      }
+    });
+
+    // Show/hide sub-tab rows
+    document.getElementById('normal-tabs').style.display = group === 'normal' ? 'flex' : 'none';
+    document.getElementById('edge-tabs').style.display = group === 'edge' ? 'flex' : 'none';
+
+    // Switch to first screen in group
+    const firstScreen = groupMap[group][0];
+    switchScreen(firstScreen);
+  }
+
+  function switchScreen(screenId) {
+    currentScreen = screenId;
+
+    // Hide all screens
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+
+    // Show target
+    const target = document.getElementById('screen-' + screenId);
+    if (target) target.classList.add('active');
+
+    // Update sub-tab buttons
+    const tabContainer = currentGroup === 'normal' ? 'normal-tabs' : 'edge-tabs';
+    document.getElementById(tabContainer).querySelectorAll('.sub-tab-btn').forEach(btn => {
+      btn.classList.remove('active');
+      if (btn.textContent.includes(screenId.toUpperCase().replace('E0', 'E-0'))) {
+        btn.classList.add('active');
+      }
+    });
+  }
+</script>
+
+</body>
+</html>
