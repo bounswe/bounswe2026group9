@@ -2,7 +2,6 @@
 
 from supabase import Client
 
-
 # --- Invites ---
 
 def insert_invite(db: Client, data: dict) -> dict:

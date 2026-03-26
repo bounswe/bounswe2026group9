@@ -3,9 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
-
 # --- Response Schemas ---
-
 
 class NotificationResponse(BaseModel):
     id: UUID

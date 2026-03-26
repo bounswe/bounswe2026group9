@@ -180,7 +180,6 @@ def list_access_requests(db: Client, event_id: str, user_id: str) -> AccessReque
 
     requests = invite_repo.get_pending_requests_by_event(db, event_id)
 
-    from app.repositories import user as user_repo
     user_ids = list({r["user_id"] for r in requests})
     users = {}
     if user_ids:

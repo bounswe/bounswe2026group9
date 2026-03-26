@@ -2,7 +2,6 @@
 
 import uuid
 
-
 # --- Helpers ---
 
 def _register_user(client, prefix="notiftest"):
