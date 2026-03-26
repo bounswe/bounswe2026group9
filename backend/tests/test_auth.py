@@ -174,7 +174,7 @@ class TestTokenFlow:
 
     def test_me_without_token(self, client):
         response = client.get("/auth/me")
-        assert response.status_code == 403  # HTTPBearer returns 403
+        assert response.status_code == 401
 
     def test_refresh_with_cookie(self, client, registered_user):
         # Login sets cookie, then refresh

@@ -100,7 +100,7 @@ class TestCreateCategory:
 
     def test_create_no_auth(self):
         resp = client.post("/categories", json={"name": "NoAuth"})
-        assert resp.status_code == 403
+        assert resp.status_code == 401
 
     def test_create_empty_name(self):
         user = _create_test_user()

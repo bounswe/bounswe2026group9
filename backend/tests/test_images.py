@@ -197,7 +197,7 @@ class TestUploadImage:
             "/events/00000000-0000-0000-0000-000000000000/images",
             files={"file": ("test.jpg", b"fake", "image/jpeg")},
         )
-        assert resp.status_code == 403
+        assert resp.status_code == 401
 
 
 class TestDeleteImage:

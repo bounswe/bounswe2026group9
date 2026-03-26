@@ -248,7 +248,7 @@ class TestCreateEvent:
         body = _valid_event_body(cat_ids)
 
         resp = client.post("/events", json=body)
-        assert resp.status_code == 403
+        assert resp.status_code == 401
 
     def test_create_event_missing_title(self):
         user = _create_test_user("notitle")
@@ -504,7 +504,7 @@ class TestUpdateEvent:
 
     def test_update_no_auth(self):
         resp = client.put("/events/some-id", json={"title": "x"})
-        assert resp.status_code == 403
+        assert resp.status_code == 401
 
 
 # --- Faz 3: PATCH /events/{id}/status ---
@@ -722,7 +722,7 @@ class TestDeleteEvent:
 
     def test_delete_no_auth(self):
         resp = client.delete("/events/some-id")
-        assert resp.status_code == 403
+        assert resp.status_code == 401
 
 
 # --- Additional tests for review findings ---

@@ -56,5 +56,5 @@ def disable_email_sending():
 def cleanup_test_users(db):
     """Clean up test users after each test (all test prefixes)."""
     yield
-    for prefix in ["testuser_%", "eventtest_%", "imgtest_%", "cattest_%", "disctest_%"]:
+    for prefix in ["testuser_%", "eventtest_%", "imgtest_%", "cattest_%", "disctest_%", "cmttest_%", "invtest_%", "notiftest_%", "emittest_%"]:
         db.table("users").delete().like("username", prefix).execute()

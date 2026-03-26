@@ -231,9 +231,12 @@ def get_event_detail(
     if not user_id:
         return _build_limited_response(event, categories)
 
-    # Private event → only host sees full detail
+    # Private event → host and granted users see full detail
     if event["visibility"] == "private" and event["host_id"] != user_id:
-        return _build_limited_response(event, categories)
+        from app.repositories import invite as invite_repo
+        grant = invite_repo.get_access_grant(db, event_id, user_id)
+        if not grant:
+            return _build_limited_response(event, categories)
 
     # Age restriction check (host is always exempt)
     if event["is_age_restricted"] and user_id and event["host_id"] != user_id:
@@ -347,11 +350,21 @@ def update_event(
         event_repo.insert_equipment(db, equip_rows)
 
     # Set status to "updated" if currently published
-    if event["status"] == "published":
+    has_real_changes = bool(update_data) or body.locations is not None or body.category_ids is not None or body.venue_metadata is not None or body.equipment_requirements is not None
+    if event["status"] == "published" and has_real_changes:
         update_data["status"] = "updated"
 
     if update_data:
         event_repo.update_event(db, event_id, update_data)
+
+    # Emit notification only if there were real changes
+    if has_real_changes and event["status"] in ("published", "updated"):
+        from app.services.notification_emitter import emit_event_notification
+        updated_event = event_repo.get_event_by_id(db, event_id)
+        emit_event_notification(
+            db, event_id, user_id, "event_updated",
+            f"Event '{updated_event['title']}' has been updated",
+        )
 
     # Return fresh detail
     return get_event_detail(db, event_id, user_id)
@@ -403,6 +416,15 @@ def change_event_status(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Event must have at least one image to publish")
 
     event_repo.update_event_status(db, event_id, new_status)
+
+    # Emit notification on cancellation
+    if new_status == "cancelled":
+        from app.services.notification_emitter import emit_event_notification
+        emit_event_notification(
+            db, event_id, user_id, "event_cancelled",
+            f"Event '{event['title']}' has been cancelled",
+        )
+
     return get_event_detail(db, event_id, user_id)
 
 

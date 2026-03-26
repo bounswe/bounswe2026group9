@@ -5,13 +5,18 @@ from jose import JWTError
 from app.database import get_supabase
 from app.services.auth import decode_access_token
 
-bearer_scheme = HTTPBearer()
+bearer_scheme = HTTPBearer(auto_error=False)
 
 
 def get_current_user_id(
-    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
 ) -> str:
     """FastAPI dependency: extract and validate user_id from Bearer token, check active."""
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+        )
     try:
         payload = decode_access_token(credentials.credentials)
     except JWTError as err:
