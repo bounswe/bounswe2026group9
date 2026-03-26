@@ -1,6 +1,7 @@
 """Tests for Event CRUD endpoints"""
 
 from datetime import UTC, datetime, timedelta
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
@@ -11,6 +12,7 @@ from app.services.auth import create_access_token
 client = TestClient(app)
 
 db = get_supabase()
+MOCK_STORAGE_URL = "https://example.com/storage/v1/object/public/event-images/test.jpg"
 
 
 # --- Helpers ---
@@ -74,7 +76,8 @@ def _valid_event_body(category_ids: list[str] | None = None, **overrides) -> dic
     return body
 
 
-def _create_published_event(user_id: str, cat_ids: list[str], **overrides) -> dict:
+@patch("app.repositories.image.upload_to_storage", return_value=MOCK_STORAGE_URL)
+def _create_published_event(user_id: str, cat_ids: list[str], mock_upload, **overrides) -> dict:  # noqa: ARG001
     """Create a draft event, upload an image, then publish it. Returns event detail."""
     import io
 
@@ -82,6 +85,7 @@ def _create_published_event(user_id: str, cat_ids: list[str], **overrides) -> di
 
     body = _valid_event_body(cat_ids, status="draft", **overrides)
     resp = client.post("/events", json=body, headers=_auth_header(user_id))
+    assert resp.status_code == 201, f"Event create failed: {resp.json()}"
     event_id = resp.json()["id"]
 
     # Upload image
@@ -89,19 +93,22 @@ def _create_published_event(user_id: str, cat_ids: list[str], **overrides) -> di
     buf = io.BytesIO()
     img.save(buf, format="JPEG")
     buf.seek(0)
-    client.post(
+    image_resp = client.post(
         f"/events/{event_id}/images",
         files={"file": ("test.jpg", buf, "image/jpeg")},
         headers=_auth_header(user_id),
     )
+    assert image_resp.status_code == 201, f"Image upload failed: {image_resp.json()}"
 
     # Publish
-    client.patch(
+    publish_resp = client.patch(
         f"/events/{event_id}/status",
         json={"status": "published"},
         headers=_auth_header(user_id),
     )
-    return client.get(f"/events/{event_id}", headers=_auth_header(user_id)).json()
+    assert publish_resp.status_code == 200, f"Publish failed: {publish_resp.json()}"
+    assert publish_resp.json()["status"] == "published", publish_resp.json()
+    return publish_resp.json()
 
 
 def _cleanup_event(event_id: str):
