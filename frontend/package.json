@@ -11,8 +11,10 @@
     "lint:ci": "eslint . --max-warnings=0",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
+    "test": "vitest",
+    "test:run": "vitest run",
     "typecheck": "tsc --noEmit",
-    "check": "npm run format:check && npm run lint:ci && npm run typecheck"
+    "check": "npm run format:check && npm run lint:ci && npm run typecheck && npm run test:run"
   },
   "dependencies": {
     "@fontsource/lato": "^5.2.7",
@@ -31,16 +33,21 @@
   "devDependencies": {
     "@eslint/js": "^9.39.4",
     "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
     "eslint-config-prettier": "^10.1.8",
+    "jsdom": "^27.0.1",
     "prettier": "^3.8.1",
     "prettier-plugin-tailwindcss": "^0.7.2",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "typescript-eslint": "^8.57.2"
+    "typescript-eslint": "^8.57.2",
+    "vitest": "^3.2.4"
   }
 }

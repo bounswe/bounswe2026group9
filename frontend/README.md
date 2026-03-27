@@ -25,6 +25,7 @@ cookie, so authenticated requests always use `credentials: "include"`.
 npm run dev
 npm run build
 npm run lint
+npm run test:run
 npm run typecheck
 npm run check
 ```
@@ -36,10 +37,13 @@ npm run check
 - `src/lib/session.ts` holds the client-side auth snapshot.
 - `src/providers/auth-provider.tsx` exposes auth state globally through React
   context.
+- `src/components/auth/protected-route.tsx` provides a reusable auth gate for
+  protected screens.
 - `/login` handles local sign-in and Google sign-in entry.
 - `/auth/callback` completes the Google callback flow by restoring the session.
 - `/dashboard` is the protected route used to validate `/auth/me`, refresh
   rotation, and login redirection.
+- `tests/` contains the frontend session and protected-route test coverage.
 
 ## Verification
 
@@ -52,4 +56,5 @@ npm run check
    - `Rotate session` succeeds
    - `Logout` clears the session and returns to login
 
-Run `npm run check` before opening a PR.
+Run `npm run test:run` for the wrapper and session store tests, then run
+`npm run check` before opening a PR.
