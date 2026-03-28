@@ -141,7 +141,7 @@ class TestMarkNotificationAsRead:
 
     def test_not_found(self, client, db):
         _, _, headers = _register_user(client)
-        fake_id = str(uuid.uuid4())
+        fake_id = "00000000-0000-0000-0000-000000000001"
 
         resp = client.patch(f"/notifications/{fake_id}/read", headers=headers)
         assert resp.status_code == 404
