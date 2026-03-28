@@ -48,6 +48,127 @@ docker exec sem-backend python -m pytest tests/ -v
 docker exec sem-backend ruff check .
 ```
 
+## Deployment Prep
+
+### Production env template
+
+Production deployment should use `backend/.env.production.example` as the base:
+
+```bash
+cp backend/.env.production.example backend/.env.production
+```
+
+Minimum required production values:
+
+- `SUPABASE_URL`
+- `SUPABASE_KEY`
+- `JWT_SECRET`
+- `ENVIRONMENT=production`
+- `FRONTEND_URL`
+- `BACKEND_URL`
+- `CORS_ORIGINS`
+
+When `ENVIRONMENT=production`, refresh cookies are sent with `secure=True`.
+
+### GitHub Actions deploy secrets
+
+The deploy workflow expects these GitHub repository secrets:
+
+- `DOCKERHUB_USERNAME`
+- `DOCKERHUB_TOKEN`
+- `EC2_HOST`
+- `EC2_USERNAME`
+- `EC2_SSH_KEY`
+- `SUPABASE_URL`
+- `SUPABASE_KEY`
+- `JWT_SECRET`
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `GOOGLE_REDIRECT_URI`
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_USER`
+- `SMTP_PASSWORD`
+- `SMTP_FROM_EMAIL`
+- `SMTP_FROM_NAME`
+- `FRONTEND_URL`
+- `BACKEND_URL`
+- `CORS_ORIGINS`
+
+### Production Docker Compose
+
+Use `docker-compose.prod.yml` on the server:
+
+```bash
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d
+```
+
+The compose file is set up for reverse proxy deployment:
+
+- backend listens on container port `8000`
+- host binds only `127.0.0.1:8000`
+- nginx should proxy public traffic to that local port
+
+Set the Docker image with `BACKEND_IMAGE`, for example:
+
+```bash
+BACKEND_IMAGE=username/sem-backend:latest docker compose -f docker-compose.prod.yml up -d
+```
+
+### EC2 bootstrap
+
+Initial Ubuntu setup script:
+
+```bash
+bash deploy/ec2/bootstrap-ubuntu.sh
+```
+
+After bootstrap, reconnect via SSH so the `docker` group is active.
+
+### Nginx reverse proxy
+
+For the current IP-based deploy, use `deploy/nginx/ec2-public-ip.conf`.
+
+A starter nginx site config is available at `deploy/nginx/api.example.com.conf`.
+
+Typical setup on Ubuntu:
+
+```bash
+sudo cp deploy/nginx/ec2-public-ip.conf /etc/nginx/sites-available/sem-backend
+sudo ln -s /etc/nginx/sites-available/sem-backend /etc/nginx/sites-enabled/sem-backend
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+Health check after nginx is live:
+
+```bash
+curl http://13.49.23.178/health
+```
+
+### Automatic deploy from GitHub Actions
+
+The production workflow is defined in `.github/workflows/deploy.yml`.
+
+Current behavior:
+
+- builds `backend/Dockerfile`
+- pushes `DOCKERHUB_USERNAME/sem-backend:latest`
+- uploads `docker-compose.prod.yml`, nginx config, and generated `.env.production` to EC2
+- reloads nginx
+- pulls and restarts the backend container on EC2
+- verifies both local container health and public `http://EC2_HOST/health`
+
+### HTTPS later
+
+After a domain is attached, switch nginx to `deploy/nginx/api.example.com.conf` and enable certbot:
+
+```bash
+sudo certbot --nginx -d api.example.com
+```
+
 ## API Endpoints
 
 ### Health
