@@ -200,6 +200,26 @@ class TestUpdateNotification:
         )
         assert resp.status_code == 200
 
+    def test_empty_update_does_not_notify(self):
+        host = _create_test_user()
+        user = _create_test_user()
+        event = _create_published_event(host["id"])
+
+        _add_bookmark(user["id"], event["id"])
+
+        resp = client.put(
+            f"/events/{event['id']}",
+            json={},
+            headers=_auth_header(host["id"]),
+        )
+        assert resp.status_code == 200
+
+        notifications = _get_notifications(user["id"])
+        update_notifs = [n for n in notifications if n["type"] == "event_updated"]
+        assert len(update_notifs) == 0
+
+        _cleanup_notifications(user["id"])
+
     def test_no_duplicate_notification(self):
         host = _create_test_user()
         user = _create_test_user()

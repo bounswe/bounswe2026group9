@@ -32,13 +32,16 @@ CREATE TABLE IF NOT EXISTS public.event_access_grants (
 CREATE INDEX IF NOT EXISTS idx_event_access_grants_event_id ON public.event_access_grants (event_id);
 CREATE INDEX IF NOT EXISTS idx_event_access_grants_user_id ON public.event_access_grants (user_id);
 
--- Access requests: users request access, host approves/denies
+-- Access requests: users request access, host approves/rejects
 CREATE TABLE IF NOT EXISTS public.event_access_requests (
     id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     event_id    UUID        NOT NULL REFERENCES public.events(id) ON DELETE CASCADE,
     user_id     UUID        NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-    status      TEXT        NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'denied')),
+    status      TEXT        NOT NULL DEFAULT 'pending'
+                           CHECK (status IN ('pending', 'approved', 'rejected')),
+    message     TEXT,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     resolved_at TIMESTAMPTZ,
     UNIQUE (event_id, user_id)
 );
@@ -46,7 +49,28 @@ CREATE TABLE IF NOT EXISTS public.event_access_requests (
 CREATE INDEX IF NOT EXISTS idx_event_access_requests_event_id ON public.event_access_requests (event_id);
 CREATE INDEX IF NOT EXISTS idx_event_access_requests_status ON public.event_access_requests (event_id, status);
 
--- Grant access to service_role only
-GRANT ALL ON public.event_invites TO service_role;
-GRANT ALL ON public.event_access_grants TO service_role;
-GRANT ALL ON public.event_access_requests TO service_role;
+DROP TRIGGER IF EXISTS event_access_requests_set_updated_at ON public.event_access_requests;
+
+CREATE TRIGGER event_access_requests_set_updated_at
+    BEFORE UPDATE ON public.event_access_requests
+    FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+-- Extend notification types for private event access flow
+ALTER TABLE public.notifications
+    DROP CONSTRAINT IF EXISTS notifications_type_check;
+
+ALTER TABLE public.notifications
+    ADD CONSTRAINT notifications_type_check
+    CHECK (type IN (
+        'event_updated',
+        'event_cancelled',
+        'event_deleted',
+        'access_request',
+        'access_approved',
+        'access_rejected'
+    ));
+
+-- Keep grants aligned with the rest of the schema bootstrap
+GRANT ALL ON public.event_invites TO postgres, anon, authenticated, service_role;
+GRANT ALL ON public.event_access_grants TO postgres, anon, authenticated, service_role;
+GRANT ALL ON public.event_access_requests TO postgres, anon, authenticated, service_role;

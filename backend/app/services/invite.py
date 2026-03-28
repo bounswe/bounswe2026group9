@@ -159,6 +159,18 @@ def create_access_request(db: Client, event_id: str, user_id: str) -> AccessRequ
     from app.repositories import user as user_repo
     user = user_repo.get_user_by_id(db, user_id)
 
+    from app.repositories import notification as notification_repo
+    notification_repo.insert_notification(db, {
+        "user_id": event["host_id"],
+        "event_id": event_id,
+        "type": "access_request",
+        "message": (
+            f"User '{user['username'] if user else 'unknown'}' requested access "
+            f"to your event '{event['title']}'"
+        ),
+        "is_read": False,
+    })
+
     return AccessRequestResponse(
         id=request["id"],
         event_id=request["event_id"],

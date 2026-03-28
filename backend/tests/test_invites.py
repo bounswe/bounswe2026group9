@@ -355,6 +355,28 @@ class TestAccessRequests:
         assert data["status"] == "pending"
         assert data["user_id"] == user["id"]
 
+    def test_create_access_request_notifies_host(self):
+        host = _create_test_user()
+        user = _create_test_user()
+        event = _create_private_published_event(host["id"])
+
+        resp = client.post(
+            f"/events/{event['id']}/access-requests",
+            headers=_auth_header(user["id"]),
+        )
+        assert resp.status_code == 201
+
+        notif_resp = client.get("/notifications", headers=_auth_header(host["id"]))
+        assert notif_resp.status_code == 200
+        notifications = notif_resp.json()["items"]
+        assert any(
+            n["type"] == "access_request"
+            and n["event_id"] == event["id"]
+            and user["username"] in n["message"]
+            and event["title"] in n["message"]
+            for n in notifications
+        )
+
     def test_create_access_request_duplicate_blocked(self):
         host = _create_test_user()
         user = _create_test_user()

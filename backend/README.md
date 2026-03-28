@@ -102,9 +102,9 @@ docker exec sem-backend ruff check .
 | POST | /events/{id}/invites | Bearer | Host generates invite link |
 | GET | /events/{id}/invites | Bearer | Host lists active invites |
 | POST | /events/{id}/invites/{token}/accept | Bearer | User accepts invite |
-| POST | /events/{id}/access-requests | Bearer | User requests access to private event |
+| POST | /events/{id}/access-requests | Bearer | User requests access to private event; host is notified |
 | GET | /events/{id}/access-requests | Bearer | Host lists pending requests |
-| PATCH | /events/{id}/access-requests/{request_id} | Bearer | Host approves or denies request |
+| PATCH | /events/{id}/access-requests/{request_id} | Bearer | Host approves or rejects request |
 
 ### Notifications
 
@@ -177,15 +177,16 @@ backend/
 │   ├── test_categories.py    # Category tests (9)
 │   ├── test_images.py        # Image upload/delete tests (10)
 │   ├── test_comments.py      # Comment tests (20)
-│   ├── test_invites.py       # Invite/Access request tests (27)
+│   ├── test_invites.py       # Invite/Access request tests (28)
 │   ├── test_notifications.py # Notification tests (12)
-│   ├── test_notification_emitter.py  # Notification emission tests (10)
+│   ├── test_notification_emitter.py  # Notification emission tests (11)
 │   └── test_health.py        # Health check test (1)
 ├── sql/
 │   ├── 001_create_tables.sql         # Auth tables
 │   ├── 002_create_core_tables.sql    # Core data model tables
 │   ├── 003_pg_cron_auto_end.sql      # Auto-end expired events
-│   └── 005_create_invite_tables.sql  # Invite/Access tables
+│   ├── 005_create_invite_tables.sql  # Invite/Access tables
+│   └── 006_reconcile_invite_schema.sql  # Manual Supabase reconcile script
 ├── requirements.txt
 ├── pyproject.toml            # Ruff + pytest config
 ├── Dockerfile
