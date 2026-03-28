@@ -1,5 +1,6 @@
 import secrets
 from datetime import UTC, datetime, timedelta
+from uuid import uuid4
 
 import bcrypt
 from jose import JWTError, jwt
@@ -27,6 +28,7 @@ def create_access_token(user_id: str, email: str) -> str:
         "sub": user_id,
         "email": email,
         "type": "access",
+        "jti": str(uuid4()),
         "iat": now,
         "exp": now + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     }
