@@ -1,15 +1,15 @@
 """Tests for notification endpoints."""
 
-import uuid
+from tests_support import build_test_identity
 
 # --- Helpers ---
 
 def _register_user(client, prefix="notiftest"):
     """Register a unique user and return (user_id, access_token, headers)."""
-    unique = uuid.uuid4().hex[:8]
+    username, email = build_test_identity(prefix)
     data = {
-        "username": f"{prefix}_{unique}",
-        "email": f"{prefix}_{unique}@example.com",
+        "username": username,
+        "email": email,
         "password": "testpass123",
         "date_of_birth": "2000-01-15",
     }

@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from app.database import get_supabase
 from app.main import app
 from app.services.auth import create_access_token
+from tests_support import build_test_identity
 
 client = TestClient(app)
 
@@ -24,11 +25,10 @@ def _auth_header(user_id: str) -> dict:
 
 def _create_test_user(suffix: str = "") -> dict:
     """Create a test user and return it."""
-    import uuid
-    unique = uuid.uuid4().hex[:8]
+    username, email = build_test_identity("eventtest", suffix=suffix)
     user_data = {
-        "username": f"eventtest_{unique}{suffix}",
-        "email": f"eventtest_{unique}{suffix}@example.com",
+        "username": username,
+        "email": email,
         "hashed_password": "fakehash",
         "role": "registered",
         "auth_provider": "local",
@@ -740,12 +740,11 @@ class TestAgeRestriction:
         """User under 18 cannot view age-restricted event."""
         from datetime import date
         host = _create_test_user("agehost")
-        import uuid
-        unique = uuid.uuid4().hex[:8]
         young_dob = date(date.today().year - 15, 1, 1).isoformat()
+        young_username, young_email = build_test_identity("young")
         young_user = db.table("users").insert({
-            "username": f"young_{unique}",
-            "email": f"young_{unique}@example.com",
+            "username": young_username,
+            "email": young_email,
             "hashed_password": "fakehash",
             "role": "registered",
             "auth_provider": "local",
@@ -769,11 +768,10 @@ class TestAgeRestriction:
     def test_no_dob_blocked_from_age_restricted(self):
         """User without date_of_birth cannot view age-restricted event."""
         host = _create_test_user("agenodob_host")
-        import uuid
-        unique = uuid.uuid4().hex[:8]
+        nodob_username, nodob_email = build_test_identity("nodob")
         no_dob_user = db.table("users").insert({
-            "username": f"nodob_{unique}",
-            "email": f"nodob_{unique}@example.com",
+            "username": nodob_username,
+            "email": nodob_email,
             "hashed_password": "fakehash",
             "role": "registered",
             "auth_provider": "local",

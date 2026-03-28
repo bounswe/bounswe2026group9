@@ -11,6 +11,7 @@ from PIL import Image as PILImage
 from app.database import get_supabase
 from app.main import app
 from app.services.auth import create_access_token
+from tests_support import build_test_identity
 
 client = TestClient(app)
 db = get_supabase()
@@ -26,10 +27,10 @@ def _auth_header(user_id: str) -> dict:
 
 
 def _create_test_user(suffix: str = "") -> dict:
-    unique = uuid.uuid4().hex[:8]
+    username, email = build_test_identity("disctest", suffix=suffix)
     result = db.table("users").insert({
-        "username": f"disctest_{unique}{suffix}",
-        "email": f"disctest_{unique}{suffix}@example.com",
+        "username": username,
+        "email": email,
         "hashed_password": "fakehash",
         "role": "registered",
         "auth_provider": "local",

@@ -9,6 +9,7 @@ from app.services.auth import (
     hash_password,
     verify_password,
 )
+from tests_support import build_test_email, build_test_identity
 
 # ==================== Password ====================
 
@@ -73,7 +74,7 @@ class TestRegister:
     def test_duplicate_email(self, client, test_user_data):
         client.post("/auth/register", json=test_user_data)
         # Same email, different username
-        test_user_data["username"] = "different_user"
+        test_user_data["username"] = build_test_identity("differentuser")[0]
         response = client.post("/auth/register", json=test_user_data)
         assert response.status_code == 409
         assert "Email already registered" in response.json()["detail"]
@@ -81,7 +82,7 @@ class TestRegister:
     def test_duplicate_username(self, client, test_user_data):
         client.post("/auth/register", json=test_user_data)
         # Same username, different email
-        test_user_data["email"] = "different@example.com"
+        test_user_data["email"] = build_test_email("different")
         response = client.post("/auth/register", json=test_user_data)
         assert response.status_code == 409
         assert "Username already taken" in response.json()["detail"]
