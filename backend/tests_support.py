@@ -12,6 +12,10 @@ BASE_TEST_PREFIXES = (
     "invtest",
     "notiftest",
     "emittest",
+    "bmtest",
+    "attndtest",
+    "proftest",
+    "ratetest",
 )
 
 

@@ -7,6 +7,7 @@ CREATE TABLE public.users (
   phone_number TEXT,
   date_of_birth DATE,
   email_visibility BOOLEAN DEFAULT FALSE,
+  phone_visibility BOOLEAN DEFAULT FALSE,
   role TEXT NOT NULL DEFAULT 'registered',
   auth_provider TEXT NOT NULL DEFAULT 'local',
   google_id TEXT UNIQUE,

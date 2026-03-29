@@ -255,6 +255,29 @@ Notes:
 | GET | /categories | - | List predefined + approved categories (optional ?search=) |
 | POST | /categories | Bearer | Create custom category (pending approval) |
 
+### Bookmarks
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | /events/{id}/bookmark | Bearer | Bookmark an event |
+| DELETE | /events/{id}/bookmark | Bearer | Remove bookmark |
+
+### Attendances
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | /events/{id}/attendance | Bearer | Set attendance status (going/interested) |
+| DELETE | /events/{id}/attendance | Bearer | Remove attendance |
+
+### Users, Profiles & Ratings
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /users/me/bookmarks | Bearer | List current user's bookmarks |
+| PUT | /users/me | Bearer | Update current user's profile |
+| GET | /users/{id}/profile | Optional | Get host profile details |
+| POST | /users/{id}/ratings | Bearer | Rate a host |
+
 ## Project Structure
 
 ```
@@ -277,7 +300,10 @@ backend/
 │   │   ├── categories.py     # Category endpoints
 │   │   ├── comments.py       # Comment endpoints
 │   │   ├── invites.py        # Invite + Access request endpoints
-│   │   └── notifications.py  # Notification endpoints
+│   │   ├── notifications.py  # Notification endpoints
+│   │   ├── bookmarks.py      # Bookmark endpoints
+│   │   ├── attendances.py    # Attendance endpoints
+│   │   └── users.py          # User, profile, rating endpoints
 │   ├── services/
 │   │   ├── auth.py           # JWT, password hashing
 │   │   ├── email.py          # SMTP email sending
