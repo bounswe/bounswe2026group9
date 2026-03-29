@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,7 +25,26 @@ fun LoginScreen(viewModel: AuthViewModel) {
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(text = "Login")
+        if (uiState.isLoggedIn) {
+            Text(text = "Authentication successful")
+
+            Button(
+                onClick = { viewModel.logout() },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Logout")
+            }
+            return@Column
+        }
+
+        Text(text = "Authentication")
+
+        OutlinedTextField(
+            value = uiState.username,
+            onValueChange = viewModel::onUsernameChange,
+            label = { Text("Username (for register)") },
+            modifier = Modifier.fillMaxWidth()
+        )
 
         OutlinedTextField(
             value = uiState.email,
@@ -40,11 +60,31 @@ fun LoginScreen(viewModel: AuthViewModel) {
             modifier = Modifier.fillMaxWidth()
         )
 
+        OutlinedTextField(
+            value = uiState.dateOfBirth,
+            onValueChange = viewModel::onDateOfBirthChange,
+            label = { Text("Date of Birth (YYYY-MM-DD)") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
         Button(
             onClick = { viewModel.login() },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !uiState.isLoading
         ) {
             Text("Login")
+        }
+
+        Button(
+            onClick = { viewModel.register() },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !uiState.isLoading
+        ) {
+            Text("Register")
+        }
+
+        if (uiState.isLoading) {
+            CircularProgressIndicator()
         }
 
         uiState.errorMessage?.let {
