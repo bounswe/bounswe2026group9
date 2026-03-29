@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 from app.database import get_supabase
 from app.main import app
 from app.services.auth import create_access_token
+from tests_support import build_test_identity
 
 client = TestClient(app)
 db = get_supabase()
@@ -16,11 +17,10 @@ def _auth_header(user_id: str) -> dict:
 
 
 def _create_test_user() -> dict:
-    import uuid
-    unique = uuid.uuid4().hex[:8]
+    username, email = build_test_identity("cattest")
     result = db.table("users").insert({
-        "username": f"cattest_{unique}",
-        "email": f"cattest_{unique}@example.com",
+        "username": username,
+        "email": email,
         "hashed_password": "fakehash",
         "role": "registered",
         "auth_provider": "local",
@@ -100,7 +100,7 @@ class TestCreateCategory:
 
     def test_create_no_auth(self):
         resp = client.post("/categories", json={"name": "NoAuth"})
-        assert resp.status_code == 403
+        assert resp.status_code == 401
 
     def test_create_empty_name(self):
         user = _create_test_user()

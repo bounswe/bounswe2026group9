@@ -2,6 +2,8 @@
 
 from unittest.mock import patch
 
+from tests_support import build_test_email
+
 # ==================== Full Auth Flow ====================
 
 
@@ -160,7 +162,7 @@ class TestEmailVerificationFlow:
 class TestGoogleOAuth:
     MOCK_GOOGLE_USER = {
         "id": "google_123456",
-        "email": "googleuser@gmail.com",
+        "email": "",
         "verified_email": True,
     }
     MOCK_GOOGLE_TOKENS = {
@@ -168,13 +170,13 @@ class TestGoogleOAuth:
         "token_type": "Bearer",
     }
 
-    def _mock_oauth_callback(self, client, db):
+    def _mock_oauth_callback(self, client, db, google_user):
         """Helper: simulate Google OAuth callback with mocked Google APIs."""
         state = "test_state_123"
         client.cookies.set("oauth_state", state)
 
         with patch("app.routers.auth.exchange_code_for_tokens", return_value=self.MOCK_GOOGLE_TOKENS), \
-             patch("app.routers.auth.get_google_user_info", return_value=self.MOCK_GOOGLE_USER):
+             patch("app.routers.auth.get_google_user_info", return_value=google_user):
             response = client.get(
                 f"/auth/google/callback?code=mock_code&state={state}",
                 follow_redirects=False,
@@ -182,16 +184,17 @@ class TestGoogleOAuth:
         return response
 
     def test_new_user_created(self, client, db):
+        google_user = {**self.MOCK_GOOGLE_USER, "email": build_test_email("googleuser")}
         # Ensure user doesn't exist
-        db.table("users").delete().eq("email", self.MOCK_GOOGLE_USER["email"]).execute()
+        db.table("users").delete().eq("email", google_user["email"]).execute()
 
-        response = self._mock_oauth_callback(client, db)
+        response = self._mock_oauth_callback(client, db, google_user)
         # Should redirect to frontend
         assert response.status_code == 307
 
         # User should exist in DB
         result = db.table("users").select("*").eq(
-            "email", self.MOCK_GOOGLE_USER["email"]
+            "email", google_user["email"]
         ).execute()
         assert len(result.data) == 1
         user = result.data[0]
@@ -200,15 +203,16 @@ class TestGoogleOAuth:
         assert user["email_verified"] is True
 
         # Cleanup
-        db.table("users").delete().eq("email", self.MOCK_GOOGLE_USER["email"]).execute()
+        db.table("users").delete().eq("email", google_user["email"]).execute()
 
     def test_existing_user_linked(self, client, test_user_data, db):
+        google_user = {**self.MOCK_GOOGLE_USER, "email": build_test_email("googleuser")}
         # Register local user with same email as mock Google user
-        test_user_data["email"] = self.MOCK_GOOGLE_USER["email"]
+        test_user_data["email"] = google_user["email"]
         reg = client.post("/auth/register", json=test_user_data)
         user_id = reg.json()["user"]["id"]
 
-        response = self._mock_oauth_callback(client, db)
+        response = self._mock_oauth_callback(client, db, google_user)
         assert response.status_code == 307
 
         # User should now have google_id linked
@@ -219,11 +223,12 @@ class TestGoogleOAuth:
         assert user["email_verified"] is True
 
     def test_deactivated_user_rejected(self, client, test_user_data, db):
+        google_user = {**self.MOCK_GOOGLE_USER, "email": build_test_email("googleuser")}
         # Register and deactivate
-        test_user_data["email"] = self.MOCK_GOOGLE_USER["email"]
+        test_user_data["email"] = google_user["email"]
         reg = client.post("/auth/register", json=test_user_data)
         user_id = reg.json()["user"]["id"]
         db.table("users").update({"is_active": False}).eq("id", user_id).execute()
 
-        response = self._mock_oauth_callback(client, db)
+        response = self._mock_oauth_callback(client, db, google_user)
         assert response.status_code == 403

@@ -16,3 +16,6 @@ __pycache__/
 
 # OS
 .DS_Store
+
+# Local notes (not for repo)
+IMPROVEMENTS.md

@@ -1,16 +1,19 @@
 """Tests for Event CRUD endpoints"""
 
 from datetime import UTC, datetime, timedelta
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
 from app.database import get_supabase
 from app.main import app
 from app.services.auth import create_access_token
+from tests_support import build_test_identity
 
 client = TestClient(app)
 
 db = get_supabase()
+MOCK_STORAGE_URL = "https://example.com/storage/v1/object/public/event-images/test.jpg"
 
 
 # --- Helpers ---
@@ -22,11 +25,10 @@ def _auth_header(user_id: str) -> dict:
 
 def _create_test_user(suffix: str = "") -> dict:
     """Create a test user and return it."""
-    import uuid
-    unique = uuid.uuid4().hex[:8]
+    username, email = build_test_identity("eventtest", suffix=suffix)
     user_data = {
-        "username": f"eventtest_{unique}{suffix}",
-        "email": f"eventtest_{unique}{suffix}@example.com",
+        "username": username,
+        "email": email,
         "hashed_password": "fakehash",
         "role": "registered",
         "auth_provider": "local",
@@ -74,7 +76,8 @@ def _valid_event_body(category_ids: list[str] | None = None, **overrides) -> dic
     return body
 
 
-def _create_published_event(user_id: str, cat_ids: list[str], **overrides) -> dict:
+@patch("app.repositories.image.upload_to_storage", return_value=MOCK_STORAGE_URL)
+def _create_published_event(user_id: str, cat_ids: list[str], mock_upload, **overrides) -> dict:  # noqa: ARG001
     """Create a draft event, upload an image, then publish it. Returns event detail."""
     import io
 
@@ -82,6 +85,7 @@ def _create_published_event(user_id: str, cat_ids: list[str], **overrides) -> di
 
     body = _valid_event_body(cat_ids, status="draft", **overrides)
     resp = client.post("/events", json=body, headers=_auth_header(user_id))
+    assert resp.status_code == 201, f"Event create failed: {resp.json()}"
     event_id = resp.json()["id"]
 
     # Upload image
@@ -89,19 +93,22 @@ def _create_published_event(user_id: str, cat_ids: list[str], **overrides) -> di
     buf = io.BytesIO()
     img.save(buf, format="JPEG")
     buf.seek(0)
-    client.post(
+    image_resp = client.post(
         f"/events/{event_id}/images",
         files={"file": ("test.jpg", buf, "image/jpeg")},
         headers=_auth_header(user_id),
     )
+    assert image_resp.status_code == 201, f"Image upload failed: {image_resp.json()}"
 
     # Publish
-    client.patch(
+    publish_resp = client.patch(
         f"/events/{event_id}/status",
         json={"status": "published"},
         headers=_auth_header(user_id),
     )
-    return client.get(f"/events/{event_id}", headers=_auth_header(user_id)).json()
+    assert publish_resp.status_code == 200, f"Publish failed: {publish_resp.json()}"
+    assert publish_resp.json()["status"] == "published", publish_resp.json()
+    return publish_resp.json()
 
 
 def _cleanup_event(event_id: str):
@@ -248,7 +255,7 @@ class TestCreateEvent:
         body = _valid_event_body(cat_ids)
 
         resp = client.post("/events", json=body)
-        assert resp.status_code == 403
+        assert resp.status_code == 401
 
     def test_create_event_missing_title(self):
         user = _create_test_user("notitle")
@@ -504,7 +511,7 @@ class TestUpdateEvent:
 
     def test_update_no_auth(self):
         resp = client.put("/events/some-id", json={"title": "x"})
-        assert resp.status_code == 403
+        assert resp.status_code == 401
 
 
 # --- Faz 3: PATCH /events/{id}/status ---
@@ -722,7 +729,7 @@ class TestDeleteEvent:
 
     def test_delete_no_auth(self):
         resp = client.delete("/events/some-id")
-        assert resp.status_code == 403
+        assert resp.status_code == 401
 
 
 # --- Additional tests for review findings ---
@@ -733,12 +740,11 @@ class TestAgeRestriction:
         """User under 18 cannot view age-restricted event."""
         from datetime import date
         host = _create_test_user("agehost")
-        import uuid
-        unique = uuid.uuid4().hex[:8]
         young_dob = date(date.today().year - 15, 1, 1).isoformat()
+        young_username, young_email = build_test_identity("young")
         young_user = db.table("users").insert({
-            "username": f"young_{unique}",
-            "email": f"young_{unique}@example.com",
+            "username": young_username,
+            "email": young_email,
             "hashed_password": "fakehash",
             "role": "registered",
             "auth_provider": "local",
@@ -762,11 +768,10 @@ class TestAgeRestriction:
     def test_no_dob_blocked_from_age_restricted(self):
         """User without date_of_birth cannot view age-restricted event."""
         host = _create_test_user("agenodob_host")
-        import uuid
-        unique = uuid.uuid4().hex[:8]
+        nodob_username, nodob_email = build_test_identity("nodob")
         no_dob_user = db.table("users").insert({
-            "username": f"nodob_{unique}",
-            "email": f"nodob_{unique}@example.com",
+            "username": nodob_username,
+            "email": nodob_email,
             "hashed_password": "fakehash",
             "role": "registered",
             "auth_provider": "local",

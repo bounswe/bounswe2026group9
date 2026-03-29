@@ -1,4 +1,3 @@
-import uuid
 from unittest.mock import patch
 
 import pytest
@@ -6,6 +5,7 @@ from fastapi.testclient import TestClient
 
 from app.database import get_supabase
 from app.main import app
+from tests_support import build_test_identity, cleanup_username_patterns
 
 
 @pytest.fixture()
@@ -23,10 +23,10 @@ def db():
 @pytest.fixture()
 def test_user_data():
     """Generate unique user data for each test."""
-    unique = uuid.uuid4().hex[:8]
+    username, email = build_test_identity("testuser")
     return {
-        "username": f"testuser_{unique}",
-        "email": f"test_{unique}@example.com",
+        "username": username,
+        "email": email,
         "password": "testpass123",
         "date_of_birth": "2000-01-15",
     }
@@ -56,5 +56,5 @@ def disable_email_sending():
 def cleanup_test_users(db):
     """Clean up test users after each test (all test prefixes)."""
     yield
-    for prefix in ["testuser_%", "eventtest_%", "imgtest_%", "cattest_%", "disctest_%"]:
+    for prefix in cleanup_username_patterns():
         db.table("users").delete().like("username", prefix).execute()

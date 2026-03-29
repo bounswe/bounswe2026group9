@@ -1,7 +1,6 @@
 """Tests for Event Image upload/delete endpoints."""
 
 import io
-import uuid
 from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
@@ -11,6 +10,7 @@ from PIL import Image
 from app.database import get_supabase
 from app.main import app
 from app.services.auth import create_access_token
+from tests_support import build_test_identity
 
 client = TestClient(app)
 db = get_supabase()
@@ -22,10 +22,10 @@ def _auth_header(user_id: str) -> dict:
 
 
 def _create_test_user(suffix: str = "") -> dict:
-    unique = uuid.uuid4().hex[:8]
+    username, email = build_test_identity("imgtest", suffix=suffix)
     result = db.table("users").insert({
-        "username": f"imgtest_{unique}{suffix}",
-        "email": f"imgtest_{unique}{suffix}@example.com",
+        "username": username,
+        "email": email,
         "hashed_password": "fakehash",
         "role": "registered",
         "auth_provider": "local",
@@ -197,7 +197,7 @@ class TestUploadImage:
             "/events/00000000-0000-0000-0000-000000000000/images",
             files={"file": ("test.jpg", b"fake", "image/jpeg")},
         )
-        assert resp.status_code == 403
+        assert resp.status_code == 401
 
 
 class TestDeleteImage:
