@@ -1,6 +1,6 @@
 services:
   backend:
-    image: ${BACKEND_IMAGE:-your-dockerhub-username/sem-backend:latest}
+    image: ${BACKEND_IMAGE:-your-dockerhub-username/sem:latest}
     container_name: sem-backend
     env_file:
       - ./backend/.env.production

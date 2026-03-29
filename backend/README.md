@@ -113,7 +113,7 @@ The compose file is set up for reverse proxy deployment:
 Set the Docker image with `BACKEND_IMAGE`, for example:
 
 ```bash
-BACKEND_IMAGE=username/sem-backend:latest docker compose -f docker-compose.prod.yml up -d
+BACKEND_IMAGE=username/sem:latest docker compose -f docker-compose.prod.yml up -d
 ```
 
 ### EC2 bootstrap
@@ -155,7 +155,7 @@ The production workflow is defined in `.github/workflows/deploy.yml`.
 Current behavior:
 
 - builds `backend/Dockerfile`
-- pushes `DOCKERHUB_USERNAME/sem-backend:latest`
+- pushes `DOCKERHUB_USERNAME/sem:latest`
 - uploads `docker-compose.prod.yml`, nginx config, and generated `.env.production` to EC2
 - reloads nginx
 - pulls and restarts the backend container on EC2

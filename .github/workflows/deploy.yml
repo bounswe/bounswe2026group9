@@ -29,7 +29,7 @@ jobs:
           context: ./backend
           file: ./backend/Dockerfile
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/sem-backend:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/sem:latest
 
   deploy:
     needs: build-and-push
@@ -93,8 +93,8 @@ jobs:
             sudo rm -f /etc/nginx/sites-enabled/default
             sudo nginx -t
             sudo systemctl reload nginx
-            sudo BACKEND_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/sem-backend:latest docker compose -f /opt/sem-backend/docker-compose.prod.yml pull
-            sudo BACKEND_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/sem-backend:latest docker compose -f /opt/sem-backend/docker-compose.prod.yml up -d
+            sudo BACKEND_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/sem:latest docker compose -f /opt/sem-backend/docker-compose.prod.yml pull
+            sudo BACKEND_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/sem:latest docker compose -f /opt/sem-backend/docker-compose.prod.yml up -d
             curl --fail http://127.0.0.1:8000/health
             sudo docker image prune -f
 
