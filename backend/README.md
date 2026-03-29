@@ -128,7 +128,7 @@ After bootstrap, reconnect via SSH so the `docker` group is active.
 
 ### Nginx reverse proxy
 
-For the current IP-based deploy, use `deploy/nginx/ec2-public-ip.conf`.
+For the current root-domain deploy, use `deploy/nginx/ec2-public-ip.conf`.
 
 A starter nginx site config is available at `deploy/nginx/api.example.com.conf`.
 
@@ -145,7 +145,7 @@ sudo systemctl reload nginx
 Health check after nginx is live:
 
 ```bash
-curl http://13.49.23.178/health
+curl https://thesocialeventmapper.social/health
 ```
 
 ### Automatic deploy from GitHub Actions
@@ -159,14 +159,14 @@ Current behavior:
 - uploads `docker-compose.prod.yml`, nginx config, and generated `.env.production` to EC2
 - reloads nginx
 - pulls and restarts the backend container on EC2
-- verifies both local container health and public `http://EC2_HOST/health`
+- verifies both local container health and public `BACKEND_URL/health`
 
-### HTTPS later
+If a Let's Encrypt certificate is already present on the server, deploy leaves the live nginx site file in place so certbot-managed HTTPS settings are not overwritten.
 
-After a domain is attached, switch nginx to `deploy/nginx/api.example.com.conf` and enable certbot:
+### HTTPS setup
 
 ```bash
-sudo certbot --nginx -d api.example.com
+sudo certbot --nginx -d thesocialeventmapper.social
 ```
 
 ## API Endpoints
