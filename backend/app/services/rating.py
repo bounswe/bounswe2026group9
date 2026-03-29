@@ -6,9 +6,9 @@ from fastapi import HTTPException, status
 from supabase import Client
 
 from app.models.rating import RatingResponse
+from app.repositories import profile as profile_repo
 from app.repositories import rating as rating_repo
 from app.repositories import user as user_repo
-from app.repositories import profile as profile_repo
 
 
 def rate_host(db: Client, rater_id: str, host_id: str, score: Decimal) -> RatingResponse:
