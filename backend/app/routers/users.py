@@ -3,7 +3,7 @@
 from decimal import Decimal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query
 
 from app.database import get_supabase
 from app.middleware.auth import get_current_user_id, get_optional_user_id

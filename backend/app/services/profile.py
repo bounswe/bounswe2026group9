@@ -8,7 +8,6 @@ from app.models.user import UserResponse
 from app.repositories import event as event_repo
 from app.repositories import profile as profile_repo
 from app.repositories import rating as rating_repo
-from app.services.event import list_events
 
 
 def get_host_profile(db: Client, target_user_id: str, current_user_id: str | None = None) -> HostProfileResponse:
@@ -22,28 +21,22 @@ def get_host_profile(db: Client, target_user_id: str, current_user_id: str | Non
     # Use existing list_events logic with a filter on host_id
     # We can fetch events from event_repo manually or adapt the list helper.
     # We'll just fetch from profile_repo and construct the list items manually because the main helper needs refactoring.
-    
+
     events = profile_repo.get_hosted_events(db, target_user_id)
     event_ids = [e["id"] for e in events]
-    
+
     locations_by_event = event_repo.get_primary_locations_for_events(db, event_ids)
     categories_by_event = event_repo.get_categories_for_events(db, event_ids)
     images_by_event = event_repo.get_primary_images_for_events(db, event_ids)
-    
-    # Also fetch bookmarks/attendance stats since it's an EventListItemResponse.
-    # If the user is authenticated, check their bookmarks.
-    is_bookmarked_map = {}
-    attendance_counts = event_repo.get_attendee_counts(db, event_ids) if hasattr(event_repo, "get_attendee_counts") else {e["id"]: e["attendee_count"] for e in events}
-    
+
     # But wait, we didn't add the new fields into EventListItemResponse globally yet, we'll do it separately.
     from app.models.event import EventListItemResponse
-    
     items = []
     for event in events:
         is_private = event["visibility"] == "private"
         # Full details only for authenticated users viewing public events, but for host profile guests can see public events.
         is_full = current_user_id is not None and not is_private
-        
+
         # Build response item
         items.append(EventListItemResponse(
             id=event["id"],
@@ -93,17 +86,8 @@ def update_profile(db: Client, user_id: str, req: ProfileUpdateRequest) -> UserR
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No valid fields provided for update"
         )
-        
+
     user = profile_repo.update_user_profile(db, user_id, update_data)
-    
-    location = None
-    if user.get("default_location_name"):
-        location = {
-            "name": user["default_location_name"],
-            "latitude": user["default_location_lat"],
-            "longitude": user["default_location_lng"],
-        }
-    
     return UserResponse(
         id=user["id"],
         username=user["username"],

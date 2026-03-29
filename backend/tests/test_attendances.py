@@ -1,7 +1,8 @@
 """Integration tests for Attendance API."""
 
-from tests_support import build_test_identity
 from unittest.mock import patch
+
+from tests_support import build_test_identity
 
 
 @patch("app.repositories.image.upload_to_storage", return_value="https://example.com/test.jpg")
@@ -11,10 +12,10 @@ def test_attendance_and_capacity(mock_upload, client, db):
     client.post("/auth/register", json={"username": host_user, "email": host_email, "password": "password123", "date_of_birth": "1990-01-01"})
     login = client.post("/auth/login", json={"email": host_email, "password": "password123"})
     host_token = login.json()["access_token"]
-    
+
     cat_res = client.get("/categories")
     cat_id = cat_res.json()[0]["id"]
-    
+
     # Create event with limit 1
     event_res = client.post("/events", headers={"Authorization": f"Bearer {host_token}"}, json={
         "title": "Attendance Test Event",
@@ -30,15 +31,16 @@ def test_attendance_and_capacity(mock_upload, client, db):
     })
     assert event_res.status_code == 201, f"Event creation failed: {event_res.text}"
     event_id = event_res.json()["id"]
-    
+
     from io import BytesIO
+
     from PIL import Image as PILImage
     img = PILImage.new("RGB", (100, 100), color="red")
     buf = BytesIO()
     img.save(buf, format="JPEG")
     buf.seek(0)
     client.post(f"/events/{event_id}/images", headers={"Authorization": f"Bearer {host_token}"}, files={"file": ("test.jpg", buf, "image/jpeg")})
-    
+
     pub_res = client.patch(f"/events/{event_id}/status", headers={"Authorization": f"Bearer {host_token}"}, json={"status": "published"})
     assert pub_res.status_code == 200, f"Failed to publish: {pub_res.text}"
 

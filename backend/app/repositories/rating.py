@@ -30,7 +30,7 @@ def get_host_rating_stats(db: Client, host_id: str) -> dict:
     )
     if not result.data:
         return {"average": None, "count": 0}
-        
+
     total_score = sum(float(row["score"]) for row in result.data)
     count = len(result.data)
     return {"average": total_score / count, "count": count}

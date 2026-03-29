@@ -5,7 +5,6 @@ from datetime import date
 from pydantic import BaseModel, EmailStr
 
 from app.models.event import EventListItemResponse
-from app.models.user import UserResponse
 
 
 class ProfileUpdateRequest(BaseModel):

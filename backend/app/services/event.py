@@ -247,7 +247,7 @@ def get_event_detail(
             is_bookmarked = True
         else:
             is_bookmarked = False
-            
+
         attendance = attendance_repo.get_attendance(db, user_id, event_id)
         if attendance:
             attendance_status = attendance["status"]
@@ -529,7 +529,7 @@ def list_events(
     is_bookmarked_map = set()
     if user_id:
         is_bookmarked_map = bookmark_repo.get_bookmark_status_for_events(db, user_id, event_ids)
-        
+
     interested_counts = attendance_repo.get_interested_counts_for_events(db, event_ids)
 
     items = []

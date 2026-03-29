@@ -9,7 +9,7 @@ def test_user_profiles_and_ratings(client, db):
     client.post("/auth/register", json={"username": host_user, "email": host_email, "password": "password123", "date_of_birth": "1990-01-01"})
     login = client.post("/auth/login", json={"email": host_email, "password": "password123"})
     host_token = login.json()["access_token"]
-    
+
     # Get me
     res = client.get("/auth/me", headers={"Authorization": f"Bearer {host_token}"})
     host_id = res.json()["id"]

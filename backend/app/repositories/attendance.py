@@ -48,7 +48,7 @@ def get_interested_count_for_event(db: Client, event_id: str) -> int:
 def get_interested_counts_for_events(db: Client, event_ids: list[str]) -> dict[str, int]:
     if not event_ids:
         return {}
-    
+
     result = (
         db.table("attendances")
         .select("event_id")
@@ -56,7 +56,7 @@ def get_interested_counts_for_events(db: Client, event_ids: list[str]) -> dict[s
         .eq("status", "interested")
         .execute()
     )
-    
+
     counts = {eid: 0 for eid in event_ids}
     for row in (result.data or []):
         counts[row["event_id"]] += 1
@@ -66,7 +66,7 @@ def get_interested_counts_for_events(db: Client, event_ids: list[str]) -> dict[s
 def get_attendance_status_for_events(db: Client, user_id: str, event_ids: list[str]) -> dict[str, str]:
     if not event_ids:
         return {}
-        
+
     result = (
         db.table("attendances")
         .select("event_id, status")
@@ -74,5 +74,5 @@ def get_attendance_status_for_events(db: Client, user_id: str, event_ids: list[s
         .in_("event_id", event_ids)
         .execute()
     )
-    
+
     return {row["event_id"]: row["status"] for row in (result.data or [])}
