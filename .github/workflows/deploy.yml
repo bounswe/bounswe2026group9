@@ -87,7 +87,7 @@ jobs:
             sudo cp backend/.env.production /opt/sem-backend/backend/.env.production
             sudo cp redeploy.sh /opt/sem-backend/redeploy.sh
             sudo chmod +x /opt/sem-backend/redeploy.sh
-            if [ ! -f /etc/letsencrypt/live/thesocialeventmapper.social/fullchain.pem ]; then
+            if ! sudo test -f /etc/letsencrypt/live/thesocialeventmapper.social/fullchain.pem; then
               sudo cp ec2-public-ip.conf /etc/nginx/sites-available/sem-backend
               if [ ! -L /etc/nginx/sites-enabled/sem-backend ]; then
                 sudo ln -s /etc/nginx/sites-available/sem-backend /etc/nginx/sites-enabled/sem-backend
