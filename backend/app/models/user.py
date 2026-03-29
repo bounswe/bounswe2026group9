@@ -30,6 +30,7 @@ class UserResponse(BaseModel):
     phone_number: str | None = None
     date_of_birth: date | None = None
     email_visibility: bool = False
+    phone_visibility: bool = False
     role: str
     auth_provider: str
     email_verified: bool

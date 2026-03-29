@@ -11,6 +11,7 @@ class ProfileUpdateRequest(BaseModel):
     date_of_birth: date | None = None
     phone_number: str | None = None
     email_visibility: str | None = None
+    phone_visibility: str | None = None
     default_location_name: str | None = None
     default_location_lat: float | None = None
     default_location_lng: float | None = None

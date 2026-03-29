@@ -8,6 +8,7 @@ from supabase import Client
 from app.models.rating import RatingResponse
 from app.repositories import rating as rating_repo
 from app.repositories import user as user_repo
+from app.repositories import profile as profile_repo
 
 
 def rate_host(db: Client, rater_id: str, host_id: str, score: Decimal) -> RatingResponse:
@@ -21,6 +22,13 @@ def rate_host(db: Client, rater_id: str, host_id: str, score: Decimal) -> Rating
     host = user_repo.get_user_by_id(db, host_id)
     if not host:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Host not found")
+
+    events = profile_repo.get_hosted_events(db, host_id)
+    if not events:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Target user has never hosted an event. Only hosts can be rated"
+        )
 
     # Upsert the rating
     rating = rating_repo.upsert_rating(db, {

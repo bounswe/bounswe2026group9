@@ -58,11 +58,15 @@ def get_host_profile(db: Client, target_user_id: str, current_user_id: str | Non
     if user.get("email_visibility") is True:
         email = user.get("email")
 
+    phone_number = None
+    if user.get("phone_visibility") is True:
+        phone_number = user.get("phone_number")
+
     return HostProfileResponse(
         id=user["id"],
         username=user["username"],
         email=email,
-        phone_number=user.get("phone_number"), # assuming contact info depends on privacy
+        phone_number=phone_number,
         average_rating=rating_stats["average"],
         hosted_events_count=len(items),
         hosted_events=items,
@@ -71,12 +75,12 @@ def get_host_profile(db: Client, target_user_id: str, current_user_id: str | Non
 
 def update_profile(db: Client, user_id: str, req: ProfileUpdateRequest) -> UserResponse:
     update_data = {}
-    for field in ("date_of_birth", "phone_number", "email_visibility", "default_location_name", "default_location_lat", "default_location_lng"):
+    for field in ("date_of_birth", "phone_number", "email_visibility", "phone_visibility", "default_location_name", "default_location_lat", "default_location_lng"):
         val = getattr(req, field, None)
         if val is not None:
             if field == "date_of_birth":
                 update_data[field] = val.isoformat()
-            elif field == "email_visibility":
+            elif field in ("email_visibility", "phone_visibility"):
                 update_data[field] = (val == "public")
             else:
                 update_data[field] = val
@@ -95,6 +99,7 @@ def update_profile(db: Client, user_id: str, req: ProfileUpdateRequest) -> UserR
         phone_number=user.get("phone_number"),
         date_of_birth=user.get("date_of_birth"),
         email_visibility=user.get("email_visibility", False),
+        phone_visibility=user.get("phone_visibility", False),
         role=user.get("role", "registered"),
         auth_provider=user.get("auth_provider", "local"),
         email_verified=user.get("email_verified", False),
