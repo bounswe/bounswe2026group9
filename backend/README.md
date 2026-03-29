@@ -17,7 +17,6 @@ Fill in the values:
 | `SUPABASE_URL` | Supabase Dashboard → Settings → API |
 | `SUPABASE_KEY` | Supabase Dashboard → Settings → API → `service_role` key |
 | `JWT_SECRET` | `openssl rand -hex 32` |
-| `JWT_REFRESH_SECRET` | `openssl rand -hex 32` |
 | `GOOGLE_CLIENT_ID` | Google Cloud Console → Credentials |
 | `GOOGLE_CLIENT_SECRET` | Google Cloud Console → Credentials |
 | `SMTP_USER` | Gmail address |
@@ -69,6 +68,7 @@ Minimum required production values:
 - `CORS_ORIGINS`
 
 When `ENVIRONMENT=production`, refresh cookies are sent with `secure=True`.
+Email verification links and Google OAuth completion redirects also rely on `FRONTEND_URL`.
 
 ### GitHub Actions deploy secrets
 
@@ -190,6 +190,12 @@ sudo certbot --nginx -d thesocialeventmapper.social
 | POST | /auth/resend-verification | Bearer | Resend verification email |
 | GET | /auth/google?mode=login | - | Start Google OAuth flow |
 | GET | /auth/google/callback | - | Google OAuth callback |
+
+Notes:
+
+- Refresh tokens are opaque random tokens stored in the database, not JWTs.
+- Verification emails link to `FRONTEND_URL/verify-email?token=...`; the frontend should call `GET /auth/verify-email`.
+- Google OAuth finishes by redirecting the browser to `FRONTEND_URL/auth/callback` after the backend sets the refresh cookie.
 
 ### Events
 
