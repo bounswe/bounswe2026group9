@@ -13,6 +13,8 @@ from app.models.event import (
     EventListResponse,
     EventUpdateRequest,
 )
+from app.repositories import attendance as attendance_repo
+from app.repositories import bookmark as bookmark_repo
 from app.repositories import event as event_repo
 from app.repositories import image as image_repo
 from app.repositories import user as user_repo
@@ -168,7 +170,16 @@ def _build_detail_response(
     images: list[dict],
     venue_metadata: dict | None,
     equipment: list[dict],
+    is_bookmarked: bool | None = None,
+    attendance_status: str | None = None,
+    going_count: int | None = None,
+    interested_count: int = 0,
 ) -> EventDetailResponse:
+    actual_going = going_count if going_count is not None else event["attendee_count"]
+    is_full = None
+    if event["attendee_limit"] is not None:
+        is_full = actual_going >= event["attendee_limit"]
+
     return EventDetailResponse(
         id=event["id"],
         host_id=event["host_id"],
@@ -183,6 +194,11 @@ def _build_detail_response(
         status=event["status"],
         created_at=event["created_at"],
         updated_at=event["updated_at"],
+        is_bookmarked=is_bookmarked,
+        attendance_status=attendance_status,
+        going_count=actual_going,
+        interested_count=interested_count,
+        is_full=is_full,
         locations=locations,
         categories=categories,
         images=images,
@@ -191,7 +207,9 @@ def _build_detail_response(
     )
 
 
-def _build_limited_response(event: dict, categories: list[dict]) -> EventLimitedResponse:
+def _build_limited_response(
+    event: dict, categories: list[dict], is_bookmarked: bool | None = None
+) -> EventLimitedResponse:
     return EventLimitedResponse(
         id=event["id"],
         title=event["title"],
@@ -200,6 +218,7 @@ def _build_limited_response(event: dict, categories: list[dict]) -> EventLimited
         visibility=event["visibility"],
         is_age_restricted=event["is_age_restricted"],
         status=event["status"],
+        is_bookmarked=is_bookmarked,
         categories=categories,
     )
 
@@ -220,23 +239,38 @@ def get_event_detail(
     if event["status"] == "draft" and (not user_id or event["host_id"] != user_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
 
+    is_bookmarked = None
+    attendance_status = None
+    if user_id:
+        bookmark = bookmark_repo.get_bookmark(db, user_id, event_id)
+        if bookmark:
+            is_bookmarked = True
+        else:
+            is_bookmarked = False
+            
+        attendance = attendance_repo.get_attendance(db, user_id, event_id)
+        if attendance:
+            attendance_status = attendance["status"]
+
+    interested_count = attendance_repo.get_interested_count_for_event(db, event_id)
+
     # Cancelled events show limited info with cancellation label
     if event["status"] == "cancelled" and (not user_id or event["host_id"] != user_id):
         categories = event_repo.get_event_categories(db, event_id)
-        return _build_limited_response(event, categories)
+        return _build_limited_response(event, categories, is_bookmarked)
 
     categories = event_repo.get_event_categories(db, event_id)
 
     # Guest (no user_id) → limited preview
     if not user_id:
-        return _build_limited_response(event, categories)
+        return _build_limited_response(event, categories, is_bookmarked)
 
     # Private event → host and granted users see full detail
     if event["visibility"] == "private" and event["host_id"] != user_id:
         from app.repositories import invite as invite_repo
         grant = invite_repo.get_access_grant(db, event_id, user_id)
         if not grant:
-            return _build_limited_response(event, categories)
+            return _build_limited_response(event, categories, is_bookmarked)
 
     # Age restriction check (host is always exempt)
     if event["is_age_restricted"] and user_id and event["host_id"] != user_id:
@@ -261,7 +295,13 @@ def get_event_detail(
     venue_metadata = event_repo.get_venue_metadata(db, event_id)
     equipment = event_repo.get_equipment(db, event_id)
 
-    return _build_detail_response(event, locations, categories, images, venue_metadata, equipment)
+    return _build_detail_response(
+        event, locations, categories, images, venue_metadata, equipment,
+        is_bookmarked=is_bookmarked,
+        attendance_status=attendance_status,
+        going_count=event["attendee_count"],
+        interested_count=interested_count
+    )
 
 
 # --- Update ---
@@ -486,6 +526,12 @@ def list_events(
     categories_by_event = event_repo.get_categories_for_events(db, event_ids)
     images_by_event = event_repo.get_primary_images_for_events(db, event_ids)
 
+    is_bookmarked_map = set()
+    if user_id:
+        is_bookmarked_map = bookmark_repo.get_bookmark_status_for_events(db, user_id, event_ids)
+        
+    interested_counts = attendance_repo.get_interested_counts_for_events(db, event_ids)
+
     items = []
     for event in events:
         is_private = event["visibility"] == "private"
@@ -502,6 +548,10 @@ def list_events(
             attendee_limit=event["attendee_limit"],
             attendee_count=event["attendee_count"],
             status=event["status"],
+            is_bookmarked=(event["id"] in is_bookmarked_map) if user_id else None,
+            going_count=event["attendee_count"],
+            interested_count=interested_counts.get(event["id"], 0),
+            is_full=(event["attendee_count"] >= event["attendee_limit"]) if event["attendee_limit"] is not None else None,
             categories=categories_by_event.get(event["id"], []),
             # Private events: no location in list (venue is private)
             # Public events: location visible to all (needed for map view)

@@ -40,6 +40,25 @@ def get_current_user_id(
     return user_id
 
 
+def get_optional_user_id(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+) -> str | None:
+    if credentials is None:
+        return None
+    try:
+        payload = decode_access_token(credentials.credentials)
+    except JWTError:
+        return None
+    user_id = payload.get("sub")
+    if not user_id:
+        return None
+    db = get_supabase()
+    result = db.table("users").select("is_active").eq("id", user_id).execute()
+    if not result.data or not result.data[0]["is_active"]:
+        return None
+    return user_id
+
+
 def require_role(*roles: str):
     """FastAPI dependency factory: require user to have one of the given roles."""
 

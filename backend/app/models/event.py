@@ -123,6 +123,11 @@ class EventDetailResponse(BaseModel):
     status: str
     created_at: datetime
     updated_at: datetime
+    is_bookmarked: bool | None = None
+    attendance_status: str | None = None
+    going_count: int = 0
+    interested_count: int = 0
+    is_full: bool | None = None
     locations: list[LocationResponse] = []
     categories: list[CategoryResponse] = []
     images: list[EventImageResponse] = []
@@ -143,6 +148,7 @@ class EventLimitedResponse(BaseModel):
     visibility: str
     is_age_restricted: bool
     status: str
+    is_bookmarked: bool | None = None
     categories: list[CategoryResponse] = []
 
 
@@ -164,6 +170,10 @@ class EventListItemResponse(BaseModel):
     attendee_limit: int | None
     attendee_count: int
     status: str
+    is_bookmarked: bool | None = None
+    going_count: int = 0
+    interested_count: int = 0
+    is_full: bool | None = None
     categories: list[CategoryResponse] = []
     primary_location: LocationResponse | None = None
     primary_image_url: str | None = None
