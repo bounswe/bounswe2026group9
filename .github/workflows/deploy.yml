@@ -48,20 +48,20 @@ jobs:
           SUPABASE_URL=${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}
           JWT_SECRET=${{ secrets.JWT_SECRET }}
-          GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
-          GOOGLE_REDIRECT_URI=${{ secrets.GOOGLE_REDIRECT_URI }}
-          SMTP_HOST=${{ secrets.SMTP_HOST }}
-          SMTP_PORT=${{ secrets.SMTP_PORT }}
-          SMTP_USER=${{ secrets.SMTP_USER }}
-          SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
-          SMTP_FROM_EMAIL=${{ secrets.SMTP_FROM_EMAIL }}
-          SMTP_FROM_NAME=${{ secrets.SMTP_FROM_NAME }}
           ENVIRONMENT=production
           FRONTEND_URL=${{ secrets.FRONTEND_URL }}
           BACKEND_URL=${{ secrets.BACKEND_URL }}
           CORS_ORIGINS=${{ secrets.CORS_ORIGINS }}
           EOF
+          if [ -n "${{ secrets.GOOGLE_CLIENT_ID }}" ]; then echo "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}" >> .deploy/backend/.env.production; fi
+          if [ -n "${{ secrets.GOOGLE_CLIENT_SECRET }}" ]; then echo "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" >> .deploy/backend/.env.production; fi
+          if [ -n "${{ secrets.GOOGLE_REDIRECT_URI }}" ]; then echo "GOOGLE_REDIRECT_URI=${{ secrets.GOOGLE_REDIRECT_URI }}" >> .deploy/backend/.env.production; fi
+          if [ -n "${{ secrets.SMTP_HOST }}" ]; then echo "SMTP_HOST=${{ secrets.SMTP_HOST }}" >> .deploy/backend/.env.production; fi
+          if [ -n "${{ secrets.SMTP_PORT }}" ]; then echo "SMTP_PORT=${{ secrets.SMTP_PORT }}" >> .deploy/backend/.env.production; fi
+          if [ -n "${{ secrets.SMTP_USER }}" ]; then echo "SMTP_USER=${{ secrets.SMTP_USER }}" >> .deploy/backend/.env.production; fi
+          if [ -n "${{ secrets.SMTP_PASSWORD }}" ]; then echo "SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}" >> .deploy/backend/.env.production; fi
+          if [ -n "${{ secrets.SMTP_FROM_EMAIL }}" ]; then echo "SMTP_FROM_EMAIL=${{ secrets.SMTP_FROM_EMAIL }}" >> .deploy/backend/.env.production; fi
+          if [ -n "${{ secrets.SMTP_FROM_NAME }}" ]; then echo "SMTP_FROM_NAME=${{ secrets.SMTP_FROM_NAME }}" >> .deploy/backend/.env.production; fi
 
       - uses: appleboy/scp-action@v0.1.7
         with:
