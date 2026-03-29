@@ -8,6 +8,7 @@ on:
       - "backend/**"
       - "docker-compose.prod.yml"
       - "deploy/**"
+      - ".github/workflows/deploy.yml"
   workflow_dispatch:
 
 jobs:
@@ -95,8 +96,25 @@ jobs:
             sudo systemctl reload nginx
             sudo BACKEND_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/sem:latest docker compose -f /opt/sem-backend/docker-compose.prod.yml pull
             sudo BACKEND_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/sem:latest docker compose -f /opt/sem-backend/docker-compose.prod.yml up -d
-            curl --fail http://127.0.0.1:8000/health
+            sleep 5
+            for i in $(seq 1 12); do
+              if curl --fail --silent http://127.0.0.1:8000/health; then
+                break
+              fi
+              if [ "$i" -eq 12 ]; then
+                exit 1
+              fi
+              sleep 5
+            done
             sudo docker image prune -f
 
       - name: Verify public health endpoint
-        run: curl --fail http://${{ secrets.EC2_HOST }}/health
+        run: |
+          sleep 5
+          for i in $(seq 1 12); do
+            if curl --fail --silent http://${{ secrets.EC2_HOST }}/health; then
+              exit 0
+            fi
+            sleep 5
+          done
+          exit 1
