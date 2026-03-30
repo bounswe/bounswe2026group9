@@ -9,6 +9,8 @@ import "@fontsource/playfair-display/700.css";
 import type { Metadata } from "next";
 import "./globals.css";
 
+import { AuthProvider } from "@/providers/auth-provider";
+
 export const metadata: Metadata = {
   title: "Social Event Mapper",
   description: "Frontend application for Social Event Mapper",
@@ -21,7 +23,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full antialiased">
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }
