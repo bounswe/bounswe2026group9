@@ -226,6 +226,21 @@ class TestCreateEvent:
 
         _cleanup_user(user["id"])
 
+    def test_create_event_naive_datetime_rejected(self):
+        user = _create_test_user("naivedt")
+        cat_ids = _get_category_ids(1)
+        body = _valid_event_body(
+            cat_ids,
+            start_datetime=(datetime.now() + timedelta(days=1)).isoformat(),
+            end_datetime=(datetime.now() + timedelta(days=1, hours=2)).isoformat(),
+        )
+
+        resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
+        assert resp.status_code == 400
+        assert "timezone" in resp.json()["detail"].lower()
+
+        _cleanup_user(user["id"])
+
     def test_create_event_invalid_category(self):
         user = _create_test_user("badcat")
         body = _valid_event_body(["00000000-0000-0000-0000-000000000000"])
@@ -505,6 +520,21 @@ class TestUpdateEvent:
         )
         assert resp.status_code == 400
         assert "started" in resp.json()["detail"].lower()
+
+        _cleanup_event(event_id)
+        _cleanup_user(user["id"])
+
+    def test_update_naive_datetime_rejected(self):
+        user = _create_test_user("upnaive")
+        event_id = self._create_draft_event(user["id"])
+
+        resp = client.put(
+            f"/events/{event_id}",
+            json={"start_datetime": (datetime.now() + timedelta(days=1)).isoformat()},
+            headers=_auth_header(user["id"]),
+        )
+        assert resp.status_code == 400
+        assert "timezone" in resp.json()["detail"].lower()
 
         _cleanup_event(event_id)
         _cleanup_user(user["id"])
