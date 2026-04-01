@@ -2,6 +2,7 @@ import os
 import re
 import uuid
 
+
 def _normalized_run_id() -> str:
     raw = os.getenv("TEST_RUN_ID", "")
     normalized = re.sub(r"[^0-9A-Za-z]", "", raw)

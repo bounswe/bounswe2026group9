@@ -1,6 +1,5 @@
 from tests_support import build_test_email, build_test_identity
 
-
 # ==================== Register ====================
 
 
