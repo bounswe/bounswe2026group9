@@ -21,9 +21,26 @@ from app.repositories import user as user_repo
 
 # --- Validators ---
 
+def _ensure_timezone_aware(value: datetime, field_name: str) -> datetime:
+    if value.tzinfo is None or value.utcoffset() is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"{field_name} must include timezone information",
+        )
+    return value
+
+
+def _parse_stored_datetime(value: str) -> datetime:
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed
+
 def validate_event_datetime(
     start_datetime: datetime, end_datetime: datetime, *, allow_past: bool = False,
 ) -> None:
+    start_datetime = _ensure_timezone_aware(start_datetime, "start_datetime")
+    end_datetime = _ensure_timezone_aware(end_datetime, "end_datetime")
     if not allow_past and start_datetime <= datetime.now(UTC):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -78,7 +95,7 @@ def check_rate_limit(db: Client, host_id: str) -> None:
 
 def auto_end_event_if_past(db: Client, event: dict) -> dict:
     if event["status"] in ("published", "updated"):
-        end_dt = datetime.fromisoformat(event["end_datetime"].replace("Z", "+00:00"))
+        end_dt = _parse_stored_datetime(event["end_datetime"])
         if end_dt < datetime.now(UTC):
             event_repo.update_event_status(db, event["id"], "ended")
             event["status"] = "ended"
@@ -333,9 +350,7 @@ def update_event(
         update_data["attendee_limit"] = None
 
     # Check if event has started — time/location changes restricted
-    event_started = datetime.fromisoformat(
-        event["start_datetime"].replace("Z", "+00:00")
-    ) < datetime.now(UTC)
+    event_started = _parse_stored_datetime(event["start_datetime"]) < datetime.now(UTC)
 
     if body.start_datetime is not None or body.end_datetime is not None:
         if event_started:
@@ -343,8 +358,8 @@ def update_event(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Cannot modify time after event has started",
             )
-        new_start = body.start_datetime or datetime.fromisoformat(event["start_datetime"].replace("Z", "+00:00"))
-        new_end = body.end_datetime or datetime.fromisoformat(event["end_datetime"].replace("Z", "+00:00"))
+        new_start = body.start_datetime or _parse_stored_datetime(event["start_datetime"])
+        new_end = body.end_datetime or _parse_stored_datetime(event["end_datetime"])
         validate_event_datetime(new_start, new_end)
         if body.start_datetime:
             update_data["start_datetime"] = body.start_datetime.isoformat()
@@ -439,7 +454,7 @@ def change_event_status(
 
     # draft → published: check required fields and validate datetime
     if current == "draft" and new_status == "published":
-        start = datetime.fromisoformat(event["start_datetime"])
+        start = _parse_stored_datetime(event["start_datetime"])
         if start <= datetime.now(UTC):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
