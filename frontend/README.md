@@ -19,6 +19,12 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8888
 The frontend expects the backend refresh token to be stored in an HTTP-only
 cookie, so authenticated requests always use `credentials: "include"`.
 
+For production builds, use `frontend/env.production.example` as a reference:
+
+```env
+NEXT_PUBLIC_API_BASE_URL=https://thesocialeventmapper.social
+```
+
 ## Available scripts
 
 ```bash
@@ -58,3 +64,15 @@ npm run check
 
 Run `npm run test:run` for the wrapper and session store tests, then run
 `npm run check` before opening a PR.
+
+## Production deployment
+
+- The production image is built from `frontend/Dockerfile`.
+- The deploy workflow bakes `NEXT_PUBLIC_API_BASE_URL` into the frontend build
+  using the repository `BACKEND_URL` secret.
+- In production, the EC2 nginx reverse proxy serves the frontend from `/` and
+  forwards backend API routes such as `/auth`, `/events`, `/users`,
+  `/categories`, `/notifications`, `/health`, and `/docs` to the backend
+  container.
+- `/auth/callback` stays on the frontend so the browser can complete the Google
+  sign-in redirect after the backend sets the refresh cookie.
