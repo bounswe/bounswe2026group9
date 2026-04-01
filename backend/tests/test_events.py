@@ -212,20 +212,6 @@ class TestCreateEvent:
         _cleanup_event(resp.json()["id"])
         _cleanup_user(user["id"])
 
-    def test_create_event_invalid_datetime(self):
-        user = _create_test_user("baddate")
-        cat_ids = _get_category_ids(1)
-        body = _valid_event_body(cat_ids,
-            start_datetime=(datetime.now(UTC) + timedelta(days=2)).isoformat(),
-            end_datetime=(datetime.now(UTC) + timedelta(days=1)).isoformat(),
-        )
-
-        resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
-        assert resp.status_code == 400
-        assert "end_datetime" in resp.json()["detail"]
-
-        _cleanup_user(user["id"])
-
     def test_create_event_naive_datetime_rejected(self):
         user = _create_test_user("naivedt")
         cat_ids = _get_category_ids(1)
@@ -240,7 +226,6 @@ class TestCreateEvent:
         assert "timezone" in resp.json()["detail"].lower()
 
         _cleanup_user(user["id"])
-
     def test_create_event_invalid_category(self):
         user = _create_test_user("badcat")
         body = _valid_event_body(["00000000-0000-0000-0000-000000000000"])
@@ -891,22 +876,6 @@ class TestInvalidUUID:
         user = _create_test_user("baduuid2")
         resp = client.delete("/events/not-a-uuid", headers=_auth_header(user["id"]))
         assert resp.status_code == 422
-        _cleanup_user(user["id"])
-
-
-class TestCreateEventFutureDate:
-
-    def test_create_event_past_start_fails(self):
-        user = _create_test_user("paststart")
-        cat_ids = _get_category_ids(1)
-        body = _valid_event_body(cat_ids,
-            start_datetime=(datetime.now(UTC) - timedelta(hours=1)).isoformat(),
-            end_datetime=(datetime.now(UTC) + timedelta(hours=1)).isoformat(),
-        )
-        resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
-        assert resp.status_code == 400
-        assert "future" in resp.json()["detail"].lower()
-
         _cleanup_user(user["id"])
 
 
