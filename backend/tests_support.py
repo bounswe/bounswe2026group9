@@ -2,23 +2,6 @@ import os
 import re
 import uuid
 
-BASE_TEST_PREFIXES = (
-    "testuser",
-    "eventtest",
-    "imgtest",
-    "cattest",
-    "disctest",
-    "cmttest",
-    "invtest",
-    "notiftest",
-    "emittest",
-    "bmtest",
-    "attndtest",
-    "proftest",
-    "ratetest",
-)
-
-
 def _normalized_run_id() -> str:
     raw = os.getenv("TEST_RUN_ID", "")
     normalized = re.sub(r"[^0-9A-Za-z]", "", raw)
@@ -41,5 +24,5 @@ def build_test_email(prefix: str) -> str:
     return f"{prefix}_{TEST_RUN_ID}_{unique}@example.com"
 
 
-def cleanup_username_patterns() -> list[str]:
-    return [f"{prefix}_{USERNAME_RUN_ID}_%" for prefix in BASE_TEST_PREFIXES]
+def cleanup_email_pattern() -> str:
+    return f"%_{TEST_RUN_ID}_%@example.com"

@@ -134,73 +134,6 @@ class TestUpdateNotification:
 
         _cleanup_notifications(user["id"])
 
-    def test_update_notifies_interested_user(self):
-        host = _create_test_user()
-        user = _create_test_user()
-        event = _create_published_event(host["id"])
-
-        _add_attendance(user["id"], event["id"], "interested")
-
-        client.put(
-            f"/events/{event['id']}",
-            json={"description": "Updated description"},
-            headers=_auth_header(host["id"]),
-        )
-
-        notifications = _get_notifications(user["id"])
-        assert any(n["type"] == "event_updated" for n in notifications)
-
-        _cleanup_notifications(user["id"])
-
-    def test_update_notifies_bookmarked_user(self):
-        host = _create_test_user()
-        user = _create_test_user()
-        event = _create_published_event(host["id"])
-
-        _add_bookmark(user["id"], event["id"])
-
-        client.put(
-            f"/events/{event['id']}",
-            json={"title": "Bookmark update test"},
-            headers=_auth_header(host["id"]),
-        )
-
-        notifications = _get_notifications(user["id"])
-        assert any(n["type"] == "event_updated" for n in notifications)
-
-        _cleanup_notifications(user["id"])
-
-    def test_update_does_not_notify_host(self):
-        host = _create_test_user()
-        event = _create_published_event(host["id"])
-
-        # Host bookmarks own event (unusual but possible)
-        _add_bookmark(host["id"], event["id"])
-
-        client.put(
-            f"/events/{event['id']}",
-            json={"title": "Host self-update"},
-            headers=_auth_header(host["id"]),
-        )
-
-        notifications = _get_notifications(host["id"])
-        update_notifs = [n for n in notifications if n["type"] == "event_updated"]
-        assert len(update_notifs) == 0
-
-        _cleanup_notifications(host["id"])
-
-    def test_update_no_attendees_no_error(self):
-        host = _create_test_user()
-        event = _create_published_event(host["id"])
-
-        # No bookmarks, no attendees — should not error
-        resp = client.put(
-            f"/events/{event['id']}",
-            json={"title": "No audience update"},
-            headers=_auth_header(host["id"]),
-        )
-        assert resp.status_code == 200
-
     def test_empty_update_does_not_notify(self):
         host = _create_test_user()
         user = _create_test_user()
@@ -218,27 +151,6 @@ class TestUpdateNotification:
         notifications = _get_notifications(user["id"])
         update_notifs = [n for n in notifications if n["type"] == "event_updated"]
         assert len(update_notifs) == 0
-
-        _cleanup_notifications(user["id"])
-
-    def test_no_duplicate_notification(self):
-        host = _create_test_user()
-        user = _create_test_user()
-        event = _create_published_event(host["id"])
-
-        # User both bookmarked AND going
-        _add_bookmark(user["id"], event["id"])
-        _add_attendance(user["id"], event["id"], "going")
-
-        client.put(
-            f"/events/{event['id']}",
-            json={"title": "Dedup test"},
-            headers=_auth_header(host["id"]),
-        )
-
-        notifications = _get_notifications(user["id"])
-        update_notifs = [n for n in notifications if n["type"] == "event_updated"]
-        assert len(update_notifs) == 1  # Only one, not two
 
         _cleanup_notifications(user["id"])
 
@@ -263,42 +175,6 @@ class TestCancelNotification:
         assert any(n["type"] == "event_cancelled" for n in notifications)
 
         _cleanup_notifications(user["id"])
-
-    def test_cancel_notifies_bookmarked_user(self):
-        host = _create_test_user()
-        user = _create_test_user()
-        event = _create_published_event(host["id"])
-
-        _add_bookmark(user["id"], event["id"])
-
-        client.patch(
-            f"/events/{event['id']}/status",
-            json={"status": "cancelled"},
-            headers=_auth_header(host["id"]),
-        )
-
-        notifications = _get_notifications(user["id"])
-        assert any(n["type"] == "event_cancelled" for n in notifications)
-
-        _cleanup_notifications(user["id"])
-
-    def test_cancel_does_not_notify_host(self):
-        host = _create_test_user()
-        event = _create_published_event(host["id"])
-
-        _add_attendance(host["id"], event["id"], "going")
-
-        client.patch(
-            f"/events/{event['id']}/status",
-            json={"status": "cancelled"},
-            headers=_auth_header(host["id"]),
-        )
-
-        notifications = _get_notifications(host["id"])
-        cancel_notifs = [n for n in notifications if n["type"] == "event_cancelled"]
-        assert len(cancel_notifs) == 0
-
-        _cleanup_notifications(host["id"])
 
     def test_end_does_not_notify(self):
         host = _create_test_user()

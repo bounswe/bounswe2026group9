@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 from app.database import get_supabase
 from app.main import app
-from tests_support import build_test_identity, cleanup_username_patterns
+from tests_support import build_test_identity, cleanup_email_pattern
 
 
 @pytest.fixture()
@@ -14,7 +14,7 @@ def client():
     return TestClient(app)
 
 
-@pytest.fixture()
+@pytest.fixture(scope="session")
 def db():
     """Supabase client for direct DB operations in tests."""
     return get_supabase()
@@ -45,7 +45,7 @@ def registered_user(client, test_user_data):
     }
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=True, scope="session")
 def disable_email_sending():
     """Prevent real emails from being sent during tests."""
     with patch("app.routers.auth.send_verification_email", return_value=False):
@@ -54,7 +54,6 @@ def disable_email_sending():
 
 @pytest.fixture(autouse=True)
 def cleanup_test_users(db):
-    """Clean up test users after each test (all test prefixes)."""
+    """Clean up test users created by the current CI/local test run."""
     yield
-    for prefix in cleanup_username_patterns():
-        db.table("users").delete().like("username", prefix).execute()
+    db.table("users").delete().like("email", cleanup_email_pattern()).execute()
