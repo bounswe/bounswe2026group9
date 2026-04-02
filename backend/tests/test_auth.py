@@ -130,27 +130,22 @@ class TestTokenFlow:
         assert response.status_code == 200
         assert "access_token" in response.json()
 
-    def test_refresh_old_token_revoked(self, client, registered_user, db):
-        # Login to get a refresh token
+    def test_refresh_old_token_revoked(self, client, registered_user):
+        # Login to get a refresh token (stored in cookie)
         login_resp = client.post("/auth/login", json={
             "email": registered_user["email"],
             "password": registered_user["password"],
         })
         assert login_resp.status_code == 200
-
-        # Grab the old refresh token from DB (most recent for this user)
-        user_id = registered_user["user"]["id"]
-        tokens = db.table("refresh_tokens").select("token").eq(
-            "user_id", user_id
-        ).eq("revoked", False).execute()
-        old_token = tokens.data[-1]["token"]
+        old_cookie_token = login_resp.cookies.get("sem_refresh_token")
+        assert old_cookie_token, "Login should set refresh token cookie"
 
         # Refresh — this rotates the token (old revoked, new issued)
-        refresh_resp = client.post("/auth/refresh", json={"refresh_token": old_token})
+        refresh_resp = client.post("/auth/refresh", json={"refresh_token": old_cookie_token})
         assert refresh_resp.status_code == 200
 
         # Try old token again — should be revoked
-        retry_resp = client.post("/auth/refresh", json={"refresh_token": old_token})
+        retry_resp = client.post("/auth/refresh", json={"refresh_token": old_cookie_token})
         assert retry_resp.status_code == 401
 
     def test_logout(self, client, registered_user):
@@ -177,13 +172,11 @@ class TestTokenFlow:
 
 
 class TestEmailVerification:
-    def test_verify_with_valid_token(self, client, registered_user, db):
-        # Get verification token from DB
-        result = db.table("email_verification_tokens").select("token").eq(
-            "user_id", registered_user["user"]["id"]
-        ).execute()
-        assert result.data, "Verification token should exist after register"
-        token = result.data[0]["token"]
+    def test_verify_with_valid_token(self, client, registered_user, db, captured_verification_tokens):
+        # Get raw verification token captured before hashing
+        user_id = registered_user["user"]["id"]
+        token = captured_verification_tokens.get(user_id)
+        assert token, "Verification token should have been captured during register"
 
         response = client.get(f"/auth/verify-email?token={token}")
         assert response.status_code == 200
@@ -191,7 +184,7 @@ class TestEmailVerification:
 
         # Confirm user is now verified
         user = db.table("users").select("email_verified").eq(
-            "id", registered_user["user"]["id"]
+            "id", user_id
         ).execute().data[0]
         assert user["email_verified"] is True
 
