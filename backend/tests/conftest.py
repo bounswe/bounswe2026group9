@@ -1,4 +1,7 @@
+import os
 from unittest.mock import patch
+
+os.environ["TESTING"] = "1"  # Disable rate limiting during tests
 
 import pytest
 from fastapi.testclient import TestClient
