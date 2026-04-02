@@ -6,6 +6,7 @@ from email.mime.text import MIMEText
 
 from app.config import settings
 from app.database import get_supabase
+from app.services.auth import hash_token
 
 
 def is_smtp_configured() -> bool:
@@ -24,7 +25,7 @@ def store_verification_token(user_id: str, token: str) -> None:
     expires_at = datetime.now(UTC) + timedelta(hours=24)
     db.table("email_verification_tokens").insert({
         "user_id": user_id,
-        "token": token,
+        "token": hash_token(token),
         "expires_at": expires_at.isoformat(),
     }).execute()
 
@@ -35,7 +36,7 @@ def validate_verification_token(token: str) -> str | None:
     result = (
         db.table("email_verification_tokens")
         .select("user_id, expires_at")
-        .eq("token", token)
+        .eq("token", hash_token(token))
         .execute()
     )
     if not result.data:
@@ -48,7 +49,7 @@ def validate_verification_token(token: str) -> str | None:
 
 def delete_verification_token(token: str) -> None:
     db = get_supabase()
-    db.table("email_verification_tokens").delete().eq("token", token).execute()
+    db.table("email_verification_tokens").delete().eq("token", hash_token(token)).execute()
 
 
 def mark_email_verified(user_id: str) -> None:

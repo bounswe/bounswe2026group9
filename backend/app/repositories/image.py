@@ -23,13 +23,16 @@ def insert_event_image(db: Client, event_id: str, image_url: str) -> dict:
     return result.data[0] if result.data else None
 
 
+_IMAGE_COLS = "id,event_id,image_url,upload_date"
+
+
 def get_all_event_images(db: Client, event_id: str) -> list[dict]:
-    result = db.table("event_images").select("*").eq("event_id", event_id).execute()
+    result = db.table("event_images").select(_IMAGE_COLS).eq("event_id", event_id).execute()
     return result.data or []
 
 
 def get_event_image(db: Client, image_id: str) -> dict | None:
-    result = db.table("event_images").select("*").eq("id", image_id).execute()
+    result = db.table("event_images").select(_IMAGE_COLS).eq("id", image_id).execute()
     return result.data[0] if result.data else None
 
 

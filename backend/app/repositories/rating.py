@@ -6,7 +6,7 @@ from supabase import Client
 def get_rating(db: Client, rater_id: str, host_id: str) -> dict | None:
     result = (
         db.table("ratings")
-        .select("*")
+        .select("id,rater_id,host_id,score,created_at")
         .eq("rater_id", rater_id)
         .eq("host_id", host_id)
         .execute()

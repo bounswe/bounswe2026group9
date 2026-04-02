@@ -6,7 +6,7 @@ from supabase import Client
 def get_bookmark(db: Client, user_id: str, event_id: str) -> dict | None:
     result = (
         db.table("bookmarks")
-        .select("*")
+        .select("id,user_id,event_id,created_at")
         .eq("user_id", user_id)
         .eq("event_id", event_id)
         .execute()
@@ -28,7 +28,7 @@ def get_bookmarks_by_user(
 ) -> tuple[list[dict], int]:
     query = (
         db.table("bookmarks")
-        .select("*", count="exact")
+        .select("id,user_id,event_id,created_at", count="exact")
         .eq("user_id", user_id)
     )
     offset = (page - 1) * page_size
