@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import {
   login as loginRequest,
+  register as registerRequest,
   logout as logoutRequest,
   refreshSession as refreshSessionRequest,
 } from "@/lib/api";
@@ -22,9 +23,15 @@ interface LoginCredentials {
   password: string;
 }
 
+interface RegisterCredentials extends LoginCredentials {
+  date_of_birth: string;
+  username: string;
+}
+
 interface AuthContextValue extends SessionState {
   isAuthenticated: boolean;
   login: (credentials: LoginCredentials) => Promise<AuthUser>;
+  register: (credentials: RegisterCredentials) => Promise<AuthUser>;
   logout: () => Promise<void>;
   refreshSession: (options?: { redirectOnFailure?: boolean }) => Promise<void>;
 }
@@ -58,6 +65,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return auth.user;
   }
 
+  async function register(credentials: RegisterCredentials) {
+    const auth = await registerRequest(credentials);
+    return auth.user;
+  }
+
   async function logout() {
     await logoutRequest();
     startTransition(() => {
@@ -73,6 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         logout,
         refreshSession,
+        register,
       }}
     >
       {children}
