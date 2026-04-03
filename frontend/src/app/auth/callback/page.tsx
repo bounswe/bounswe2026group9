@@ -15,9 +15,9 @@ export default function AuthCallbackPage() {
     void (async () => {
       try {
         await refreshSession();
-        setMessage("Session established. Redirecting to the dashboard...");
+        setMessage("Session established. Redirecting you back to discovery...");
         startTransition(() => {
-          router.replace("/dashboard");
+          router.replace("/");
         });
       } catch (error) {
         setMessage(getErrorMessage(error, "Unable to complete Google sign-in."));

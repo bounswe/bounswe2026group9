@@ -39,6 +39,124 @@ export interface RegisterPayload {
   username: string;
 }
 
+export interface CategoryOption {
+  id: string;
+  is_approved: boolean;
+  is_predefined: boolean;
+  name: string;
+}
+
+export interface EventLocationPayload {
+  is_primary: boolean;
+  latitude: number;
+  longitude: number;
+  name: string;
+  order_index: number;
+}
+
+export interface VenueMetadataPayload {
+  accessible_restroom: boolean;
+  captions_support: boolean;
+  elevator_available: boolean;
+  health_requirements: string | null;
+  language: string | null;
+  price: string | null;
+  quiet_friendly: boolean;
+  seating_available: boolean;
+  wheelchair_access: boolean;
+}
+
+export interface EquipmentRequirementPayload {
+  is_required: boolean;
+  item_name: string;
+}
+
+export interface EventImage {
+  id: string;
+  image_url: string;
+  upload_date: string;
+}
+
+export interface EventCreatePayload {
+  category_ids: string[];
+  description: string;
+  end_datetime: string;
+  equipment_requirements?: EquipmentRequirementPayload[] | null;
+  attendee_limit?: number | null;
+  is_age_restricted?: boolean;
+  locations: EventLocationPayload[];
+  start_datetime: string;
+  status: "draft" | "published";
+  title: string;
+  venue_metadata?: VenueMetadataPayload | null;
+  visibility: "public" | "private";
+}
+
+export interface EventUpdatePayload {
+  attendee_limit?: number | null;
+  category_ids?: string[];
+  clear_attendee_limit?: boolean;
+  description?: string;
+  end_datetime?: string;
+  equipment_requirements?: EquipmentRequirementPayload[] | null;
+  is_age_restricted?: boolean;
+  locations?: EventLocationPayload[];
+  start_datetime?: string;
+  title?: string;
+  venue_metadata?: VenueMetadataPayload | null;
+  visibility?: "public" | "private";
+}
+
+export interface EventStatusChangePayload {
+  status: "cancelled" | "ended" | "published";
+}
+
+export interface EventDetailResponse {
+  attendee_count: number;
+  attendee_limit: number | null;
+  attendance_status: string | null;
+  categories: CategoryOption[];
+  created_at: string;
+  description: string;
+  end_datetime: string;
+  equipment_requirements: Array<
+    EquipmentRequirementPayload & {
+      id: string;
+    }
+  >;
+  going_count: number;
+  host_id: string;
+  id: string;
+  images: EventImage[];
+  interested_count: number;
+  is_age_restricted: boolean;
+  is_bookmarked: boolean | null;
+  is_full: boolean | null;
+  locations: Array<
+    EventLocationPayload & {
+      id: string;
+    }
+  >;
+  start_datetime: string;
+  status: "cancelled" | "draft" | "ended" | "published" | "updated";
+  title: string;
+  updated_at: string;
+  venue_metadata: (VenueMetadataPayload & { id: string }) | null;
+  visibility: "public" | "private";
+}
+
+export interface EventLimitedResponse {
+  categories: CategoryOption[];
+  end_datetime: string;
+  id: string;
+  is_age_restricted: boolean;
+  is_bookmarked: boolean | null;
+  start_datetime: string;
+  status: "cancelled" | "draft" | "ended" | "published" | "updated";
+  title: string;
+  visibility: "public" | "private";
+}
+
 export class ApiError extends Error {
   body: unknown;
   status: number;
@@ -52,6 +170,7 @@ export class ApiError extends Error {
 }
 
 let refreshRequest: Promise<AuthResponse> | null = null;
+let authRedirectSuppressed = false;
 
 function getApiBaseUrl() {
   return process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "") ?? DEFAULT_API_BASE_URL;
@@ -138,6 +257,10 @@ function buildLoginUrl(reason: string) {
 }
 
 function redirectToLogin(reason: string) {
+  if (authRedirectSuppressed) {
+    return;
+  }
+
   if (typeof window === "undefined") {
     return;
   }
@@ -147,6 +270,10 @@ function redirectToLogin(reason: string) {
   }
 
   window.location.assign(buildLoginUrl(reason));
+}
+
+export function setAuthRedirectSuppressed(suppressed: boolean) {
+  authRedirectSuppressed = suppressed;
 }
 
 async function sendRequest(
@@ -324,5 +451,59 @@ export async function getBackendHealth() {
 export async function getCurrentUser() {
   return apiRequest<AuthUser>("/auth/me", {
     auth: "required",
+  });
+}
+
+export async function getCategories(search?: string) {
+  const query = search ? `?search=${encodeURIComponent(search)}` : "";
+  return apiRequest<CategoryOption[]>(`/categories${query}`);
+}
+
+export async function createEvent(payload: EventCreatePayload) {
+  return apiRequest<EventDetailResponse>("/events", {
+    auth: "required",
+    body: payload,
+    method: "POST",
+  });
+}
+
+export async function getEvent(eventId: string) {
+  return apiRequest<EventDetailResponse | EventLimitedResponse>(`/events/${eventId}`, {
+    auth: "required",
+  });
+}
+
+export async function updateEvent(eventId: string, payload: EventUpdatePayload) {
+  return apiRequest<EventDetailResponse>(`/events/${eventId}`, {
+    auth: "required",
+    body: payload,
+    method: "PUT",
+  });
+}
+
+export async function changeEventStatus(eventId: string, payload: EventStatusChangePayload) {
+  return apiRequest<EventDetailResponse>(`/events/${eventId}/status`, {
+    auth: "required",
+    body: payload,
+    method: "PATCH",
+  });
+}
+
+export async function uploadEventImage(eventId: string, file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  return apiRequest<EventImage>(`/events/${eventId}/images`, {
+    auth: "required",
+    body: formData,
+    method: "POST",
+  });
+}
+
+export async function deleteEventImage(eventId: string, imageId: string) {
+  return apiRequest<void>(`/events/${eventId}/images/${imageId}`, {
+    auth: "required",
+    method: "DELETE",
+    parseAs: "void",
   });
 }

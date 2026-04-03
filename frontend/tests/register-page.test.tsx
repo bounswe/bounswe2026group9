@@ -32,6 +32,7 @@ describe("RegisterPage", () => {
       accessToken: null,
       isAuthenticated: false,
       isInitialized: true,
+      isLoggingOut: false,
       login: vi.fn(),
       logout: vi.fn(),
       refreshSession: vi.fn(),
@@ -88,7 +89,7 @@ describe("RegisterPage", () => {
     });
 
     await waitFor(() => {
-      expect(replaceMock).toHaveBeenCalledWith("/dashboard");
+      expect(replaceMock).toHaveBeenCalledWith("/");
     });
   });
 });

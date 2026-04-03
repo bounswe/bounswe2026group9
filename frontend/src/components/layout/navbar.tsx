@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, Menu, Plus, Search } from "lucide-react";
+import { Bell, LogOut, Menu, Plus, Search } from "lucide-react";
 import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -14,13 +14,20 @@ interface NavbarProps {
   searchValue?: string;
   onSearchChange?: (value: string) => void;
   onSearchSubmit?: (value: string) => void;
+  showSearch?: boolean;
 }
 
-export function Navbar({ searchValue, onSearchChange, onSearchSubmit }: NavbarProps) {
-  const { isAuthenticated, status, user } = useAuth();
+export function Navbar({
+  searchValue,
+  onSearchChange,
+  onSearchSubmit,
+  showSearch = true,
+}: NavbarProps) {
+  const { isAuthenticated, logout, status, user } = useAuth();
 
   // Uncontrolled internal state when parent doesn't own search
   const [internalSearch, setInternalSearch] = useState(searchValue ?? "");
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const currentSearch = searchValue ?? internalSearch;
@@ -38,6 +45,20 @@ export function Navbar({ searchValue, onSearchChange, onSearchSubmit }: NavbarPr
 
   // Derive avatar initials from username
   const initials = user?.username?.slice(0, 1).toUpperCase() ?? "?";
+
+  async function handleLogout() {
+    if (isLoggingOut) {
+      return;
+    }
+
+    setIsLoggingOut(true);
+
+    try {
+      await logout();
+    } finally {
+      setIsLoggingOut(false);
+    }
+  }
 
   function renderDesktopControls() {
     if (status === "loading") {
@@ -60,6 +81,20 @@ export function Navbar({ searchValue, onSearchChange, onSearchSubmit }: NavbarPr
               {user?.username}
             </span>
           </div>
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={isLoggingOut}
+            onClick={() => {
+              void handleLogout();
+            }}
+            className="border border-white/25 text-white hover:bg-white/10 hover:text-white disabled:border-white/10 disabled:text-white/45"
+          >
+            <LogOut className="size-3.5" />
+            {isLoggingOut ? "Signing out..." : "Logout"}
+          </Button>
         </>
       );
     }
@@ -103,6 +138,19 @@ export function Navbar({ searchValue, onSearchChange, onSearchSubmit }: NavbarPr
           <div className="bg-brand-mid flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white">
             {initials}
           </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            disabled={isLoggingOut}
+            onClick={() => {
+              void handleLogout();
+            }}
+            className="border border-white/10 bg-white/5 text-white/80 hover:bg-white/10 hover:text-white disabled:text-white/35"
+            aria-label={isLoggingOut ? "Signing out" : "Logout"}
+          >
+            <LogOut className="size-4" />
+          </Button>
         </>
       );
     }
@@ -131,7 +179,7 @@ export function Navbar({ searchValue, onSearchChange, onSearchSubmit }: NavbarPr
   return (
     <header className="bg-brand-dark sticky top-0 z-50 border-b border-white/10 px-4 py-2.5 sm:px-6 lg:px-12">
       <div className="relative flex items-center gap-2 sm:gap-4">
-        <div className="flex shrink-0 items-center lg:min-w-[11rem]">
+        <div className={cn("flex shrink-0 items-center", showSearch && "lg:min-w-[11rem]")}>
           <Link
             href="/"
             aria-label="Go to homepage"
@@ -144,24 +192,26 @@ export function Navbar({ searchValue, onSearchChange, onSearchSubmit }: NavbarPr
           </Link>
         </div>
 
-        <div className="min-w-0 flex-1 lg:absolute lg:left-1/2 lg:w-[min(40rem,calc(100vw-30rem))] lg:-translate-x-1/2">
-          <form
-            onSubmit={handleSearchSubmit}
-            className="flex w-full max-w-2xl items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3 py-2 transition-colors focus-within:border-white/30 focus-within:bg-white/15 sm:px-4"
-          >
-            <Search className="size-4 shrink-0 text-white/50" />
-            <input
-              ref={inputRef}
-              type="search"
-              value={currentSearch}
-              onChange={handleSearchChange}
-              placeholder="Search events, categories, places..."
-              className="w-full min-w-0 bg-transparent text-sm text-white placeholder:text-white/45 outline-none"
-            />
-          </form>
-        </div>
+        {showSearch ? (
+          <div className="min-w-0 flex-1 lg:absolute lg:left-1/2 lg:w-[min(40rem,calc(100vw-30rem))] lg:-translate-x-1/2">
+            <form
+              onSubmit={handleSearchSubmit}
+              className="flex w-full max-w-2xl items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3 py-2 transition-colors focus-within:border-white/30 focus-within:bg-white/15 sm:px-4"
+            >
+              <Search className="size-4 shrink-0 text-white/50" />
+              <input
+                ref={inputRef}
+                type="search"
+                value={currentSearch}
+                onChange={handleSearchChange}
+                placeholder="Search events, categories, places..."
+                className="w-full min-w-0 bg-transparent text-sm text-white placeholder:text-white/45 outline-none"
+              />
+            </form>
+          </div>
+        ) : null}
 
-        <div className="ml-auto flex shrink-0 items-center justify-end gap-2 sm:gap-3 lg:min-w-[11rem]">
+        <div className={cn("ml-auto flex shrink-0 items-center justify-end gap-2 sm:gap-3", showSearch && "lg:min-w-[11rem]")}>
           <div className="flex items-center gap-2 sm:hidden">{renderMobileControls()}</div>
           <div className="hidden items-center gap-3 sm:flex">{renderDesktopControls()}</div>
         </div>
@@ -182,7 +232,7 @@ export function ActionBar({ view, onViewChange, activeFilterCount, onToggleFilte
   const { isAuthenticated } = useAuth();
   const router = useRouter();
   const toggleButtonClassName =
-    "appearance-none outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-mid/60 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-surface [-webkit-tap-highlight-color:transparent]";
+    "appearance-none border-0 shadow-none outline-none ring-0 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-mid/60 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-surface active:translate-y-0 active:shadow-none [-webkit-tap-highlight-color:transparent]";
 
   return (
     <div className="bg-brand-surface border-brand-mid-alpha flex items-center gap-2 border-b px-4 py-3 sm:px-6 lg:px-12">
@@ -203,15 +253,16 @@ export function ActionBar({ view, onViewChange, activeFilterCount, onToggleFilte
         )}
       </button>
 
-      <div className="flex min-w-0 items-center gap-2 overflow-x-auto">
+      <div className="border-brand-mid-alpha flex min-w-0 items-center gap-1 overflow-x-auto rounded-xl border bg-white/35 p-1 shadow-brand-floating">
         <button
+          type="button"
           onClick={() => onViewChange("map")}
           className={cn(
-            "flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-semibold transition-colors",
+            "flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors",
             toggleButtonClassName,
             view === "map"
-              ? "bg-brand-dark border-brand-dark text-white"
-              : "border-brand-mid-alpha text-brand-dark hover:bg-brand-mid-alpha",
+              ? "bg-brand-dark text-white"
+              : "text-brand-dark hover:bg-brand-mid-alpha/80",
           )}
         >
           {/* Map icon inline to avoid lucide dep inside navbar */}
@@ -224,13 +275,14 @@ export function ActionBar({ view, onViewChange, activeFilterCount, onToggleFilte
         </button>
 
         <button
+          type="button"
           onClick={() => onViewChange("list")}
           className={cn(
-            "flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-semibold transition-colors",
+            "flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors",
             toggleButtonClassName,
             view === "list"
-              ? "bg-brand-dark border-brand-dark text-white"
-              : "border-brand-mid-alpha text-brand-dark hover:bg-brand-mid-alpha",
+              ? "bg-brand-dark text-white"
+              : "text-brand-dark hover:bg-brand-mid-alpha/80",
           )}
         >
           <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>

@@ -1,13 +1,14 @@
 "use client";
 
 import { createContext, startTransition, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import {
   login as loginRequest,
   register as registerRequest,
   logout as logoutRequest,
   refreshSession as refreshSessionRequest,
+  setAuthRedirectSuppressed,
 } from "@/lib/api";
 import {
   type AuthUser,
@@ -30,6 +31,7 @@ interface RegisterCredentials extends LoginCredentials {
 
 interface AuthContextValue extends SessionState {
   isAuthenticated: boolean;
+  isLoggingOut: boolean;
   login: (credentials: LoginCredentials) => Promise<AuthUser>;
   register: (credentials: RegisterCredentials) => Promise<AuthUser>;
   logout: () => Promise<void>;
@@ -39,10 +41,32 @@ interface AuthContextValue extends SessionState {
 export const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const router = useRouter();
   const [session, setSession] = useState(getSessionState);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => subscribeToSession(setSession), []);
+
+  useEffect(() => {
+    if (!isLoggingOut) {
+      return;
+    }
+
+    if (pathname === "/" || session.status === "authenticated") {
+      const frameId = window.requestAnimationFrame(() => {
+        setIsLoggingOut(false);
+      });
+
+      return () => window.cancelAnimationFrame(frameId);
+    }
+  }, [isLoggingOut, pathname, session.status]);
+
+  useEffect(() => {
+    if (session.status === "authenticated") {
+      setAuthRedirectSuppressed(false);
+    }
+  }, [session.status]);
 
   useEffect(() => {
     if (getSessionState().isInitialized) {
@@ -71,10 +95,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function logout() {
-    await logoutRequest();
-    startTransition(() => {
-      router.replace("/login");
-    });
+    setIsLoggingOut(true);
+    setAuthRedirectSuppressed(true);
+
+    try {
+      await logoutRequest();
+      startTransition(() => {
+        router.replace("/");
+      });
+    } catch (error) {
+      setAuthRedirectSuppressed(false);
+      setIsLoggingOut(false);
+      throw error;
+    }
   }
 
   return (
@@ -82,6 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         ...session,
         isAuthenticated: session.status === "authenticated",
+        isLoggingOut,
         login,
         logout,
         refreshSession,

@@ -52,7 +52,7 @@ export function ProtectedRoute({
   redirectReason = "protected",
   redirectTo = "/login",
 }: ProtectedRouteProps) {
-  const { isInitialized, status } = useAuth();
+  const { isInitialized, isLoggingOut, status } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -63,7 +63,7 @@ export function ProtectedRoute({
   );
 
   useEffect(() => {
-    if (!isInitialized || status !== "guest") {
+    if (!isInitialized || isLoggingOut || status !== "guest") {
       return;
     }
 
@@ -76,7 +76,7 @@ export function ProtectedRoute({
         }),
       );
     });
-  }, [isInitialized, redirectReason, redirectTo, requestedPath, router, status]);
+  }, [isInitialized, isLoggingOut, redirectReason, redirectTo, requestedPath, router, status]);
 
   if (!isInitialized || status === "loading") {
     return (

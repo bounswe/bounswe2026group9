@@ -198,7 +198,7 @@ export default function RegisterPage() {
   const nextPath = useMemo(() => {
     const candidate = searchParams.get("next");
 
-    return candidate?.startsWith("/") ? candidate : "/dashboard";
+    return candidate?.startsWith("/") ? candidate : "/";
   }, [searchParams]);
   const checks = passwordChecks(form.password);
   const fulfilledChecks = Object.values(checks).filter(Boolean).length;
@@ -243,7 +243,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <GuestOnlyRoute fallbackPath="/dashboard">
+    <GuestOnlyRoute fallbackPath="/">
       <AuthShell>
         <Card className="border-0 bg-transparent shadow-none">
           <CardHeader className="px-0 pt-0">

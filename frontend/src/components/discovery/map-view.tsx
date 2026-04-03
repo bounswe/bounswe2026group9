@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import Map, { Marker, Popup, type MapRef } from "react-map-gl/maplibre";
-import { Minus, Plus, Users, X } from "lucide-react";
+import { Minus, Pencil, Plus, Users, X } from "lucide-react";
 import Link from "next/link";
 
 import type { EventListItem } from "@/lib/events-api";
@@ -23,6 +23,7 @@ interface MapPopupData {
 }
 
 interface MapViewProps {
+  currentUserId: string | null;
   events: EventListItem[];
   isAuthenticated: boolean;
 }
@@ -54,7 +55,7 @@ function CategoryIcon({ name }: { name: string }) {
   );
 }
 
-export function MapView({ events, isAuthenticated }: MapViewProps) {
+export function MapView({ currentUserId, events, isAuthenticated }: MapViewProps) {
   const [popup, setPopup] = useState<MapPopupData | null>(null);
   const mapRef = useRef<MapRef>(null);
 
@@ -218,34 +219,46 @@ export function MapView({ events, isAuthenticated }: MapViewProps) {
                   View Details →
                 </Link>
 
-                {/* Bookmark / Going — registered only */}
+                {/* Owner / attendee actions */}
                 {isAuthenticated && (
                   <div className="border-brand-mid-alpha mt-3 flex gap-2 border-t pt-3">
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        // Will be wired in Task 7
-                      }}
-                      className={cn(
-                        "border-brand-mid flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors",
-                        popup.event.is_bookmarked
-                          ? "bg-brand-mid text-white"
-                          : "text-brand-dark hover:bg-brand-mid-alpha",
-                      )}
-                    >
-                      Bookmark
-                    </button>
-                    <button
-                      disabled={popup.event.is_full ?? false}
-                      className={cn(
-                        "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors",
-                        popup.event.is_full
-                          ? "cursor-not-allowed bg-brand-mid-alpha text-brand-dark/40"
-                          : "bg-brand-mid text-white hover:bg-brand-mid/80",
-                      )}
-                    >
-                      {popup.event.is_full ? "Full" : "Going"}
-                    </button>
+                    {currentUserId === popup.event.host_id ? (
+                      <Link
+                        href={`/events/${popup.event.id}/edit`}
+                        className="bg-brand-dark flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-brand-dark/85"
+                      >
+                        <Pencil className="size-3.5" />
+                        Edit
+                      </Link>
+                    ) : (
+                      <>
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            // Will be wired in Task 7
+                          }}
+                          className={cn(
+                            "border-brand-mid flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors",
+                            popup.event.is_bookmarked
+                              ? "bg-brand-mid text-white"
+                              : "text-brand-dark hover:bg-brand-mid-alpha",
+                          )}
+                        >
+                          Bookmark
+                        </button>
+                        <button
+                          disabled={popup.event.is_full ?? false}
+                          className={cn(
+                            "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors",
+                            popup.event.is_full
+                              ? "cursor-not-allowed bg-brand-mid-alpha text-brand-dark/40"
+                              : "bg-brand-mid text-white hover:bg-brand-mid/80",
+                          )}
+                        >
+                          {popup.event.is_full ? "Full" : "Going"}
+                        </button>
+                      </>
+                    )}
                   </div>
                 )}
               </div>

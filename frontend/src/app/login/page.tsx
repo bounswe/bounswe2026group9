@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 
 const reasonMessages: Record<string, string> = {
   "oauth-failed": "Google sign-in could not be completed. Please try again.",
-  protected: "Please sign in to access the dashboard.",
+  protected: "Please sign in to continue.",
   "session-expired": "Your session expired. Please sign in again.",
 };
 
@@ -77,7 +77,7 @@ export default function LoginPage() {
   const nextPath = useMemo(() => {
     const candidate = searchParams.get("next");
 
-    return candidate?.startsWith("/") ? candidate : "/dashboard";
+    return candidate?.startsWith("/") ? candidate : "/";
   }, [searchParams]);
   const reason = searchParams.get("reason");
   const bannerMessage = reason ? reasonMessages[reason] : null;
@@ -104,7 +104,7 @@ export default function LoginPage() {
   }
 
   return (
-    <GuestOnlyRoute fallbackPath="/dashboard">
+    <GuestOnlyRoute fallbackPath="/">
       <AuthShell>
         <Card className="border-0 bg-transparent shadow-none">
           <CardHeader className="px-0 pt-0">

@@ -20,6 +20,7 @@ export interface EventLocation {
 
 export interface EventListItem {
   id: string;
+  host_id: string;
   title: string;
   description: string | null;
   start_datetime: string;
