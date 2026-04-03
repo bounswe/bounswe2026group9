@@ -23,7 +23,7 @@ export function ListView({
 }: ListViewProps) {
   if (events.length === 0) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-4 py-24 text-center">
+      <div className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-20 text-center sm:px-6 sm:py-24">
         <SearchX className="text-brand-mid size-12 opacity-50" />
         <div>
           <p className="font-heading text-brand-dark text-xl font-bold">No events found</p>
@@ -38,7 +38,7 @@ export function ListView({
   return (
     <div className="flex flex-1 flex-col">
       {/* Result count */}
-      <div className="px-8 pb-2 pt-6">
+      <div className="px-4 pb-2 pt-4 sm:px-6 sm:pt-5 lg:px-8 lg:pt-6">
         <p className="text-muted-foreground text-sm">
           Showing <span className="text-brand-dark font-semibold">{events.length}</span> of{" "}
           <span className="text-brand-dark font-semibold">{total}</span> events
@@ -46,7 +46,7 @@ export function ListView({
       </div>
 
       {/* Grid */}
-      <div className="grid flex-1 grid-cols-1 gap-6 px-8 pb-6 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid flex-1 content-start grid-cols-1 gap-4 px-4 pb-4 sm:grid-cols-2 sm:gap-5 sm:px-6 sm:pb-6 xl:grid-cols-3 xl:gap-6 xl:px-8">
         {events.map((event) => (
           <EventCard key={event.id} event={event} isAuthenticated={isAuthenticated} />
         ))}
@@ -54,7 +54,7 @@ export function ListView({
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="border-brand-mid-alpha flex items-center justify-center gap-2 border-t px-8 py-4">
+        <div className="border-brand-mid-alpha flex items-center justify-center gap-2 border-t px-4 py-4 sm:px-6 lg:px-8">
           <button
             onClick={() => onPageChange(page - 1)}
             disabled={page <= 1}

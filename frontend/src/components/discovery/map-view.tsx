@@ -72,17 +72,17 @@ export function MapView({ events, isAuthenticated }: MapViewProps) {
   return (
     <div className="relative flex-1">
       {/* Zoom controls — top right, elegant */}
-      <div className="absolute right-4 top-4 z-10 flex flex-col gap-1">
+      <div className="absolute right-3 top-3 z-10 flex flex-col gap-1 sm:right-4 sm:top-4">
         <button
           onClick={() => mapRef.current?.zoomIn()}
-          className="flex size-9 items-center justify-center rounded-lg border border-brand-mid-alpha bg-white/90 text-brand-dark shadow-brand-card backdrop-blur-sm transition-colors hover:bg-white"
+          className="flex size-8 items-center justify-center rounded-lg border border-brand-mid-alpha bg-white/90 text-brand-dark shadow-brand-card backdrop-blur-sm transition-colors hover:bg-white sm:size-9"
           aria-label="Zoom in"
         >
           <Plus className="size-4" />
         </button>
         <button
           onClick={() => mapRef.current?.zoomOut()}
-          className="flex size-9 items-center justify-center rounded-lg border border-brand-mid-alpha bg-white/90 text-brand-dark shadow-brand-card backdrop-blur-sm transition-colors hover:bg-white"
+          className="flex size-8 items-center justify-center rounded-lg border border-brand-mid-alpha bg-white/90 text-brand-dark shadow-brand-card backdrop-blur-sm transition-colors hover:bg-white sm:size-9"
           aria-label="Zoom out"
         >
           <Minus className="size-4" />
@@ -157,7 +157,10 @@ export function MapView({ events, isAuthenticated }: MapViewProps) {
             className="!p-0 !bg-transparent !border-0 !shadow-none"
             maxWidth="280px"
           >
-            <div className="relative w-[280px] overflow-hidden rounded-xl border border-brand-mid-alpha bg-white shadow-brand-panel">
+            <div
+              className="relative overflow-hidden rounded-xl border border-brand-mid-alpha bg-white shadow-brand-panel"
+              style={{ width: "min(280px, calc(100vw - 2rem))" }}
+            >
               {/* Close button */}
               <button
                 onClick={() => setPopup(null)}
@@ -252,7 +255,7 @@ export function MapView({ events, isAuthenticated }: MapViewProps) {
       </Map>
 
       {/* Attribution */}
-      <div className="absolute bottom-2 right-2 rounded bg-white/80 px-2 py-0.5 text-[10px] text-gray-500">
+      <div className="absolute bottom-3 left-3 rounded bg-white/80 px-2 py-0.5 text-[9px] text-gray-500 sm:bottom-2 sm:left-auto sm:right-2 sm:text-[10px]">
         © <a href="https://openfreemap.org" target="_blank" rel="noreferrer">OpenFreeMap</a> · © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a>
       </div>
     </div>
