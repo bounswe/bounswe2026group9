@@ -23,13 +23,18 @@ import { Navbar, ActionBar } from "@/components/layout/navbar";
 import { FilterSidebar, type FilterState } from "@/components/discovery/filter-sidebar";
 import { ListView } from "@/components/discovery/list-view";
 import {
+  fetchAllEvents,
+  fetchEventAttendanceStatus,
   fetchEvents,
   fetchCategories,
+  type AttendanceStatus,
   type Category,
+  type DiscoveryParams,
   type EventListItem,
-  type EventListResponse,
+  type PersonalFilter,
   type TemporalFilter,
 } from "@/lib/events-api";
+import { cn } from "@/lib/utils";
 
 // SSR-safe — MapLibre uses WebGL/window APIs
 const MapView = dynamic(
@@ -45,17 +50,29 @@ interface PageParams {
   view: ViewMode;
   search: string;
   temporal: TemporalFilter | null;
+  personal: PersonalFilter | null;
   /** comma-separated in URL, array in JS */
   categoryIds: string[];
   page: number;
 }
 
+function isTemporalFilter(value: string | null): value is TemporalFilter {
+  return value === "today" || value === "this_week" || value === "weekend";
+}
+
+function isPersonalFilter(value: string | null): value is PersonalFilter {
+  return value === "bookmarked" || value === "going";
+}
+
 function readParams(sp: ReturnType<typeof useSearchParams>): PageParams {
   const raw = sp.get("category") ?? "";
+  const temporal = sp.get("temporal");
+  const personal = sp.get("personal");
   return {
     view: sp.get("view") === "list" ? "list" : "map",
     search: sp.get("q") ?? "",
-    temporal: (sp.get("temporal") as TemporalFilter | null) ?? null,
+    temporal: isTemporalFilter(temporal) ? temporal : null,
+    personal: isPersonalFilter(personal) ? personal : null,
     categoryIds: raw ? raw.split(",").filter(Boolean) : [],
     page: Math.max(1, parseInt(sp.get("page") ?? "1", 10)),
   };
@@ -66,75 +83,175 @@ function buildQS(p: PageParams & { resetPage?: boolean }): string {
   if (p.view !== "map") sp.set("view", p.view);
   if (p.search) sp.set("q", p.search);
   if (p.temporal) sp.set("temporal", p.temporal);
+  if (p.personal) sp.set("personal", p.personal);
   if (p.categoryIds.length > 0) sp.set("category", p.categoryIds.join(","));
   if (!p.resetPage && p.page > 1) sp.set("page", String(p.page));
   const qs = sp.toString();
   return qs ? `?${qs}` : "?";
 }
 
-// ─── Union fetch — OR across multiple category IDs ──────────────────────────────
+const LIST_PAGE_SIZE = 12;
 
-async function fetchEventsUnion(
-  categoryIds: string[],
-  opts: { search?: string; temporal?: TemporalFilter; page: number; pageSize: number },
-): Promise<EventListResponse> {
-  const base = {
-    search: opts.search,
-    temporal_filter: opts.temporal,
-    page: opts.page,
-    page_size: opts.pageSize,
+interface DiscoveryPageResult {
+  items: EventListItem[];
+  total: number;
+  totalPages: number;
+}
+
+function buildDiscoveryCacheKey(
+  params: Pick<PageParams, "search" | "temporal" | "categoryIds">,
+  personal: PersonalFilter | null,
+  userKey: string,
+): string {
+  return JSON.stringify({
+    search: params.search.trim(),
+    temporal: params.temporal,
+    personal,
+    categoryIds: [...params.categoryIds].sort(),
+    userKey,
+  });
+}
+
+function paginateDiscoveryEvents(items: EventListItem[], page: number): DiscoveryPageResult {
+  const startIndex = (page - 1) * LIST_PAGE_SIZE;
+  return {
+    items: items.slice(startIndex, startIndex + LIST_PAGE_SIZE),
+    total: items.length,
+    totalPages: items.length > 0 ? Math.ceil(items.length / LIST_PAGE_SIZE) : 0,
   };
+}
 
-  if (categoryIds.length === 0) {
-    return fetchEvents(base);
-  }
-  if (categoryIds.length === 1) {
-    return fetchEvents({ ...base, category_id: categoryIds[0] });
+function buildDiscoveryQuery(params: PageParams): DiscoveryParams {
+  return {
+    search: params.search || undefined,
+    temporal_filter:
+      params.temporal === "today" || params.temporal === "this_week"
+        ? params.temporal
+        : undefined,
+  };
+}
+
+function isWeekendEvent(dateStr: string): boolean {
+  const dayOfWeek = new Date(dateStr).getDay();
+  return dayOfWeek === 0 || dayOfWeek === 6;
+}
+
+function applyTemporalFilter(
+  events: EventListItem[],
+  temporal: TemporalFilter | null,
+): EventListItem[] {
+  if (temporal !== "weekend") {
+    return events;
   }
 
-  // Multiple categories: parallel fetch + deduplicate (union)
-  // Use larger page_size per category so we capture enough items
-  const results = await Promise.all(
-    categoryIds.map((id) => fetchEvents({ ...base, category_id: id, page_size: 50, page: 1 })),
+  return events.filter((event) => isWeekendEvent(event.start_datetime));
+}
+
+async function applyPersonalFilter(
+  events: EventListItem[],
+  personal: PersonalFilter | null,
+): Promise<EventListItem[]> {
+  if (personal === "bookmarked") {
+    return events.filter((event) => event.is_bookmarked);
+  }
+
+  if (personal !== "going") {
+    return events;
+  }
+
+  const attendanceStatuses = await Promise.all(
+    events.map(async (event) => ({
+      event,
+      status: await fetchEventAttendanceStatus(event.id).catch((): AttendanceStatus => null),
+    })),
   );
 
-  const seen = new Set<string>();
-  const items: EventListItem[] = [];
-  for (const res of results) {
-    for (const item of res.items) {
-      if (!seen.has(item.id)) {
-        seen.add(item.id);
-        items.push(item);
-      }
+  return attendanceStatuses
+    .filter(({ status }) => status === "going")
+    .map(({ event }) => event);
+}
+
+function sortDiscoveryEvents(a: EventListItem, b: EventListItem): number {
+  const startDifference = Date.parse(a.start_datetime) - Date.parse(b.start_datetime);
+  if (startDifference !== 0) {
+    return startDifference;
+  }
+  return a.id.localeCompare(b.id);
+}
+
+async function fetchUnionEvents(
+  categoryIds: string[],
+  query: DiscoveryParams,
+  temporal: TemporalFilter | null,
+  personal: PersonalFilter | null,
+): Promise<EventListItem[]> {
+  const applyFilters = async (items: EventListItem[]) =>
+    applyPersonalFilter(applyTemporalFilter(items, temporal), personal);
+
+  if (categoryIds.length === 0) {
+    return applyFilters(await fetchAllEvents(query));
+  }
+
+  if (categoryIds.length === 1) {
+    return applyFilters(await fetchAllEvents({ ...query, category_id: categoryIds[0] }));
+  }
+
+  const results = await Promise.all(
+    categoryIds.map((categoryId) => fetchAllEvents({ ...query, category_id: categoryId })),
+  );
+
+  const eventsById = new Map<string, EventListItem>();
+  for (const items of results) {
+    for (const item of items) {
+      eventsById.set(item.id, item);
     }
   }
 
-  // Client-side page slice
-  const start = (opts.page - 1) * opts.pageSize;
-  const pageItems = items.slice(start, start + opts.pageSize);
-  const totalPages = Math.max(1, Math.ceil(items.length / opts.pageSize));
-
-  return { items: pageItems, total: items.length, page: opts.page, page_size: opts.pageSize, total_pages: totalPages };
+  return applyFilters(Array.from(eventsById.values()).sort(sortDiscoveryEvents));
 }
 
-// ─── Loading skeleton ───────────────────────────────────────────────────────────
+// ─── Loading UI ─────────────────────────────────────────────────────────────────
 
-function ListSkeleton() {
+function LoadingPulseCard() {
   return (
-    <div className="grid flex-1 grid-cols-1 gap-6 px-8 py-6 sm:grid-cols-2 xl:grid-cols-3">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div
-          key={i}
-          className="bg-brand-surface border-brand-mid-alpha animate-pulse overflow-hidden rounded-xl border"
-        >
-          <div className="bg-brand-mid aspect-[16/10] w-full opacity-40" />
-          <div className="space-y-3 p-4">
-            <div className="bg-brand-mid h-4 w-3/4 rounded opacity-30" />
-            <div className="bg-brand-mid h-3 w-1/2 rounded opacity-20" />
-            <div className="bg-brand-mid h-3 w-1/4 rounded-full opacity-20" />
-          </div>
+    <div className="bg-card/90 border-brand-mid-alpha shadow-brand-panel w-full max-w-[22rem] rounded-[1.75rem] border p-5 backdrop-blur-md sm:max-w-md sm:p-6">
+      <div className="flex items-center gap-3 sm:gap-4">
+        <div className="bg-brand-mid-alpha relative flex size-10 shrink-0 items-center justify-center rounded-full sm:size-12">
+          <span className="bg-brand-mid absolute size-5 animate-ping rounded-full opacity-60" />
+          <span className="bg-brand-dark relative size-5 rounded-full" />
         </div>
-      ))}
+        <div className="min-w-0">
+          <p className="font-heading text-brand-dark text-base font-bold sm:text-lg">
+            Updating discovery results
+          </p>
+          <p className="text-muted-foreground text-xs sm:text-sm">
+            Applying your latest search and filters.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-5 grid grid-cols-3 gap-2 sm:mt-6 sm:gap-3">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <div
+            key={index}
+            className="bg-brand-surface/70 border-brand-mid-alpha animate-pulse rounded-2xl border p-2.5 sm:p-3"
+          >
+            <div className="bg-brand-mid h-14 rounded-lg opacity-25 sm:h-20 sm:rounded-xl" />
+            <div className="mt-2 space-y-1.5 sm:mt-3 sm:space-y-2">
+              <div className="bg-brand-mid h-2.5 rounded opacity-25 sm:h-3" />
+              <div className="bg-brand-mid h-2.5 w-3/4 rounded opacity-20 sm:h-3" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DiscoveryLoadingOverlay() {
+  return (
+    <div className="bg-brand-bg-alpha absolute inset-0 z-20 flex items-center justify-center px-6 backdrop-blur-sm">
+      <LoadingPulseCard />
     </div>
   );
 }
@@ -144,15 +261,23 @@ function ListSkeleton() {
 function DiscoveryPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
 
   const params = readParams(searchParams);
+  const activePersonalFilter = isAuthenticated ? params.personal : null;
+  const discoveryUserKey = isAuthenticated ? user?.id ?? "authenticated" : "guest";
+  const categoryIdsKey = params.categoryIds.join(",");
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [events, setEvents] = useState<EventListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [refreshTick, setRefreshTick] = useState(0);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const fullResultsCacheRef = useRef(new Map<string, EventListItem[]>());
+  const pendingFullResultsRef = useRef(new Map<string, Promise<EventListItem[]>>());
+  const pagedResultsCacheRef = useRef(new Map<string, DiscoveryPageResult>());
 
   // categoryCounts come from a separate fetch WITHOUT category filter
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
@@ -160,21 +285,34 @@ function DiscoveryPage() {
   // Draft filters (not yet pushed to URL)
   const [draftFilters, setDraftFilters] = useState<FilterState>({
     temporal: params.temporal,
+    personal: activePersonalFilter,
     categoryIds: params.categoryIds,
   });
 
   // Sync draft on back/forward
-  const prevRef = useRef({ temporal: params.temporal, categoryIds: params.categoryIds });
+  const prevRef = useRef({
+    temporal: params.temporal,
+    personal: activePersonalFilter,
+    categoryIds: params.categoryIds,
+  });
   useEffect(() => {
     const prev = prevRef.current;
     const sameIds =
       prev.categoryIds.length === params.categoryIds.length &&
       prev.categoryIds.every((id, i) => id === params.categoryIds[i]);
-    if (prev.temporal !== params.temporal || !sameIds) {
-      setDraftFilters({ temporal: params.temporal, categoryIds: params.categoryIds });
-      prevRef.current = { temporal: params.temporal, categoryIds: params.categoryIds };
+    if (prev.temporal !== params.temporal || prev.personal !== activePersonalFilter || !sameIds) {
+      setDraftFilters({
+        temporal: params.temporal,
+        personal: activePersonalFilter,
+        categoryIds: params.categoryIds,
+      });
+      prevRef.current = {
+        temporal: params.temporal,
+        personal: activePersonalFilter,
+        categoryIds: params.categoryIds,
+      };
     }
-  }, [params.temporal, params.categoryIds]);
+  }, [params.temporal, activePersonalFilter, params.categoryIds]);
 
   // ── URL push / replace ─────────────────────────────────────────────────────────
 
@@ -199,49 +337,167 @@ function DiscoveryPage() {
     fetchCategories().then(setCategories).catch(() => setCategories([]));
   }, []);
 
+  useEffect(() => {
+    void import("@/components/discovery/map-view");
+  }, []);
+
+  const getFullDiscoveryEvents = useCallback(
+    (
+      cacheKey: string,
+      query: DiscoveryParams,
+      categoryIds: string[],
+      temporal: TemporalFilter | null,
+      personal: PersonalFilter | null,
+    ) => {
+      const cachedItems = fullResultsCacheRef.current.get(cacheKey);
+      if (cachedItems) {
+        return Promise.resolve(cachedItems);
+      }
+
+      const pendingRequest = pendingFullResultsRef.current.get(cacheKey);
+      if (pendingRequest) {
+        return pendingRequest;
+      }
+
+      const request = fetchUnionEvents(categoryIds, query, temporal, personal)
+        .then((items) => {
+          fullResultsCacheRef.current.set(cacheKey, items);
+          return items;
+        })
+        .finally(() => {
+          pendingFullResultsRef.current.delete(cacheKey);
+        });
+
+      pendingFullResultsRef.current.set(cacheKey, request);
+      return request;
+    },
+    [],
+  );
+
   // ── Fetch events (on params change) ───────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
+    const query = buildDiscoveryQuery(params);
+    const resultCacheKey = buildDiscoveryCacheKey(params, activePersonalFilter, discoveryUserKey);
+    const pageCacheKey = `${resultCacheKey}|page:${params.page}`;
+    const canUseSimpleListFetch =
+      !activePersonalFilter && params.temporal !== "weekend" && params.categoryIds.length <= 1;
 
-    fetchEventsUnion(params.categoryIds, {
-      search: params.search || undefined,
-      temporal: params.temporal ?? undefined,
-      page: params.page,
-      pageSize: 12,
-    })
-      .then((res) => {
+    async function loadEvents() {
+      setLoading(true);
+
+      try {
+        let nextResult: DiscoveryPageResult;
+
+        if (params.view === "map") {
+          const items = await getFullDiscoveryEvents(
+            resultCacheKey,
+            query,
+            params.categoryIds,
+            params.temporal,
+            activePersonalFilter,
+          );
+
+          nextResult = {
+            items,
+            total: items.length,
+            totalPages: items.length > 0 ? Math.ceil(items.length / LIST_PAGE_SIZE) : 0,
+          };
+        } else {
+          const cachedFullItems = fullResultsCacheRef.current.get(resultCacheKey);
+          if (cachedFullItems) {
+            nextResult = paginateDiscoveryEvents(cachedFullItems, params.page);
+          } else {
+            const cachedPage = pagedResultsCacheRef.current.get(pageCacheKey);
+            if (cachedPage) {
+              nextResult = cachedPage;
+            } else if (canUseSimpleListFetch) {
+              const res = await fetchEvents({
+                ...query,
+                category_id: params.categoryIds[0],
+                page: params.page,
+                page_size: LIST_PAGE_SIZE,
+              });
+
+              nextResult = {
+                items: res.items,
+                total: res.total,
+                totalPages: res.total_pages,
+              };
+              pagedResultsCacheRef.current.set(pageCacheKey, nextResult);
+
+              void getFullDiscoveryEvents(
+                resultCacheKey,
+                query,
+                params.categoryIds,
+                params.temporal,
+                activePersonalFilter,
+              ).catch(() => undefined);
+            } else {
+              const items = await getFullDiscoveryEvents(
+                resultCacheKey,
+                query,
+                params.categoryIds,
+                params.temporal,
+                activePersonalFilter,
+              );
+              nextResult = paginateDiscoveryEvents(items, params.page);
+            }
+          }
+        }
+
         if (cancelled) return;
-        setEvents(res.items);
-        setTotal(res.total);
-        setTotalPages(res.total_pages);
-      })
-      .catch(() => {
+        setEvents(nextResult.items);
+        setTotal(nextResult.total);
+        setTotalPages(nextResult.totalPages);
+      } catch {
         if (cancelled) return;
         setEvents([]);
         setTotal(0);
         setTotalPages(1);
-      })
-      .finally(() => { if (!cancelled) setLoading(false); });
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadEvents();
 
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.search, params.temporal, params.page, params.categoryIds.join(",")]);
+  }, [
+    discoveryUserKey,
+    getFullDiscoveryEvents,
+    params.search,
+    params.temporal,
+    activePersonalFilter,
+    params.page,
+    params.view,
+    categoryIdsKey,
+    refreshTick,
+  ]);
 
   // ── Fetch counts WITHOUT category filter (stable across category selection) ────
   useEffect(() => {
     let cancelled = false;
 
-    fetchEvents({
+    fetchAllEvents({
       search: params.search || undefined,
-      temporal_filter: params.temporal ?? undefined,
-      page: 1,
-      page_size: 100,
+      temporal_filter:
+        params.temporal === "today" || params.temporal === "this_week"
+          ? params.temporal
+          : undefined,
     })
-      .then((res) => {
+      .then(async (items) => {
         if (cancelled) return;
         const counts: Record<string, number> = {};
-        for (const event of res.items) {
+        const filteredItems = await applyPersonalFilter(
+          applyTemporalFilter(items, params.temporal),
+          activePersonalFilter,
+        );
+        if (cancelled) return;
+        for (const event of filteredItems) {
           for (const cat of event.categories) {
             counts[cat.id] = (counts[cat.id] ?? 0) + 1;
           }
@@ -251,47 +507,48 @@ function DiscoveryPage() {
       .catch(() => { if (!cancelled) setCategoryCounts({}); });
 
     return () => { cancelled = true; };
-  }, [params.search, params.temporal]);
-
-  // Re-fetch on tab visibility restore
-  const fetchNow = useCallback(() => {
-    const sp = new URLSearchParams(window.location.search);
-    const p = readParams(sp as unknown as ReturnType<typeof useSearchParams>);
-    setLoading(true);
-    fetchEventsUnion(p.categoryIds, {
-      search: p.search || undefined,
-      temporal: p.temporal ?? undefined,
-      page: p.page,
-      pageSize: 12,
-    })
-      .then((res) => { setEvents(res.items); setTotal(res.total); setTotalPages(res.total_pages); })
-      .catch(() => { setEvents([]); setTotal(0); setTotalPages(1); })
-      .finally(() => setLoading(false));
-  }, []);
+  }, [params.search, params.temporal, activePersonalFilter, refreshTick]);
 
   useEffect(() => {
-    const onVisible = () => { if (document.visibilityState === "visible") fetchNow(); };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        fullResultsCacheRef.current.clear();
+        pendingFullResultsRef.current.clear();
+        pagedResultsCacheRef.current.clear();
+        setRefreshTick((tick) => tick + 1);
+      }
+    };
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [fetchNow]);
+  }, []);
 
   // ── Active filter count ────────────────────────────────────────────────────────
-  const activeFilterCount = (draftFilters.temporal ? 1 : 0) + draftFilters.categoryIds.length;
+  const activeFilterCount = ((draftFilters.temporal || draftFilters.personal) ? 1 : 0) + draftFilters.categoryIds.length;
 
   // ── Handlers ───────────────────────────────────────────────────────────────────
 
-  function handleViewChange(view: ViewMode) { pushParams({ view }); }
+  function handleViewChange(view: ViewMode) {
+    setMobileFiltersOpen(false);
+    pushParams({ view });
+  }
   function handleSearchSubmit(v: string) { pushParams({ search: v, resetPage: true }); }
   function handleSearchChange(v: string) { replaceParams({ search: v, resetPage: true }); }
   function handleFiltersChange(f: FilterState) { setDraftFilters(f); }
 
   function handleApplyFilters() {
-    pushParams({ temporal: draftFilters.temporal, categoryIds: draftFilters.categoryIds, resetPage: true });
+    setMobileFiltersOpen(false);
+    pushParams({
+      temporal: draftFilters.temporal,
+      personal: isAuthenticated ? draftFilters.personal : null,
+      categoryIds: draftFilters.categoryIds,
+      resetPage: true,
+    });
   }
 
   function handleClearFilters() {
-    setDraftFilters({ temporal: null, categoryIds: [] });
-    pushParams({ temporal: null, categoryIds: [], resetPage: true });
+    setDraftFilters({ temporal: null, personal: null, categoryIds: [] });
+    setMobileFiltersOpen(false);
+    pushParams({ temporal: null, personal: null, categoryIds: [], resetPage: true });
   }
 
   function handlePageChange(page: number) {
@@ -309,7 +566,12 @@ function DiscoveryPage() {
         onSearchSubmit={handleSearchSubmit}
       />
 
-      <ActionBar view={params.view} onViewChange={handleViewChange} />
+      <ActionBar
+        view={params.view}
+        onViewChange={handleViewChange}
+        activeFilterCount={activeFilterCount}
+        onToggleFilters={() => setMobileFiltersOpen(true)}
+      />
 
       <div className="flex flex-1 overflow-hidden">
         <FilterSidebar
@@ -320,25 +582,42 @@ function DiscoveryPage() {
           onApply={handleApplyFilters}
           onClear={handleClearFilters}
           activeCount={activeFilterCount}
+          isAuthenticated={isAuthenticated}
+          mobileOpen={mobileFiltersOpen}
+          onMobileClose={() => setMobileFiltersOpen(false)}
         />
 
-        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-          {params.view === "map" ? (
-            <div className="flex flex-1" style={{ minHeight: "calc(100vh - 8rem)" }}>
-              <MapView events={events} isAuthenticated={isAuthenticated} />
-            </div>
-          ) : loading ? (
-            <ListSkeleton />
-          ) : (
-            <ListView
-              events={events}
-              isAuthenticated={isAuthenticated}
-              total={total}
-              page={params.page}
-              totalPages={totalPages}
-              onPageChange={handlePageChange}
-            />
+        <main
+          className={cn(
+            "flex min-h-0 flex-1 flex-col",
+            loading && params.view === "list" ? "overflow-hidden" : "overflow-y-auto",
           )}
+        >
+          <div className="relative flex min-h-0 flex-1">
+            <div
+              className={cn(
+                "flex min-h-0 flex-1 flex-col transition duration-200",
+                loading && "pointer-events-none select-none blur-[3px]",
+              )}
+            >
+              {params.view === "map" ? (
+                <div className="flex min-h-[22rem] flex-1 sm:min-h-[28rem] lg:min-h-0">
+                  <MapView events={events} isAuthenticated={isAuthenticated} />
+                </div>
+              ) : (
+                <ListView
+                  events={events}
+                  isAuthenticated={isAuthenticated}
+                  total={total}
+                  page={params.page}
+                  totalPages={totalPages}
+                  onPageChange={handlePageChange}
+                />
+              )}
+            </div>
+
+            {loading && <DiscoveryLoadingOverlay />}
+          </div>
         </main>
       </div>
     </div>

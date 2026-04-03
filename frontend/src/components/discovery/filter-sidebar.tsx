@@ -1,12 +1,13 @@
 "use client";
 
-import { SlidersHorizontal, Check } from "lucide-react";
+import { Check, SlidersHorizontal, X } from "lucide-react";
 
-import type { Category, TemporalFilter } from "@/lib/events-api";
+import type { Category, PersonalFilter, TemporalFilter } from "@/lib/events-api";
 import { cn } from "@/lib/utils";
 
 export interface FilterState {
   temporal: TemporalFilter | null;
+  personal: PersonalFilter | null;
   /** Multiple categories = union (OR) logic */
   categoryIds: string[];
 }
@@ -20,12 +21,20 @@ interface FilterSidebarProps {
   onApply: () => void;
   onClear: () => void;
   activeCount: number;
+  isAuthenticated: boolean;
+  mobileOpen: boolean;
+  onMobileClose: () => void;
 }
 
 const TEMPORAL_OPTIONS: { value: TemporalFilter; label: string }[] = [
-  { value: "upcoming", label: "Upcoming" },
   { value: "today", label: "Today" },
   { value: "this_week", label: "This Week" },
+  { value: "weekend", label: "Weekend" },
+];
+
+const PERSONAL_OPTIONS: { value: PersonalFilter; label: string }[] = [
+  { value: "bookmarked", label: "Bookmarked" },
+  { value: "going", label: "Going" },
 ];
 
 export function FilterSidebar({
@@ -36,6 +45,9 @@ export function FilterSidebar({
   onApply,
   onClear,
   activeCount,
+  isAuthenticated,
+  mobileOpen,
+  onMobileClose,
 }: FilterSidebarProps) {
   // Sort: higher count first, then alphabetical within same count
   const sortedCategories = [...categories].sort((a, b) => {
@@ -49,6 +61,15 @@ export function FilterSidebar({
     onFiltersChange({
       ...filters,
       temporal: filters.temporal === value ? null : value,
+      personal: null,
+    });
+  }
+
+  function togglePersonal(value: PersonalFilter) {
+    onFiltersChange({
+      ...filters,
+      temporal: null,
+      personal: filters.personal === value ? null : value,
     });
   }
 
@@ -59,97 +80,150 @@ export function FilterSidebar({
     onFiltersChange({ ...filters, categoryIds: next });
   }
 
-  return (
-    <aside className="bg-card border-brand-mid-alpha flex h-full w-72 shrink-0 flex-col border-r">
-      {/* Header */}
-      <div className="border-brand-mid-alpha flex items-center gap-2 border-b px-5 py-4">
-        <SlidersHorizontal className="text-brand-mid size-5" />
-        <h2 className="font-heading text-brand-dark text-lg font-bold">Filters</h2>
-        {activeCount > 0 && (
-          <span className="bg-brand-mid ml-auto rounded-full px-2 py-0.5 text-xs font-bold text-white">
-            {activeCount}
-          </span>
-        )}
-      </div>
-
-      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-6">
-        {/* Quick Filters — intersect (AND) with category */}
-        <section>
-          <p className="text-brand-mid mb-3 text-xs font-bold uppercase tracking-widest">
-            Quick Filters
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {TEMPORAL_OPTIONS.map((opt) => (
+  function renderSidebarContent(isMobile: boolean) {
+    return (
+      <>
+        <div className={cn("border-brand-mid-alpha flex items-center gap-2 border-b", isMobile ? "px-4 py-4" : "px-5 py-4")}>
+          <SlidersHorizontal className="text-brand-mid size-5" />
+          <h2 className="font-heading text-brand-dark text-lg font-bold">Filters</h2>
+          <div className="ml-auto flex items-center gap-2">
+            {activeCount > 0 && (
+              <span className="bg-brand-mid rounded-full px-2 py-0.5 text-xs font-bold text-white">
+                {activeCount}
+              </span>
+            )}
+            {isMobile && (
               <button
-                key={opt.value}
-                onClick={() => toggleTemporal(opt.value)}
-                className={cn(
-                  "rounded-full border px-4 py-1.5 text-xs font-bold transition-colors",
-                  filters.temporal === opt.value
-                    ? "bg-brand-dark border-brand-dark text-white"
-                    : "border-brand-mid-alpha text-brand-dark hover:bg-brand-mid-alpha",
-                )}
+                onClick={onMobileClose}
+                className="border-brand-mid-alpha text-brand-dark hover:bg-brand-mid-alpha flex size-8 items-center justify-center rounded-lg border transition-colors"
+                aria-label="Close filters"
               >
-                {opt.label}
+                <X className="size-4" />
               </button>
-            ))}
-          </div>
-        </section>
-
-        {/* Category — union (OR) between selections */}
-        <section>
-          <p className="text-brand-mid mb-3 text-xs font-bold uppercase tracking-widest">
-            Category
-          </p>
-          <div className="space-y-1">
-            {categories.length === 0 ? (
-              <p className="text-muted-foreground text-sm">Loading categories…</p>
-            ) : (
-              sortedCategories.map((cat) => {
-                const isSelected = filters.categoryIds.includes(cat.id);
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => toggleCategory(cat.id)}
-                    className="flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left text-sm transition-colors hover:bg-brand-mid-alpha"
-                  >
-                    <span
-                      className={cn(
-                        "flex size-[18px] shrink-0 items-center justify-center rounded border-2 transition-colors",
-                        isSelected
-                          ? "bg-brand-dark border-brand-dark"
-                          : "border-brand-mid-alpha",
-                      )}
-                    >
-                      {isSelected && <Check className="size-3 text-white" strokeWidth={3} />}
-                    </span>
-                    <span className="text-brand-dark flex-1">{cat.name}</span>
-                    <span className="bg-brand-mid-alpha text-brand-mid rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums">
-                      {categoryCounts[cat.id] ?? 0}
-                    </span>
-                  </button>
-                );
-              })
             )}
           </div>
-        </section>
-      </div>
+        </div>
 
-      {/* Footer actions */}
-      <div className="border-brand-mid-alpha border-t px-5 py-4 space-y-2">
+        <div className={cn("flex-1 overflow-y-auto space-y-6", isMobile ? "px-4 py-4" : "px-5 py-4")}>
+          <section>
+            <p className="text-brand-mid mb-3 text-xs font-bold uppercase tracking-widest">
+              Quick Filters
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {TEMPORAL_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => toggleTemporal(opt.value)}
+                  className={cn(
+                    "rounded-full border px-4 py-1.5 text-xs font-bold transition-colors",
+                    filters.temporal === opt.value
+                      ? "bg-brand-dark border-brand-dark text-white"
+                      : "border-brand-mid-alpha text-brand-dark hover:bg-brand-mid-alpha",
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+              {isAuthenticated && PERSONAL_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => togglePersonal(opt.value)}
+                  className={cn(
+                    "rounded-full border px-4 py-1.5 text-xs font-bold transition-colors",
+                    filters.personal === opt.value
+                      ? "bg-brand-dark border-brand-dark text-white"
+                      : "border-brand-mid-alpha text-brand-dark hover:bg-brand-mid-alpha",
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section>
+            <p className="text-brand-mid mb-3 text-xs font-bold uppercase tracking-widest">
+              Category
+            </p>
+            <div className="space-y-1">
+              {categories.length === 0 ? (
+                <p className="text-muted-foreground text-sm">Loading categories…</p>
+              ) : (
+                sortedCategories.map((cat) => {
+                  const isSelected = filters.categoryIds.includes(cat.id);
+                  return (
+                    <button
+                      key={cat.id}
+                      onClick={() => toggleCategory(cat.id)}
+                      className="flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left text-sm transition-colors hover:bg-brand-mid-alpha"
+                    >
+                      <span
+                        className={cn(
+                          "flex size-[18px] shrink-0 items-center justify-center rounded border-2 transition-colors",
+                          isSelected
+                            ? "bg-brand-dark border-brand-dark"
+                            : "border-brand-mid-alpha",
+                        )}
+                      >
+                        {isSelected && <Check className="size-3 text-white" strokeWidth={3} />}
+                      </span>
+                      <span className="text-brand-dark flex-1">{cat.name}</span>
+                      <span className="bg-brand-mid-alpha text-brand-mid rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums">
+                        {categoryCounts[cat.id] ?? 0}
+                      </span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </section>
+        </div>
+
+        <div className={cn("border-brand-mid-alpha space-y-2 border-t", isMobile ? "px-4 py-4 pb-5" : "px-5 py-4")}>
+          <button
+            onClick={onApply}
+            className="bg-brand-dark w-full rounded-lg py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-dark/80"
+          >
+            Apply Filters
+          </button>
+          <button
+            onClick={onClear}
+            className="text-brand-mid w-full rounded-lg py-2 text-sm font-semibold transition-colors hover:text-brand-dark"
+          >
+            Clear All
+          </button>
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <aside className="bg-card border-brand-mid-alpha hidden h-full w-72 shrink-0 flex-col border-r lg:flex">
+        {renderSidebarContent(false)}
+      </aside>
+
+      <div
+        className={cn("fixed inset-0 z-[60] lg:hidden", mobileOpen ? "" : "pointer-events-none")}
+        aria-hidden={!mobileOpen}
+      >
         <button
-          onClick={onApply}
-          className="bg-brand-dark w-full rounded-lg py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-dark/80"
+          onClick={onMobileClose}
+          className={cn(
+            "absolute inset-0 bg-brand-dark/35 transition-opacity",
+            mobileOpen ? "opacity-100" : "opacity-0",
+          )}
+          aria-label="Close filters"
+        />
+        <aside
+          className={cn(
+            "bg-card border-brand-mid-alpha absolute left-0 top-0 flex h-full w-[min(22rem,88vw)] flex-col border-r shadow-brand-panel transition-transform duration-200",
+            mobileOpen ? "translate-x-0" : "-translate-x-full",
+          )}
         >
-          Apply Filters
-        </button>
-        <button
-          onClick={onClear}
-          className="text-brand-mid w-full rounded-lg py-2 text-sm font-semibold transition-colors hover:text-brand-dark"
-        >
-          Clear All
-        </button>
+          {renderSidebarContent(true)}
+        </aside>
       </div>
-    </aside>
+    </>
   );
 }
