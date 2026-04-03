@@ -169,7 +169,7 @@ class TestListEventsBasic:
         _cleanup_user(user["id"])
 
     def test_private_event_appears_with_limited_info(self):
-        """Private published events are discoverable but show title/categories/dates only."""
+        """Private published events show title/image/location but hide description."""
         user = _create_test_user("priv")
         cat_ids = _get_category_ids(1)
         event = _create_published_event(user["id"], cat_ids, visibility="private")
@@ -180,8 +180,8 @@ class TestListEventsBasic:
 
         item = next(i for i in list_resp.json()["items"] if i["id"] == event["id"])
         assert item["description"] is None
-        assert item["primary_image_url"] is None
-        assert item["primary_location"] is None
+        assert item["primary_image_url"] is not None  # image visible for discovery/map
+        assert item["primary_location"] is not None   # location visible for map view
 
         _cleanup_event(event["id"])
         _cleanup_user(user["id"])
@@ -269,8 +269,8 @@ class TestListEventsBasic:
 
         guest_item = next(i for i in guest_resp.json()["items"] if i["id"] == event["id"])
         assert guest_item["description"] is None
-        assert guest_item["primary_image_url"] is None
-        assert guest_item["primary_location"] is not None  # Location visible for map browsing
+        assert guest_item["primary_image_url"] is not None  # image always visible
+        assert guest_item["primary_location"] is not None   # location visible for map browsing
 
         auth_item = next(i for i in auth_resp.json()["items"] if i["id"] == event["id"])
         assert auth_item["description"] is not None

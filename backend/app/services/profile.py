@@ -29,19 +29,17 @@ def get_host_profile(db: Client, target_user_id: str, current_user_id: str | Non
     categories_by_event = event_repo.get_categories_for_events(db, event_ids)
     images_by_event = event_repo.get_primary_images_for_events(db, event_ids)
 
-    # But wait, we didn't add the new fields into EventListItemResponse globally yet, we'll do it separately.
     from app.models.event import EventListItemResponse
     items = []
     for event in events:
         is_private = event["visibility"] == "private"
-        # Full details only for authenticated users viewing public events, but for host profile guests can see public events.
-        is_full = current_user_id is not None and not is_private
+        show_description = current_user_id is not None and not is_private
 
-        # Build response item
         items.append(EventListItemResponse(
             id=event["id"],
+            host_id=event["host_id"],
             title=event["title"],
-            description=event["description"] if is_full else None,
+            description=event["description"] if show_description else None,
             start_datetime=event["start_datetime"],
             end_datetime=event["end_datetime"],
             visibility=event["visibility"],
@@ -50,8 +48,8 @@ def get_host_profile(db: Client, target_user_id: str, current_user_id: str | Non
             attendee_count=event["attendee_count"],
             status=event["status"],
             categories=categories_by_event.get(event["id"], []),
-            primary_location=locations_by_event.get(event["id"]) if not is_private else None,
-            primary_image_url=images_by_event.get(event["id"]) if is_full else None,
+            primary_location=locations_by_event.get(event["id"]),
+            primary_image_url=images_by_event.get(event["id"]),
         ))
 
     email = None

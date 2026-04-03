@@ -574,9 +574,8 @@ def list_events(
             interested_count=interested_counts.get(event["id"], 0),
             is_full=(event["attendee_count"] >= event["attendee_limit"]) if event["attendee_limit"] is not None else None,
             categories=categories_by_event.get(event["id"], []),
-            # Private events: no location in list (venue is private)
-            # Public events: location visible to all (needed for map view)
-            primary_location=locations_by_event.get(event["id"]) if not is_private else None,
+            # Location visible to all (needed for map view, even for private events)
+            primary_location=locations_by_event.get(event["id"]),
             primary_image_url=images_by_event.get(event["id"]),
         ))
 
