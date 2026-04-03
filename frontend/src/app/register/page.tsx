@@ -102,6 +102,30 @@ function passwordChecks(password: string) {
   };
 }
 
+function getPasswordStrengthTone(fulfilledChecks: number) {
+  if (fulfilledChecks === 4) {
+    return {
+      barClassName: "bg-success",
+      label: "Strong",
+      labelClassName: "text-success",
+    };
+  }
+
+  if (fulfilledChecks >= 2) {
+    return {
+      barClassName: "bg-warning",
+      label: "Medium",
+      labelClassName: "text-warning",
+    };
+  }
+
+  return {
+    barClassName: "bg-danger",
+    label: "Weak",
+    labelClassName: "text-danger",
+  };
+}
+
 function validateRegisterForm(form: RegisterFormState, acceptedTerms: boolean): RegisterErrors {
   const checks = passwordChecks(form.password);
   const errors: RegisterErrors = {};
@@ -173,7 +197,7 @@ export default function RegisterPage() {
   const nextPath = useMemo(() => searchParams.get("next") ?? "/dashboard", [searchParams]);
   const checks = passwordChecks(form.password);
   const fulfilledChecks = Object.values(checks).filter(Boolean).length;
-  const strengthLabel = fulfilledChecks === 4 ? "Strong" : fulfilledChecks >= 2 ? "Medium" : "Weak";
+  const strengthTone = getPasswordStrengthTone(fulfilledChecks);
 
   function updateField<K extends keyof RegisterFormState>(key: K, value: RegisterFormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -296,13 +320,15 @@ export default function RegisterPage() {
                       key={index}
                       className={cn(
                         "h-1.5 flex-1 rounded-full",
-                        index < fulfilledChecks ? "bg-accent" : "bg-border",
+                        index < fulfilledChecks ? strengthTone.barClassName : "bg-border",
                       )}
                     />
                   ))}
                 </div>
 
-                <p className="text-accent text-sm font-semibold">{strengthLabel}</p>
+                <p className={cn("text-sm font-semibold", strengthTone.labelClassName)}>
+                  {strengthTone.label}
+                </p>
 
                 <ul className="space-y-2">
                   <PasswordRequirement isMet={checks.hasLength} label="At least 8 characters" />
