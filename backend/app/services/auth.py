@@ -1,3 +1,4 @@
+import hashlib
 import secrets
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
@@ -7,6 +8,11 @@ from jose import JWTError, jwt
 
 from app.config import settings
 from app.database import get_supabase
+
+
+def hash_token(token: str) -> str:
+    """SHA-256 hash a token for secure storage. The raw token is never persisted."""
+    return hashlib.sha256(token.encode()).hexdigest()
 
 # --- Password ---
 
@@ -56,7 +62,7 @@ def store_refresh_token(user_id: str, token: str) -> None:
     expires_at = datetime.now(UTC) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     db.table("refresh_tokens").insert({
         "user_id": user_id,
-        "token": token,
+        "token": hash_token(token),
         "expires_at": expires_at.isoformat(),
     }).execute()
 
@@ -67,7 +73,7 @@ def validate_refresh_token(token: str) -> str | None:
     result = (
         db.table("refresh_tokens")
         .select("user_id, expires_at, revoked")
-        .eq("token", token)
+        .eq("token", hash_token(token))
         .execute()
     )
     if not result.data:
@@ -82,7 +88,7 @@ def validate_refresh_token(token: str) -> str | None:
 
 def revoke_refresh_token(token: str) -> None:
     db = get_supabase()
-    db.table("refresh_tokens").update({"revoked": True}).eq("token", token).execute()
+    db.table("refresh_tokens").update({"revoked": True}).eq("token", hash_token(token)).execute()
 
 
 def revoke_all_user_tokens(user_id: str) -> None:

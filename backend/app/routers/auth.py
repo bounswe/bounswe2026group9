@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response
 from starlette.responses import RedirectResponse
 
 from app.config import settings
@@ -12,6 +12,8 @@ from app.models.user import (
     UserRegisterRequest,
     UserResponse,
 )
+from app.rate_limit import limiter
+from app.repositories.user import USER_AUTH_COLS, USER_SAFE_COLS
 from app.services.auth import (
     check_account_locked,
     create_access_token,
@@ -27,6 +29,7 @@ from app.services.auth import (
 from app.services.email import (
     delete_verification_token,
     generate_verification_token,
+    is_smtp_configured,
     mark_email_verified,
     send_verification_email,
     store_verification_token,
@@ -67,8 +70,9 @@ def _user_response(user: dict) -> UserResponse:
 
 # --- Register ---
 
-@router.post("/register", response_model=AuthResponse, status_code=201)
-def register(body: UserRegisterRequest, response: Response):
+@router.post("/register", status_code=201)
+@limiter.limit("5/minute")
+def register(request: Request, body: UserRegisterRequest, response: Response, background_tasks: BackgroundTasks):
     db = get_supabase()
 
     # Create user (unique constraints handle race conditions)
@@ -99,22 +103,23 @@ def register(body: UserRegisterRequest, response: Response):
     store_refresh_token(user["id"], refresh_token)
     _set_refresh_cookie(response, refresh_token)
 
-    # Send verification email
+    # Send verification email in background (non-blocking)
     v_token = generate_verification_token()
     store_verification_token(user["id"], v_token)
-    send_verification_email(user["email"], v_token)
+    background_tasks.add_task(send_verification_email, user["email"], v_token)
 
-    return AuthResponse(user=_user_response(user), access_token=access_token)
+    return AuthResponse(user=_user_response(user), access_token=access_token, email_sent=is_smtp_configured())
 
 
 # --- Login ---
 
 @router.post("/login", response_model=AuthResponse)
-def login(body: UserLoginRequest, response: Response):
+@limiter.limit("10/minute")
+def login(request: Request, body: UserLoginRequest, response: Response):
     db = get_supabase()
 
     # Find user by email
-    result = db.table("users").select("*").eq("email", body.email).execute()
+    result = db.table("users").select(USER_AUTH_COLS).eq("email", body.email).execute()
     if not result.data:
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
@@ -174,7 +179,7 @@ def refresh(request: Request, response: Response, body: RefreshTokenRequest = No
 
     # Fetch user
     db = get_supabase()
-    result = db.table("users").select("*").eq("id", user_id).execute()
+    result = db.table("users").select(USER_SAFE_COLS).eq("id", user_id).execute()
     if not result.data or not result.data[0]["is_active"]:
         raise HTTPException(status_code=401, detail="User not found or inactive")
 
@@ -212,7 +217,7 @@ def logout(request: Request, response: Response, body: RefreshTokenRequest = Non
 @router.get("/me", response_model=UserResponse)
 def me(user_id: str = Depends(get_current_user_id)):
     db = get_supabase()
-    result = db.table("users").select("*").eq("id", user_id).execute()
+    result = db.table("users").select(USER_SAFE_COLS).eq("id", user_id).execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="User not found")
     return _user_response(result.data[0])
@@ -232,7 +237,8 @@ def verify_email(token: str):
 
 
 @router.post("/resend-verification", response_model=MessageResponse)
-def resend_verification(user_id: str = Depends(get_current_user_id)):
+@limiter.limit("3/minute")
+def resend_verification(request: Request, background_tasks: BackgroundTasks, user_id: str = Depends(get_current_user_id)):
     db = get_supabase()
     result = db.table("users").select("email, email_verified").eq("id", user_id).execute()
     if not result.data:
@@ -244,7 +250,7 @@ def resend_verification(user_id: str = Depends(get_current_user_id)):
 
     v_token = generate_verification_token()
     store_verification_token(user_id, v_token)
-    send_verification_email(user["email"], v_token)
+    background_tasks.add_task(send_verification_email, user["email"], v_token)
     return MessageResponse(message="Verification email sent")
 
 
@@ -302,7 +308,7 @@ def google_callback(
     db = get_supabase()
 
     # Check if user exists by email
-    result = db.table("users").select("*").eq("email", google_email).execute()
+    result = db.table("users").select(USER_AUTH_COLS).eq("email", google_email).execute()
 
     if result.data:
         # Existing user — link Google account if not already linked
@@ -320,7 +326,7 @@ def google_callback(
         if not user["email_verified"] and google_email_verified:
             db.table("users").update({"email_verified": True}).eq("id", user["id"]).execute()
         # Re-fetch updated user
-        user = db.table("users").select("*").eq("id", user["id"]).execute().data[0]
+        user = db.table("users").select(USER_SAFE_COLS).eq("id", user["id"]).execute().data[0]
     else:
         # New user — create account
         import secrets

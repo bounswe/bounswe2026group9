@@ -1,11 +1,25 @@
+import os
 from unittest.mock import patch
+
+os.environ["TESTING"] = "1"  # Disable rate limiting during tests
 
 import pytest
 from fastapi.testclient import TestClient
 
 from app.database import get_supabase
 from app.main import app
+from app.services.email import store_verification_token as _real_store_verification_token
 from tests_support import build_test_identity, cleanup_email_pattern
+
+# Global dict to capture raw verification tokens before they are hashed.
+# Key: user_id, Value: raw token string.
+_captured_verification_tokens: dict[str, str] = {}
+
+
+def _capturing_store_verification_token(user_id: str, token: str) -> None:
+    """Wrapper that captures the raw token, then delegates to the real function."""
+    _captured_verification_tokens[user_id] = token
+    _real_store_verification_token(user_id, token)
 
 
 @pytest.fixture()
@@ -47,9 +61,18 @@ def registered_user(client, test_user_data):
 
 @pytest.fixture(autouse=True, scope="session")
 def disable_email_sending():
-    """Prevent real emails from being sent during tests."""
-    with patch("app.routers.auth.send_verification_email", return_value=False):
+    """Prevent real emails and capture raw verification tokens before hashing."""
+    with (
+        patch("app.routers.auth.send_verification_email", return_value=False),
+        patch("app.routers.auth.store_verification_token", side_effect=_capturing_store_verification_token),
+    ):
         yield
+
+
+@pytest.fixture()
+def captured_verification_tokens():
+    """Access raw (pre-hash) verification tokens captured during this test."""
+    return _captured_verification_tokens
 
 
 @pytest.fixture(autouse=True)

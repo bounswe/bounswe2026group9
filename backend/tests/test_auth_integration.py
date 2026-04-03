@@ -83,17 +83,15 @@ class TestRefreshTokenRotation:
 
 
 class TestEmailVerificationFlow:
-    def test_register_verify_confirm(self, client, test_user_data, db):
+    def test_register_verify_confirm(self, client, test_user_data, db, captured_verification_tokens):
         # Register (email not verified)
         reg = client.post("/auth/register", json=test_user_data)
         user_id = reg.json()["user"]["id"]
         assert reg.json()["user"]["email_verified"] is False
 
-        # Get token from DB
-        result = db.table("email_verification_tokens").select("token").eq(
-            "user_id", user_id
-        ).execute()
-        token = result.data[0]["token"]
+        # Get raw token captured before hashing
+        token = captured_verification_tokens.get(user_id)
+        assert token, "Verification token should have been captured"
 
         # Verify
         verify = client.get(f"/auth/verify-email?token={token}")
@@ -109,7 +107,7 @@ class TestEmailVerificationFlow:
         verify2 = client.get(f"/auth/verify-email?token={token}")
         assert verify2.status_code == 400
 
-    def test_resend_then_verify(self, client, test_user_data, db):
+    def test_resend_then_verify(self, client, test_user_data, captured_verification_tokens):
         # Register
         reg = client.post("/auth/register", json=test_user_data)
         user_id = reg.json()["user"]["id"]
@@ -121,11 +119,9 @@ class TestEmailVerificationFlow:
         })
         assert resend.status_code == 200
 
-        # Get new token from DB and verify
-        result = db.table("email_verification_tokens").select("token").eq(
-            "user_id", user_id
-        ).execute()
-        token = result.data[0]["token"]
+        # Get raw token captured during resend
+        token = captured_verification_tokens.get(user_id)
+        assert token, "Verification token should have been captured"
 
         verify = client.get(f"/auth/verify-email?token={token}")
         assert verify.status_code == 200

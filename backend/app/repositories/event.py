@@ -4,6 +4,66 @@ from datetime import UTC, datetime, timedelta
 
 from supabase import Client
 
+_EVENT_COLS = (
+    "id,host_id,title,description,start_datetime,end_datetime,"
+    "visibility,is_age_restricted,attendee_limit,attendee_count,"
+    "status,created_at,updated_at"
+)
+_LOCATION_COLS = "id,event_id,name,latitude,longitude,is_primary,order_index"
+_IMAGE_COLS = "id,event_id,image_url,upload_date"
+_VENUE_COLS = (
+    "id,event_id,price,language,health_requirements,wheelchair_access,accessible_restroom,"
+    "elevator_available,seating_available,captions_support,quiet_friendly"
+)
+_EQUIPMENT_COLS = "id,event_id,item_name,is_required"
+_RATE_LIMIT_COLS = "id,max_events_per_user,time_window_hours,updated_at"
+
+
+# --- Atomic event creation via RPC ---
+
+def create_event_atomic(
+    db: Client,
+    event_data: dict,
+    locations: list[dict],
+    category_ids: list[str],
+    venue_metadata: dict | None = None,
+    equipment: list[dict] | None = None,
+) -> dict:
+    """Create event + locations + categories + venue + equipment in a single DB transaction."""
+    params = {
+        "p_event": event_data,
+        "p_locations": locations,
+        "p_categories": [{"category_id": cid} for cid in category_ids],
+        "p_venue_metadata": venue_metadata,
+        "p_equipment": equipment,
+    }
+    result = db.rpc("create_event_atomic", params).execute()
+    return result.data
+
+
+def update_event_atomic(
+    db: Client,
+    event_id: str,
+    event_data: dict | None = None,
+    locations: list[dict] | None = None,
+    category_ids: list[str] | None = None,
+    venue_metadata: dict | None = None,
+    equipment: list[dict] | None = None,
+) -> dict:
+    """Update event + related tables in a single DB transaction."""
+    params = {
+        "p_event_id": event_id,
+        "p_event_data": event_data if event_data else None,
+        "p_locations": locations,
+        "p_categories": [{"category_id": cid} for cid in category_ids] if category_ids is not None else None,
+        "p_venue_metadata": venue_metadata,
+        "p_equipment": equipment,
+    }
+    result = db.rpc("update_event_atomic", params).execute()
+    return result.data
+
+
+# --- Legacy individual inserts (kept for tests) ---
 
 def insert_event(db: Client, event_data: dict) -> dict:
     result = db.table("events").insert(event_data).execute()
@@ -32,12 +92,12 @@ def insert_equipment(db: Client, rows: list[dict]) -> list[dict]:
 
 
 def get_event_by_id(db: Client, event_id: str) -> dict | None:
-    result = db.table("events").select("*").eq("id", event_id).execute()
+    result = db.table("events").select(_EVENT_COLS).eq("id", event_id).execute()
     return result.data[0] if result.data else None
 
 
 def get_event_locations(db: Client, event_id: str) -> list[dict]:
-    result = db.table("event_locations").select("*").eq("event_id", event_id).execute()
+    result = db.table("event_locations").select(_LOCATION_COLS).eq("event_id", event_id).execute()
     return result.data or []
 
 
@@ -52,17 +112,17 @@ def get_event_categories(db: Client, event_id: str) -> list[dict]:
 
 
 def get_event_images(db: Client, event_id: str) -> list[dict]:
-    result = db.table("event_images").select("*").eq("event_id", event_id).execute()
+    result = db.table("event_images").select(_IMAGE_COLS).eq("event_id", event_id).execute()
     return result.data or []
 
 
 def get_venue_metadata(db: Client, event_id: str) -> dict | None:
-    result = db.table("venue_metadata").select("*").eq("event_id", event_id).execute()
+    result = db.table("venue_metadata").select(_VENUE_COLS).eq("event_id", event_id).execute()
     return result.data[0] if result.data else None
 
 
 def get_equipment(db: Client, event_id: str) -> list[dict]:
-    result = db.table("equipment_requirements").select("*").eq("event_id", event_id).execute()
+    result = db.table("equipment_requirements").select(_EQUIPMENT_COLS).eq("event_id", event_id).execute()
     return result.data or []
 
 
@@ -132,7 +192,7 @@ def find_location_by_event_and_name(db: Client, event_id: str, name: str) -> lis
 
 
 def get_rate_limit_config(db: Client) -> dict | None:
-    result = db.table("rate_limit_config").select("*").limit(1).execute()
+    result = db.table("rate_limit_config").select(_RATE_LIMIT_COLS).limit(1).execute()
     return result.data[0] if result.data else None
 
 
@@ -204,7 +264,7 @@ def list_events(
 
     # Data query: fetch full rows, sorted deterministically
     result = (
-        _apply_filters(db.table("events").select("*"))
+        _apply_filters(db.table("events").select(_EVENT_COLS))
         .order("start_datetime")
         .order("id")
         .range(offset, offset + page_size - 1)
@@ -219,7 +279,7 @@ def get_primary_locations_for_events(db: Client, event_ids: list[str]) -> dict[s
         return {}
     result = (
         db.table("event_locations")
-        .select("*")
+        .select(_LOCATION_COLS)
         .in_("event_id", event_ids)
         .eq("is_primary", True)
         .execute()

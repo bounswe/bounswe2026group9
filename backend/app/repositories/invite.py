@@ -2,6 +2,10 @@
 
 from supabase import Client
 
+_INVITE_COLS = "id,event_id,created_by,token,expires_at,max_uses,use_count,created_at"
+_GRANT_COLS = "id,event_id,user_id,granted_via,created_at"
+_REQUEST_COLS = "id,event_id,user_id,status,message,created_at,updated_at,resolved_at"
+
 # --- Invites ---
 
 def insert_invite(db: Client, data: dict) -> dict:
@@ -10,14 +14,14 @@ def insert_invite(db: Client, data: dict) -> dict:
 
 
 def get_invite_by_token(db: Client, token: str) -> dict | None:
-    result = db.table("event_invites").select("*").eq("token", token).execute()
+    result = db.table("event_invites").select(_INVITE_COLS).eq("token", token).execute()
     return result.data[0] if result.data else None
 
 
 def get_invites_by_event(db: Client, event_id: str) -> list[dict]:
     result = (
         db.table("event_invites")
-        .select("*")
+        .select(_INVITE_COLS)
         .eq("event_id", event_id)
         .order("created_at", desc=True)
         .execute()
@@ -46,7 +50,7 @@ def insert_access_grant(db: Client, data: dict) -> dict:
 def get_access_grant(db: Client, event_id: str, user_id: str) -> dict | None:
     result = (
         db.table("event_access_grants")
-        .select("*")
+        .select(_GRANT_COLS)
         .eq("event_id", event_id)
         .eq("user_id", user_id)
         .execute()
@@ -72,14 +76,14 @@ def insert_access_request(db: Client, data: dict) -> dict:
 
 
 def get_access_request_by_id(db: Client, request_id: str) -> dict | None:
-    result = db.table("event_access_requests").select("*").eq("id", request_id).execute()
+    result = db.table("event_access_requests").select(_REQUEST_COLS).eq("id", request_id).execute()
     return result.data[0] if result.data else None
 
 
 def get_access_request(db: Client, event_id: str, user_id: str) -> dict | None:
     result = (
         db.table("event_access_requests")
-        .select("*")
+        .select(_REQUEST_COLS)
         .eq("event_id", event_id)
         .eq("user_id", user_id)
         .execute()
@@ -90,7 +94,7 @@ def get_access_request(db: Client, event_id: str, user_id: str) -> dict | None:
 def get_pending_requests_by_event(db: Client, event_id: str) -> list[dict]:
     result = (
         db.table("event_access_requests")
-        .select("*")
+        .select(_REQUEST_COLS)
         .eq("event_id", event_id)
         .eq("status", "pending")
         .order("created_at")

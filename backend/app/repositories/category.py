@@ -7,7 +7,7 @@ def get_all_available(db: Client) -> list[dict]:
     """Get predefined + approved categories."""
     result = (
         db.table("categories")
-        .select("*")
+        .select("id,name,is_predefined,is_approved")
         .or_("is_predefined.eq.true,is_approved.eq.true")
         .order("name")
         .execute()
@@ -18,7 +18,7 @@ def get_all_available(db: Client) -> list[dict]:
 def search_available(db: Client, query: str) -> list[dict]:
     result = (
         db.table("categories")
-        .select("*")
+        .select("id,name,is_predefined,is_approved")
         .or_("is_predefined.eq.true,is_approved.eq.true")
         .ilike("name", f"%{query}%")
         .order("name")
@@ -29,7 +29,7 @@ def search_available(db: Client, query: str) -> list[dict]:
 
 def get_by_name(db: Client, name: str) -> dict | None:
     """Case-insensitive exact match using lower() to align with DB constraint."""
-    result = db.table("categories").select("*").ilike("name", name.strip()).execute()
+    result = db.table("categories").select("id,name,is_predefined,is_approved").ilike("name", name.strip()).execute()
     return result.data[0] if result.data else None
 
 

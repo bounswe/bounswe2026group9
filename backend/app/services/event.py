@@ -128,7 +128,7 @@ def create_event(db: Client, user_id: str, body: EventCreateRequest) -> EventDet
     if not has_primary:
         body.locations[0].is_primary = True
 
-    # Insert event
+    # Build atomic insert params
     event_data = {
         "host_id": user_id,
         "title": body.title,
@@ -140,16 +140,9 @@ def create_event(db: Client, user_id: str, body: EventCreateRequest) -> EventDet
         "attendee_limit": body.attendee_limit,
         "status": body.status,
     }
-    event = event_repo.insert_event(db, event_data)
-    if not event:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create event")
 
-    event_id = event["id"]
-
-    # Insert related data
     location_rows = [
         {
-            "event_id": event_id,
             "name": loc.name,
             "latitude": loc.latitude,
             "longitude": loc.longitude,
@@ -158,22 +151,34 @@ def create_event(db: Client, user_id: str, body: EventCreateRequest) -> EventDet
         }
         for loc in body.locations
     ]
-    locations = event_repo.insert_locations(db, location_rows)
 
-    cat_rows = [{"event_id": event_id, "category_id": str(cid)} for cid in body.category_ids]
-    event_repo.insert_event_categories(db, cat_rows)
-
-    venue_meta = None
+    venue_data = None
     if body.venue_metadata:
-        venue_data = {"event_id": event_id, **body.venue_metadata.model_dump()}
-        venue_meta = event_repo.insert_venue_metadata(db, venue_data)
+        venue_data = body.venue_metadata.model_dump()
 
-    equipment = []
+    equip_data = None
     if body.equipment_requirements:
-        equip_rows = [{"event_id": event_id, **eq.model_dump()} for eq in body.equipment_requirements]
-        equipment = event_repo.insert_equipment(db, equip_rows)
+        equip_data = [eq.model_dump() for eq in body.equipment_requirements]
 
+    # Single-transaction insert via RPC
+    event = event_repo.create_event_atomic(
+        db,
+        event_data=event_data,
+        locations=location_rows,
+        category_ids=category_id_strs,
+        venue_metadata=venue_data,
+        equipment=equip_data,
+    )
+    if not event:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create event")
+
+    event_id = event["id"]
+
+    # Fetch related data for response
+    locations = event_repo.get_event_locations(db, event_id)
     categories = event_repo.get_event_categories(db, event_id)
+    venue_meta = event_repo.get_venue_metadata(db, event_id)
+    equipment = event_repo.get_equipment(db, event_id)
 
     return _build_detail_response(event, locations, categories, [], venue_meta, equipment)
 
@@ -372,11 +377,21 @@ def update_event(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Cannot modify locations after event has started",
             )
-        # Replace locations
-        event_repo.delete_event_locations(db, event_id)
+
+    if body.category_ids is not None:
+        category_id_strs = [str(cid) for cid in body.category_ids]
+        validate_categories_exist(db, category_id_strs)
+
+    # Set status to "updated" if currently published
+    has_real_changes = bool(update_data) or body.locations is not None or body.category_ids is not None or body.venue_metadata is not None or body.equipment_requirements is not None
+    if event["status"] == "published" and has_real_changes:
+        update_data["status"] = "updated"
+
+    # Build atomic update params
+    location_rows = None
+    if body.locations is not None:
         location_rows = [
             {
-                "event_id": event_id,
                 "name": loc.name,
                 "latitude": loc.latitude,
                 "longitude": loc.longitude,
@@ -385,32 +400,30 @@ def update_event(
             }
             for loc in body.locations
         ]
-        event_repo.insert_locations(db, location_rows)
 
+    cat_id_strs = None
     if body.category_ids is not None:
-        category_id_strs = [str(cid) for cid in body.category_ids]
-        validate_categories_exist(db, category_id_strs)
-        event_repo.delete_event_categories(db, event_id)
-        cat_rows = [{"event_id": event_id, "category_id": str(cid)} for cid in body.category_ids]
-        event_repo.insert_event_categories(db, cat_rows)
+        cat_id_strs = [str(cid) for cid in body.category_ids]
 
+    venue_data = None
     if body.venue_metadata is not None:
-        event_repo.delete_venue_metadata(db, event_id)
-        venue_data = {"event_id": event_id, **body.venue_metadata.model_dump()}
-        event_repo.insert_venue_metadata(db, venue_data)
+        venue_data = body.venue_metadata.model_dump()
 
+    equip_data = None
     if body.equipment_requirements is not None:
-        event_repo.delete_equipment(db, event_id)
-        equip_rows = [{"event_id": event_id, **eq.model_dump()} for eq in body.equipment_requirements]
-        event_repo.insert_equipment(db, equip_rows)
+        equip_data = [eq.model_dump() for eq in body.equipment_requirements]
 
-    # Set status to "updated" if currently published
-    has_real_changes = bool(update_data) or body.locations is not None or body.category_ids is not None or body.venue_metadata is not None or body.equipment_requirements is not None
-    if event["status"] == "published" and has_real_changes:
-        update_data["status"] = "updated"
-
-    if update_data:
-        event_repo.update_event(db, event_id, update_data)
+    # Single-transaction update via RPC
+    if has_real_changes or update_data:
+        event_repo.update_event_atomic(
+            db,
+            event_id=event_id,
+            event_data=update_data if update_data else None,
+            locations=location_rows,
+            category_ids=cat_id_strs,
+            venue_metadata=venue_data,
+            equipment=equip_data,
+        )
 
     # Emit notification only if there were real changes
     if has_real_changes and event["status"] in ("published", "updated"):

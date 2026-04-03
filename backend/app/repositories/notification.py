@@ -2,6 +2,8 @@
 
 from supabase import Client
 
+_NOTIFICATION_COLS = "id,user_id,event_id,type,message,is_read,created_at"
+
 
 def get_notifications_by_user(
     db: Client,
@@ -25,7 +27,7 @@ def get_notifications_by_user(
 
     result = (
         db.table("notifications")
-        .select("*")
+        .select(_NOTIFICATION_COLS)
         .eq("user_id", user_id)
         .order("created_at", desc=True)
         .order("id", desc=True)
@@ -39,7 +41,7 @@ def get_notification_by_id(db: Client, notification_id: str) -> dict | None:
     """Fetch a single notification by ID."""
     result = (
         db.table("notifications")
-        .select("*")
+        .select(_NOTIFICATION_COLS)
         .eq("id", notification_id)
         .execute()
     )

@@ -6,7 +6,7 @@ from supabase import Client
 def get_attendance(db: Client, user_id: str, event_id: str) -> dict | None:
     result = (
         db.table("attendances")
-        .select("*")
+        .select("id,user_id,event_id,status,marked_at")
         .eq("user_id", user_id)
         .eq("event_id", event_id)
         .execute()
@@ -37,7 +37,7 @@ def delete_attendance(db: Client, user_id: str, event_id: str) -> None:
 def get_interested_count_for_event(db: Client, event_id: str) -> int:
     result = (
         db.table("attendances")
-        .select("*", count="exact")
+        .select("id,user_id,event_id,status,marked_at", count="exact")
         .eq("event_id", event_id)
         .eq("status", "interested")
         .execute()
