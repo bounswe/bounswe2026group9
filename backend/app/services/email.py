@@ -100,5 +100,5 @@ def send_verification_email(to_email: str, token: str) -> bool:
             server.sendmail(settings.SMTP_FROM_EMAIL, to_email, msg.as_string())
         return True
     except Exception as e:
-        print(f"[EMAIL] Failed to send: {e}")
+        print(f"[EMAIL] Failed to send verification email to {to_email}: {type(e).__name__}: {e}")
         return False

@@ -29,6 +29,7 @@ from app.services.auth import (
 from app.services.email import (
     delete_verification_token,
     generate_verification_token,
+    is_smtp_configured,
     mark_email_verified,
     send_verification_email,
     store_verification_token,
@@ -107,7 +108,7 @@ def register(request: Request, body: UserRegisterRequest, response: Response, ba
     store_verification_token(user["id"], v_token)
     background_tasks.add_task(send_verification_email, user["email"], v_token)
 
-    return AuthResponse(user=_user_response(user), access_token=access_token)
+    return AuthResponse(user=_user_response(user), access_token=access_token, email_sent=is_smtp_configured())
 
 
 # --- Login ---

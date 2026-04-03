@@ -43,6 +43,7 @@ class AuthResponse(BaseModel):
     user: UserResponse
     access_token: str
     token_type: str = "bearer"
+    email_sent: bool = True  # False when SMTP is not configured
 
 
 class MessageResponse(BaseModel):
