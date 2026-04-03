@@ -1,15 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { startTransition, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
 
 import { AuthShell } from "@/components/auth/auth-shell";
 import { GuestOnlyRoute } from "@/components/auth/guest-only-route";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -66,6 +65,7 @@ function AuthInput({ icon, rightIcon, ...props }: AuthInputProps) {
 }
 
 export default function LoginPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const { login } = useAuth();
   const [email, setEmail] = useState("");
@@ -74,7 +74,11 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const nextPath = useMemo(() => searchParams.get("next") ?? "/dashboard", [searchParams]);
+  const nextPath = useMemo(() => {
+    const candidate = searchParams.get("next");
+
+    return candidate?.startsWith("/") ? candidate : "/dashboard";
+  }, [searchParams]);
   const reason = searchParams.get("reason");
   const bannerMessage = reason ? reasonMessages[reason] : null;
 
@@ -84,7 +88,9 @@ export default function LoginPage() {
 
     try {
       await login({ email, password });
-      window.location.assign(nextPath);
+      startTransition(() => {
+        router.replace(nextPath);
+      });
     } catch (error) {
       setErrorMessage(getErrorMessage(error, "Unable to sign in."));
     } finally {
@@ -160,19 +166,6 @@ export default function LoginPage() {
                   type={showPassword ? "text" : "password"}
                   value={password}
                 />
-              </div>
-
-              <div className="flex items-center justify-between gap-3 text-sm">
-                <label className="text-muted-foreground flex items-center gap-2">
-                  <Checkbox aria-label="Remember me" />
-                  <span>Remember me</span>
-                </label>
-                <button
-                  className="text-accent font-medium transition-opacity hover:opacity-80"
-                  type="button"
-                >
-                  Forgot password?
-                </button>
               </div>
 
               <Button

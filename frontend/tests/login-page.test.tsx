@@ -23,12 +23,9 @@ vi.mock("next/navigation", () => ({
 
 describe("LoginPage", () => {
   const loginMock = vi.fn();
-  const originalLocation = window.location;
-  const locationAssignMock = vi.fn();
 
   beforeEach(() => {
     loginMock.mockReset();
-    locationAssignMock.mockReset();
     replaceMock.mockReset();
     useSearchParamsMock.mockReturnValue(new URLSearchParams());
     vi.mocked(useAuth).mockReturnValue({
@@ -42,23 +39,9 @@ describe("LoginPage", () => {
       status: "guest",
       user: null,
     });
-
-    Object.defineProperty(window, "location", {
-      configurable: true,
-      value: {
-        ...originalLocation,
-        assign: locationAssignMock,
-      },
-    });
   });
 
-  afterEach(() => {
-    cleanup();
-    Object.defineProperty(window, "location", {
-      configurable: true,
-      value: originalLocation,
-    });
-  });
+  afterEach(cleanup);
 
   it("shows the protected-route banner when redirected to login", () => {
     useSearchParamsMock.mockReturnValue(new URLSearchParams("reason=protected"));
@@ -89,7 +72,9 @@ describe("LoginPage", () => {
       });
     });
 
-    expect(locationAssignMock).toHaveBeenCalledWith("/events/create");
+    await waitFor(() => {
+      expect(replaceMock).toHaveBeenCalledWith("/events/create");
+    });
   });
 
   it("renders backend login errors", async () => {
@@ -103,5 +88,12 @@ describe("LoginPage", () => {
     await user.click(screen.getByRole("button", { name: "Sign In" }));
 
     expect(await screen.findByText("Invalid email or password")).toBeInTheDocument();
+  });
+
+  it("does not render placeholder remember-me or password-reset actions", () => {
+    render(<LoginPage />);
+
+    expect(screen.queryByText("Remember me")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Forgot password?" })).not.toBeInTheDocument();
   });
 });

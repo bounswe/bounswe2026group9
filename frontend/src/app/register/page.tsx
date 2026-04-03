@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { startTransition, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   CalendarDays,
   Check,
@@ -184,6 +184,7 @@ function PasswordRequirement({ isMet, label }: { isMet: boolean; label: string }
 }
 
 export default function RegisterPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const { register } = useAuth();
   const [form, setForm] = useState(initialFormState);
@@ -194,7 +195,11 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const nextPath = useMemo(() => searchParams.get("next") ?? "/dashboard", [searchParams]);
+  const nextPath = useMemo(() => {
+    const candidate = searchParams.get("next");
+
+    return candidate?.startsWith("/") ? candidate : "/dashboard";
+  }, [searchParams]);
   const checks = passwordChecks(form.password);
   const fulfilledChecks = Object.values(checks).filter(Boolean).length;
   const strengthTone = getPasswordStrengthTone(fulfilledChecks);
@@ -222,7 +227,9 @@ export default function RegisterPage() {
         password: form.password,
         username: form.username.trim(),
       });
-      window.location.assign(nextPath);
+      startTransition(() => {
+        router.replace(nextPath);
+      });
     } catch (error) {
       setErrorMessage(getErrorMessage(error, "Unable to create your account."));
     } finally {

@@ -23,7 +23,6 @@ vi.mock("next/navigation", () => ({
 
 describe("RegisterPage", () => {
   const registerMock = vi.fn();
-  const originalLocation = window.location;
 
   beforeEach(() => {
     registerMock.mockReset();
@@ -40,23 +39,9 @@ describe("RegisterPage", () => {
       status: "guest",
       user: null,
     });
-
-    Object.defineProperty(window, "location", {
-      configurable: true,
-      value: {
-        ...originalLocation,
-        assign: vi.fn(),
-      },
-    });
   });
 
-  afterEach(() => {
-    cleanup();
-    Object.defineProperty(window, "location", {
-      configurable: true,
-      value: originalLocation,
-    });
-  });
+  afterEach(cleanup);
 
   it("validates required fields before submitting", async () => {
     const user = userEvent.setup();
@@ -100,6 +85,10 @@ describe("RegisterPage", () => {
         password: "StrongPass1!",
         username: "alice",
       });
+    });
+
+    await waitFor(() => {
+      expect(replaceMock).toHaveBeenCalledWith("/dashboard");
     });
   });
 });
