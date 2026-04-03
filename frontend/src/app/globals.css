@@ -163,6 +163,22 @@
   --sidebar-ring: rgba(171, 136, 109, 0.45);
 }
 
+/* ── MapLibre popup reset ─────────────────────────────────────────────────── */
+/* className on <Popup> targets the outer wrapper, not the content box.
+   These overrides strip the default white card so our custom content shows. */
+.maplibregl-popup-content {
+  padding: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+.maplibregl-popup-tip {
+  display: none !important;
+}
+.maplibregl-popup-close-button {
+  display: none !important;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
