@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, Plus, Search } from "lucide-react";
+import { Bell, Menu, Plus, Search } from "lucide-react";
 import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,6 @@ interface NavbarProps {
 
 export function Navbar({ searchValue, onSearchChange, onSearchSubmit }: NavbarProps) {
   const { isAuthenticated, status, user } = useAuth();
-  const router = useRouter();
 
   // Uncontrolled internal state when parent doesn't own search
   const [internalSearch, setInternalSearch] = useState(searchValue ?? "");
@@ -40,87 +39,132 @@ export function Navbar({ searchValue, onSearchChange, onSearchSubmit }: NavbarPr
   // Derive avatar initials from username
   const initials = user?.username?.slice(0, 1).toUpperCase() ?? "?";
 
-  return (
-    <header className="bg-brand-dark sticky top-0 z-50 flex h-16 items-center justify-between gap-4 px-6 lg:px-12">
-      {/* Logo */}
-      <Link
-        href="/"
-        className="font-heading text-xl font-semibold tracking-[0.02em] text-white transition-opacity hover:opacity-80 shrink-0"
-      >
-        Social Event Mapper
-      </Link>
+  function renderDesktopControls() {
+    if (status === "loading") {
+      return <div className="h-8 w-32 animate-pulse rounded-lg bg-white/10" />;
+    }
 
-      {/* Search bar */}
-      <form
-        onSubmit={handleSearchSubmit}
-        className="flex flex-1 max-w-xl items-center gap-2 rounded-lg border border-white/15 bg-white/10 px-4 py-2 transition-colors focus-within:border-white/30 focus-within:bg-white/15"
-      >
-        <Search className="size-4 shrink-0 text-white/50" />
-        <input
-          ref={inputRef}
-          type="search"
-          value={currentSearch}
-          onChange={handleSearchChange}
-          placeholder="Search events, categories, places..."
-          className="w-full bg-transparent text-sm text-white placeholder:text-white/45 outline-none"
-        />
-      </form>
+    if (isAuthenticated) {
+      return (
+        <>
+          <Link href="/notifications" className="relative text-white/70 transition-colors hover:text-white">
+            <Bell className="size-5" />
+            <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full border-2 border-brand-dark bg-red-500" />
+          </Link>
 
-      {/* Right section — changes based on auth state */}
-      <div className="flex shrink-0 items-center gap-3">
-        {status === "loading" ? (
-          // Skeleton while auth is restoring
-          <div className="h-8 w-32 animate-pulse rounded-lg bg-white/10" />
-        ) : isAuthenticated ? (
-          // Authenticated user
-          <>
-            {/* Create Event */}
-            <Button
-              size="sm"
-              className="hidden gap-1.5 sm:flex bg-brand-mid hover:bg-brand-mid/80 border-0"
-              onClick={() => router.push("/events/create")}
-            >
-              <Plus className="size-4" />
-              Create Event
-            </Button>
-
-            {/* Notification bell */}
-            <Link href="/notifications" className="relative text-white/70 transition-colors hover:text-white">
-              <Bell className="size-5" />
-              {/* Unread dot — placeholder, will be wired in notification task */}
-              <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-red-500 border-2 border-brand-dark" />
-            </Link>
-
-            {/* Avatar + name */}
-            <div className="flex items-center gap-2">
-              <div className="bg-brand-mid flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white">
-                {initials}
-              </div>
-              <span className="hidden text-sm font-semibold text-white/85 sm:block">
-                {user?.username}
-              </span>
+          <div className="flex items-center gap-2">
+            <div className="bg-brand-mid flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white">
+              {initials}
             </div>
-          </>
-        ) : (
-          // Guest
-          <>
-            <Button
-              asChild
-              variant="ghost"
-              size="sm"
-              className="border border-white/30 text-white hover:bg-white/10 hover:text-white"
-            >
-              <Link href="/login">Sign In</Link>
-            </Button>
-            <Button
-              asChild
-              size="sm"
-              className="bg-brand-mid hover:bg-brand-mid/80 border-0 text-white"
-            >
-              <Link href="/register">Sign Up</Link>
-            </Button>
-          </>
-        )}
+            <span className="hidden text-sm font-semibold text-white/85 lg:block">
+              {user?.username}
+            </span>
+          </div>
+        </>
+      );
+    }
+
+    return (
+      <>
+        <Button
+          asChild
+          variant="ghost"
+          size="sm"
+          className="border border-white/30 text-white hover:bg-white/10 hover:text-white"
+        >
+          <Link href="/login">Sign In</Link>
+        </Button>
+        <Button
+          asChild
+          size="sm"
+          className="border-0 bg-brand-mid text-white hover:bg-brand-mid/80"
+        >
+          <Link href="/register">Sign Up</Link>
+        </Button>
+      </>
+    );
+  }
+
+  function renderMobileControls() {
+    if (status === "loading") {
+      return <div className="h-8 w-20 animate-pulse rounded-lg bg-white/10" />;
+    }
+
+    if (isAuthenticated) {
+      return (
+        <>
+          <Link
+            href="/notifications"
+            className="relative rounded-lg border border-white/10 bg-white/5 p-2 text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+          >
+            <Bell className="size-4" />
+            <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full border-2 border-brand-dark bg-red-500" />
+          </Link>
+          <div className="bg-brand-mid flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white">
+            {initials}
+          </div>
+        </>
+      );
+    }
+
+    return (
+      <>
+        <Button
+          asChild
+          variant="ghost"
+          size="sm"
+          className="border border-white/25 px-2 text-white hover:bg-white/10 hover:text-white"
+        >
+          <Link href="/login">Sign In</Link>
+        </Button>
+        <Button
+          asChild
+          size="sm"
+          className="border-0 bg-brand-mid px-2 text-white hover:bg-brand-mid/80"
+        >
+          <Link href="/register">Sign Up</Link>
+        </Button>
+      </>
+    );
+  }
+
+  return (
+    <header className="bg-brand-dark sticky top-0 z-50 border-b border-white/10 px-4 py-2.5 sm:px-6 lg:px-12">
+      <div className="relative flex items-center gap-2 sm:gap-4">
+        <div className="flex shrink-0 items-center lg:min-w-[11rem]">
+          <Link
+            href="/"
+            aria-label="Go to homepage"
+            className="group flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/8 text-white transition-opacity hover:opacity-80"
+          >
+            <span className="relative block size-5" aria-hidden="true">
+              <span className="bg-brand-mid absolute left-0 top-0 size-3 rounded-full" />
+              <span className="absolute bottom-0 right-0 size-3 rounded-full border border-white/70" />
+            </span>
+          </Link>
+        </div>
+
+        <div className="min-w-0 flex-1 lg:absolute lg:left-1/2 lg:w-[min(40rem,calc(100vw-30rem))] lg:-translate-x-1/2">
+          <form
+            onSubmit={handleSearchSubmit}
+            className="flex w-full max-w-2xl items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3 py-2 transition-colors focus-within:border-white/30 focus-within:bg-white/15 sm:px-4"
+          >
+            <Search className="size-4 shrink-0 text-white/50" />
+            <input
+              ref={inputRef}
+              type="search"
+              value={currentSearch}
+              onChange={handleSearchChange}
+              placeholder="Search events, categories, places..."
+              className="w-full min-w-0 bg-transparent text-sm text-white placeholder:text-white/45 outline-none"
+            />
+          </form>
+        </div>
+
+        <div className="ml-auto flex shrink-0 items-center justify-end gap-2 sm:gap-3 lg:min-w-[11rem]">
+          <div className="flex items-center gap-2 sm:hidden">{renderMobileControls()}</div>
+          <div className="hidden items-center gap-3 sm:flex">{renderDesktopControls()}</div>
+        </div>
       </div>
     </header>
   );
@@ -130,19 +174,41 @@ export function Navbar({ searchValue, onSearchChange, onSearchSubmit }: NavbarPr
 interface ActionBarProps {
   view: "map" | "list";
   onViewChange: (view: "map" | "list") => void;
+  activeFilterCount: number;
+  onToggleFilters: () => void;
 }
 
-export function ActionBar({ view, onViewChange }: ActionBarProps) {
+export function ActionBar({ view, onViewChange, activeFilterCount, onToggleFilters }: ActionBarProps) {
   const { isAuthenticated } = useAuth();
   const router = useRouter();
+  const toggleButtonClassName =
+    "appearance-none outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-mid/60 focus-visible:ring-offset-2 focus-visible:ring-offset-brand-surface [-webkit-tap-highlight-color:transparent]";
 
   return (
-    <div className="bg-brand-surface border-brand-mid-alpha flex items-center justify-between border-b px-6 py-2 lg:px-12">
-      <div className="flex items-center gap-2">
+    <div className="bg-brand-surface border-brand-mid-alpha flex items-center gap-2 border-b px-4 py-3 sm:px-6 lg:px-12">
+      <button
+        onClick={onToggleFilters}
+        className={cn(
+          "border-brand-mid-alpha text-brand-dark hover:bg-brand-mid-alpha flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-semibold transition-colors lg:hidden",
+          toggleButtonClassName,
+        )}
+        aria-label="Open filters"
+      >
+        <Menu className="size-4" />
+        <span>Filters</span>
+        {activeFilterCount > 0 && (
+          <span className="bg-brand-dark rounded-full px-1.5 py-0.5 text-[10px] font-bold text-white">
+            {activeFilterCount}
+          </span>
+        )}
+      </button>
+
+      <div className="flex min-w-0 items-center gap-2 overflow-x-auto">
         <button
           onClick={() => onViewChange("map")}
           className={cn(
-            "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-semibold transition-colors",
+            "flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-semibold transition-colors",
+            toggleButtonClassName,
             view === "map"
               ? "bg-brand-dark border-brand-dark text-white"
               : "border-brand-mid-alpha text-brand-dark hover:bg-brand-mid-alpha",
@@ -160,7 +226,8 @@ export function ActionBar({ view, onViewChange }: ActionBarProps) {
         <button
           onClick={() => onViewChange("list")}
           className={cn(
-            "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-semibold transition-colors",
+            "flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-semibold transition-colors",
+            toggleButtonClassName,
             view === "list"
               ? "bg-brand-dark border-brand-dark text-white"
               : "border-brand-mid-alpha text-brand-dark hover:bg-brand-mid-alpha",
@@ -176,18 +243,28 @@ export function ActionBar({ view, onViewChange }: ActionBarProps) {
           </svg>
           List
         </button>
+      </div>
 
-        {isAuthenticated && (
+      {isAuthenticated && (
+        <div className="ml-auto flex items-center gap-2">
+          <Button
+            size="icon-sm"
+            onClick={() => router.push("/events/create")}
+            className="border-0 bg-brand-mid text-white hover:bg-brand-mid/80 sm:hidden"
+            aria-label="Create Event"
+          >
+            <Plus className="size-4" />
+          </Button>
           <Button
             size="sm"
             onClick={() => router.push("/events/create")}
-            className="ml-4 gap-1.5 bg-brand-mid hover:bg-brand-mid/80 border-0 text-white"
+            className="hidden gap-1.5 border-0 bg-brand-mid text-white hover:bg-brand-mid/80 sm:flex"
           >
             <Plus className="size-4" />
             Create Event
           </Button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
