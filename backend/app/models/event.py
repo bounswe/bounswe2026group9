@@ -155,12 +155,13 @@ class EventLimitedResponse(BaseModel):
 class EventListItemResponse(BaseModel):
     """Single event card for discovery listing.
 
-    description and primary_image_url are None for:
+    description is None for:
     - private events (always limited in list)
     - guest users viewing public events
     primary_location is None for private events.
     """
     id: UUID
+    host_id: UUID
     title: str
     description: str | None = None
     start_datetime: datetime
@@ -186,5 +187,4 @@ class EventListResponse(BaseModel):
     page: int
     page_size: int
     total_pages: int
-
 
