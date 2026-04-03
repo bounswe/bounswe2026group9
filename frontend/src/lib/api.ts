@@ -32,6 +32,13 @@ export interface LoginPayload {
   password: string;
 }
 
+export interface RegisterPayload {
+  date_of_birth: string;
+  email: string;
+  password: string;
+  username: string;
+}
+
 export class ApiError extends Error {
   body: unknown;
   status: number;
@@ -247,6 +254,17 @@ export async function apiRequest<T>(
 
 export async function login(payload: LoginPayload) {
   const response = await apiRequest<AuthResponse>("/auth/login", {
+    auth: "none",
+    body: payload,
+    method: "POST",
+  });
+
+  setAuthenticatedSession(response);
+  return response;
+}
+
+export async function register(payload: RegisterPayload) {
+  const response = await apiRequest<AuthResponse>("/auth/register", {
     auth: "none",
     body: payload,
     method: "POST",

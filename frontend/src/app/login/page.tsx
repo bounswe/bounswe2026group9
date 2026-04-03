@@ -1,12 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { startTransition, useEffect, useMemo, useState } from "react";
+import { startTransition, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
 
+import { AuthShell } from "@/components/auth/auth-shell";
+import { GuestOnlyRoute } from "@/components/auth/guest-only-route";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/hooks/use-auth";
-import { getBackendBaseUrl, getErrorMessage, getGoogleLoginUrl } from "@/lib/api";
+import { getErrorMessage, getGoogleLoginUrl } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 const reasonMessages: Record<string, string> = {
   "oauth-failed": "Google sign-in could not be completed. Please try again.",
@@ -14,28 +22,65 @@ const reasonMessages: Record<string, string> = {
   "session-expired": "Your session expired. Please sign in again.",
 };
 
+function GoogleIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 48 48" className="size-[1.125rem]">
+      <path
+        fill="#EA4335"
+        d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
+      />
+      <path
+        fill="#4285F4"
+        d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M10.53 28.59a14.5 14.5 0 0 1 0-9.18l-7.98-6.19a24.08 24.08 0 0 0 0 21.56l7.98-6.19z"
+      />
+      <path
+        fill="#34A853"
+        d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
+      />
+    </svg>
+  );
+}
+
+interface AuthInputProps extends Omit<React.ComponentProps<typeof Input>, "className"> {
+  icon: React.ReactNode;
+  rightIcon?: React.ReactNode;
+}
+
+function AuthInput({ icon, rightIcon, ...props }: AuthInputProps) {
+  return (
+    <div className="relative">
+      <span className="text-muted-foreground pointer-events-none absolute top-1/2 left-4 -translate-y-1/2">
+        {icon}
+      </span>
+      <Input className={cn("rounded-2xl pl-12", rightIcon ? "pr-12" : "")} {...props} />
+      {rightIcon ? (
+        <span className="absolute top-1/2 right-4 -translate-y-1/2">{rightIcon}</span>
+      ) : null}
+    </div>
+  );
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isAuthenticated, login, status } = useAuth();
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  const nextPath = useMemo(() => searchParams.get("next") ?? "/dashboard", [searchParams]);
+  const nextPath = useMemo(() => {
+    const candidate = searchParams.get("next");
+
+    return candidate?.startsWith("/") ? candidate : "/dashboard";
+  }, [searchParams]);
   const reason = searchParams.get("reason");
   const bannerMessage = reason ? reasonMessages[reason] : null;
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      return;
-    }
-
-    startTransition(() => {
-      router.replace(nextPath);
-    });
-  }, [isAuthenticated, nextPath, router]);
 
   async function submitLogin() {
     setErrorMessage(null);
@@ -59,116 +104,104 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex flex-1 items-center justify-center px-6 py-16">
-      <section className="grid w-full max-w-5xl gap-10 lg:grid-cols-[1.15fr_0.85fr]">
-        <div className="border-border/70 bg-card/85 shadow-brand-panel space-y-6 rounded-[2rem] border p-8 backdrop-blur sm:p-10">
-          <div className="space-y-3">
-            <p className="text-accent text-sm font-semibold tracking-[0.24em] uppercase">
-              Social Event Mapper
-            </p>
-            <h1 className="text-foreground text-4xl text-balance sm:text-5xl">
-              Frontend session management is now the entry point.
-            </h1>
-            <p className="text-muted-foreground max-w-2xl text-base leading-7 sm:text-lg">
-              Sign in with your backend credentials to exercise the shared API client, automatic
-              access-token injection, refresh rotation, and protected-route handling required by
-              issue #122.
-            </p>
-          </div>
+    <GuestOnlyRoute fallbackPath="/dashboard">
+      <AuthShell>
+        <Card className="border-0 bg-transparent shadow-none">
+          <CardHeader className="px-0 pt-0">
+            <CardTitle className="text-4xl sm:text-[2.7rem]">Welcome back</CardTitle>
+            <CardDescription className="text-base">Sign in to your account</CardDescription>
+          </CardHeader>
 
-          <div className="grid gap-4 md:grid-cols-3">
-            <article className="border-border/70 bg-background/75 shadow-brand-card rounded-2xl border p-5">
-              <p className="text-foreground text-sm font-semibold">Backend origin</p>
-              <p className="text-muted-foreground mt-2 text-sm leading-6 break-all">
-                {getBackendBaseUrl()}
-              </p>
-            </article>
-            <article className="border-border/70 bg-background/75 shadow-brand-card rounded-2xl border p-5">
-              <p className="text-foreground text-sm font-semibold">Session state</p>
-              <p className="text-muted-foreground mt-2 text-sm leading-6">
-                {status === "loading"
-                  ? "Checking whether a refresh cookie already exists."
-                  : "Login keeps the access token in the client session while the backend owns refresh-token persistence."}
-              </p>
-            </article>
-            <article className="border-border/70 bg-background/75 shadow-brand-card rounded-2xl border p-5">
-              <p className="text-foreground text-sm font-semibold">Protected route</p>
-              <p className="text-muted-foreground mt-2 text-sm leading-6">
-                The dashboard calls authenticated endpoints and redirects back here when refresh can
-                no longer recover the session.
-              </p>
-            </article>
-          </div>
-        </div>
+          <CardContent className="px-0 pb-0">
+            {bannerMessage ? (
+              <div className="border-accent/25 bg-accent/10 text-foreground mb-4 rounded-2xl border px-4 py-3 text-sm">
+                {bannerMessage}
+              </div>
+            ) : null}
 
-        <div className="border-border/70 bg-card/92 shadow-brand-panel rounded-[2rem] border p-8 backdrop-blur sm:p-10">
-          <div className="space-y-2">
-            <h2 className="text-foreground text-3xl">Sign in</h2>
-            <p className="text-muted-foreground text-sm leading-6">
-              Use a local account from the backend or continue with Google.
-            </p>
-          </div>
+            {errorMessage ? (
+              <div className="border-destructive/30 bg-destructive/10 text-destructive mb-4 rounded-2xl border px-4 py-3 text-sm">
+                {errorMessage}
+              </div>
+            ) : null}
 
-          {bannerMessage ? (
-            <div className="border-accent/25 bg-accent/10 text-foreground mt-6 rounded-2xl border px-4 py-3 text-sm">
-              {bannerMessage}
+            <form className="space-y-5" onSubmit={handleSubmit}>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <AuthInput
+                  autoComplete="email"
+                  icon={<Mail className="size-[1.05rem]" />}
+                  id="email"
+                  name="email"
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="you@example.com"
+                  type="email"
+                  value={email}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <AuthInput
+                  autoComplete="current-password"
+                  icon={<LockKeyhole className="size-[1.05rem]" />}
+                  id="password"
+                  name="password"
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="Enter your password"
+                  rightIcon={
+                    <button
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      className="text-muted-foreground hover:text-foreground transition-colors"
+                      onClick={() => setShowPassword((current) => !current)}
+                      type="button"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="size-[1.05rem]" />
+                      ) : (
+                        <Eye className="size-[1.05rem]" />
+                      )}
+                    </button>
+                  }
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                />
+              </div>
+
+              <Button
+                className="h-12 w-full rounded-2xl text-sm font-semibold"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Signing in..." : "Sign In"}
+              </Button>
+            </form>
+
+            <div className="my-6 flex items-center gap-4">
+              <Separator className="flex-1" />
+              <span className="text-muted-foreground text-sm">or</span>
+              <Separator className="flex-1" />
             </div>
-          ) : null}
 
-          {errorMessage ? (
-            <div className="border-destructive/30 bg-destructive/10 text-destructive mt-4 rounded-2xl border px-4 py-3 text-sm">
-              {errorMessage}
-            </div>
-          ) : null}
-
-          <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
-            <label className="block space-y-2">
-              <span className="text-foreground text-sm font-medium">Email</span>
-              <input
-                autoComplete="email"
-                className="border-border bg-background/75 text-foreground focus:border-ring focus:ring-ring/20 h-12 w-full rounded-2xl border px-4 text-sm transition outline-none focus:ring-3"
-                name="email"
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="you@example.com"
-                type="email"
-                value={email}
-              />
-            </label>
-
-            <label className="block space-y-2">
-              <span className="text-foreground text-sm font-medium">Password</span>
-              <input
-                autoComplete="current-password"
-                className="border-border bg-background/75 text-foreground focus:border-ring focus:ring-ring/20 h-12 w-full rounded-2xl border px-4 text-sm transition outline-none focus:ring-3"
-                name="password"
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="Enter your password"
-                type="password"
-                value={password}
-              />
-            </label>
-
-            <Button className="h-12 w-full rounded-2xl text-sm" disabled={isSubmitting}>
-              {isSubmitting ? "Signing in..." : "Sign in with email"}
-            </Button>
-          </form>
-
-          <div className="mt-4">
-            <Button asChild className="h-12 w-full rounded-2xl" variant="secondary">
-              <a href={getGoogleLoginUrl()} rel="noreferrer">
+            <Button
+              asChild
+              className="h-12 w-full rounded-2xl text-sm font-semibold"
+              variant="outline"
+            >
+              <a href={getGoogleLoginUrl("login")} rel="noreferrer">
+                <GoogleIcon />
                 Continue with Google
               </a>
             </Button>
-          </div>
 
-          <div className="text-muted-foreground mt-6 flex flex-wrap items-center gap-3 text-sm">
-            <Button asChild size="sm" variant="outline">
-              <Link href="/">Back home</Link>
-            </Button>
-            <span>Refresh handling will redirect protected flows back here.</span>
-          </div>
-        </div>
-      </section>
-    </main>
+            <p className="text-muted-foreground mt-6 text-center text-sm">
+              Don&apos;t have an account?{" "}
+              <Link className="text-accent font-semibold hover:underline" href="/register">
+                Sign Up
+              </Link>
+            </p>
+          </CardContent>
+        </Card>
+      </AuthShell>
+    </GuestOnlyRoute>
   );
 }
