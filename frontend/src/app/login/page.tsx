@@ -1,5 +1,7 @@
 "use client";
 
+import { Suspense } from "react";
+
 import Link from "next/link";
 import { startTransition, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -64,7 +66,7 @@ function AuthInput({ icon, rightIcon, ...props }: AuthInputProps) {
   );
 }
 
-export default function LoginPage() {
+function LoginPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login } = useAuth();
@@ -203,5 +205,13 @@ export default function LoginPage() {
         </Card>
       </AuthShell>
     </GuestOnlyRoute>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginPageInner />
+    </Suspense>
   );
 }

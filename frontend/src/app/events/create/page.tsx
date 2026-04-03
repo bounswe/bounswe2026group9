@@ -1,5 +1,11 @@
+import { Suspense } from "react";
+
 import { EventEditor } from "@/components/events/event-editor";
 
 export default function CreateEventPage() {
-  return <EventEditor mode="create" />;
+  return (
+    <Suspense>
+      <EventEditor mode="create" />
+    </Suspense>
+  );
 }

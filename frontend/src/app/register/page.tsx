@@ -1,5 +1,7 @@
 "use client";
 
+import { Suspense } from "react";
+
 import Link from "next/link";
 import { startTransition, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -183,7 +185,7 @@ function PasswordRequirement({ isMet, label }: { isMet: boolean; label: string }
   );
 }
 
-export default function RegisterPage() {
+function RegisterPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { register } = useAuth();
@@ -461,5 +463,13 @@ export default function RegisterPage() {
         </Card>
       </AuthShell>
     </GuestOnlyRoute>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense>
+      <RegisterPageInner />
+    </Suspense>
   );
 }
