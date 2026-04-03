@@ -107,13 +107,14 @@ docker compose -f docker-compose.prod.yml up -d
 The compose file is set up for reverse proxy deployment:
 
 - backend listens on container port `8000`
-- host binds only `127.0.0.1:8000`
-- nginx should proxy public traffic to that local port
+- frontend listens on container port `3000`
+- host binds only `127.0.0.1:8000` and `127.0.0.1:3000`
+- nginx serves the frontend from `/` and proxies backend API traffic to the backend container
 
-Set the Docker image with `BACKEND_IMAGE`, for example:
+Set the Docker images with `BACKEND_IMAGE` and `FRONTEND_IMAGE`, for example:
 
 ```bash
-BACKEND_IMAGE=username/sem:latest docker compose -f docker-compose.prod.yml up -d
+BACKEND_IMAGE=username/sem:latest FRONTEND_IMAGE=username/sem:frontend-latest docker compose -f docker-compose.prod.yml up -d
 ```
 
 ### EC2 bootstrap
@@ -128,9 +129,10 @@ After bootstrap, reconnect via SSH so the `docker` group is active.
 
 ### Nginx reverse proxy
 
-For the current root-domain deploy, use `deploy/nginx/ec2-public-ip.conf`.
+For the current root-domain deploy:
 
-A starter nginx site config is available at `deploy/nginx/api.example.com.conf`.
+- `deploy/nginx/ec2-public-ip.conf` is the HTTP-only bootstrap config
+- `deploy/nginx/ec2-https.conf` is the cert-aware HTTPS config used after Let's Encrypt is installed
 
 Typical setup on Ubuntu:
 
@@ -154,20 +156,22 @@ The production workflow is defined in `.github/workflows/deploy.yml`.
 
 Current behavior:
 
-- builds `backend/Dockerfile`
-- pushes `DOCKERHUB_USERNAME/sem:latest`
-- uploads `docker-compose.prod.yml`, nginx config, and generated `.env.production` to EC2
-- reloads nginx
-- pulls and restarts the backend container on EC2
-- verifies both local container health and public `BACKEND_URL/health`
-
-If a Let's Encrypt certificate is already present on the server, deploy leaves the live nginx site file in place so certbot-managed HTTPS settings are not overwritten.
+- builds `backend/Dockerfile` and `frontend/Dockerfile`
+- pushes `DOCKERHUB_USERNAME/sem:latest` and `DOCKERHUB_USERNAME/sem:frontend-latest`
+- uploads `docker-compose.prod.yml`, nginx configs, and generated backend `.env.production` to EC2
+- refreshes the live nginx site file with the correct HTTP or HTTPS template
+- pulls and restarts both frontend and backend containers on EC2
+- verifies backend health plus frontend availability both locally and through the public domain
 
 ### HTTPS setup
 
 ```bash
 sudo certbot --nginx -d thesocialeventmapper.social
 ```
+
+After HTTPS is enabled, deployment switches to the `deploy/nginx/ec2-https.conf`
+template so the live site continues serving TLS traffic while routing `/` to the
+frontend container and API paths to the backend container.
 
 ## API Endpoints
 
