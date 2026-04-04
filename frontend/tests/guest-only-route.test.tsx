@@ -23,7 +23,7 @@ vi.mock("next/navigation", () => ({
 describe("GuestOnlyRoute", () => {
   beforeEach(() => {
     replaceMock.mockReset();
-    useSearchParamsMock.mockReturnValue(new URLSearchParams("next=/events/create"));
+    useSearchParamsMock.mockReturnValue(new URLSearchParams("next=/create-event"));
   });
 
   afterEach(() => {
@@ -88,7 +88,7 @@ describe("GuestOnlyRoute", () => {
     );
 
     await waitFor(() => {
-      expect(replaceMock).toHaveBeenCalledWith("/events/create");
+      expect(replaceMock).toHaveBeenCalledWith("/create-event");
     });
   });
 });

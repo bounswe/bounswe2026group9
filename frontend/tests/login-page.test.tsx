@@ -58,7 +58,7 @@ describe("LoginPage", () => {
       email: "alice@example.com",
       username: "alice",
     });
-    useSearchParamsMock.mockReturnValue(new URLSearchParams("next=/events/create"));
+    useSearchParamsMock.mockReturnValue(new URLSearchParams("next=/create-event"));
 
     render(<LoginPage />);
 
@@ -74,7 +74,7 @@ describe("LoginPage", () => {
     });
 
     await waitFor(() => {
-      expect(replaceMock).toHaveBeenCalledWith("/events/create");
+      expect(replaceMock).toHaveBeenCalledWith("/create-event");
     });
   });
 

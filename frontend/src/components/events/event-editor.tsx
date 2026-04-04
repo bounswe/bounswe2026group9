@@ -33,6 +33,7 @@ import { Input } from "@/components/ui/input";
 import { Navbar } from "@/components/layout/navbar";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { CREATE_EVENT_PAGE_PATH, getEditEventPagePath } from "@/lib/event-routes";
 import {
   changeEventStatus,
   createEvent,
@@ -533,7 +534,7 @@ export function EventEditor({ eventId, mode }: EventEditorProps) {
     () => categories.filter((category) => formValues.categoryIds.includes(category.id)),
     [categories, formValues.categoryIds],
   );
-  const editHref = persistedEventId ? `/events/${persistedEventId}/edit` : undefined;
+  const editHref = persistedEventId ? getEditEventPagePath(persistedEventId) : undefined;
   const activeLocation = useMemo(
     () => formValues.locations.find((location) => location.id === activeLocationId) ?? null,
     [activeLocationId, formValues.locations],
@@ -900,7 +901,7 @@ export function EventEditor({ eventId, mode }: EventEditorProps) {
       setFeedback({ message: "Event published successfully.", tone: "success" });
 
       if (mode === "create") {
-        router.replace(`/events/${publishedEvent.id}/edit`);
+        router.replace(getEditEventPagePath(publishedEvent.id));
       }
     } catch (error) {
       setFeedback({
@@ -1053,7 +1054,7 @@ export function EventEditor({ eventId, mode }: EventEditorProps) {
                   ? "border-brand-dark text-foreground"
                   : "text-foreground/60 hover:text-foreground/90 border-transparent",
               )}
-              href="/events/create"
+              href={CREATE_EVENT_PAGE_PATH}
             >
               Create Event
             </Link>
