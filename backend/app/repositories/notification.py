@@ -82,6 +82,18 @@ def mark_all_notifications_as_read(db: Client, user_id: str) -> int:
     return updated_count
 
 
+def get_unread_count(db: Client, user_id: str) -> int:
+    """Return the number of unread notifications for a user."""
+    result = (
+        db.table("notifications")
+        .select("id", count="exact")
+        .eq("user_id", user_id)
+        .eq("is_read", False)
+        .execute()
+    )
+    return result.count or 0
+
+
 def insert_notification(db: Client, data: dict) -> dict | None:
     """Insert a new notification."""
     result = db.table("notifications").insert(data).execute()

@@ -33,7 +33,7 @@ export function useEventInteraction({
   initialGoingCount,
   fresh = false,
 }: UseEventInteractionArgs) {
-  const data = {
+  const data: EventInteraction = {
     bookmarked: initialBookmarked,
     bookmarkCount: Math.max(initialBookmarkCount, initialBookmarked ? 1 : 0),
     going: initialGoing,

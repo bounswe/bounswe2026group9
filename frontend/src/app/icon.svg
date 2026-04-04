@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Dark background -->
+  <rect width="32" height="32" rx="7" fill="#493628"/>
+  <!-- Brand-mid filled circle (top-left) -->
+  <circle cx="13" cy="13" r="9" fill="#ab886d"/>
+  <!-- White outlined circle (bottom-right) -->
+  <circle cx="19" cy="19" r="9" fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="2"/>
+</svg>

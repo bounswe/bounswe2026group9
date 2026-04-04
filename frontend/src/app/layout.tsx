@@ -13,7 +13,7 @@ import { AuthProvider } from "@/providers/auth-provider";
 
 export const metadata: Metadata = {
   title: "Social Event Mapper",
-  description: "Frontend application for Social Event Mapper",
+  description: "Discover and share events happening around you.",
 };
 
 export default function RootLayout({

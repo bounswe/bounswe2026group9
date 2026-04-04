@@ -19,6 +19,7 @@ class NotificationListResponse(BaseModel):
     """Paginated notification list."""
     items: list[NotificationResponse]
     total: int
+    unread_count: int
     page: int
     page_size: int
     total_pages: int
@@ -33,3 +34,8 @@ class NotificationReadResponse(BaseModel):
 class NotificationReadAllResponse(BaseModel):
     """Bulk mark-as-read response."""
     updated_count: int
+
+
+class NotificationUnreadCountResponse(BaseModel):
+    """Unread notification count."""
+    unread_count: int

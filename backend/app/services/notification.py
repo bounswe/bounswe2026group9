@@ -8,6 +8,7 @@ from app.models.notification import (
     NotificationReadAllResponse,
     NotificationReadResponse,
     NotificationResponse,
+    NotificationUnreadCountResponse,
 )
 from app.repositories import notification as notification_repo
 
@@ -18,11 +19,13 @@ def list_notifications(
     items, total = notification_repo.get_notifications_by_user(
         db, user_id, page=page, page_size=page_size
     )
+    unread_count = notification_repo.get_unread_count(db, user_id)
     total_pages = (total + page_size - 1) // page_size if total > 0 else 0
 
     return NotificationListResponse(
         items=[NotificationResponse(**n) for n in items],
         total=total,
+        unread_count=unread_count,
         page=page,
         page_size=page_size,
         total_pages=total_pages,
@@ -48,3 +51,8 @@ def mark_as_read(db: Client, notification_id: str, user_id: str) -> Notification
 def mark_all_as_read(db: Client, user_id: str) -> NotificationReadAllResponse:
     count = notification_repo.mark_all_notifications_as_read(db, user_id)
     return NotificationReadAllResponse(updated_count=count)
+
+
+def get_unread_count(db: Client, user_id: str) -> NotificationUnreadCountResponse:
+    count = notification_repo.get_unread_count(db, user_id)
+    return NotificationUnreadCountResponse(unread_count=count)
