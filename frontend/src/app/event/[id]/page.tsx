@@ -803,8 +803,8 @@ export default function EventDetailPage() {
 
   useEffect(() => {
     // Wait for session to initialize so the token is available before fetching.
-    // Without this, the request races with refreshSession and sends no token,
-    // causing the backend to return a limited/guest response for logged-in users.
+    // Without this, the request races with refreshSession and may send no token,
+    // causing the backend to return a limited/guest response even for logged-in users.
     if (!id || !isInitialized) return;
     setLoading(true);
     setNotFound(false);

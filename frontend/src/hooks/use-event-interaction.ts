@@ -33,34 +33,28 @@ export function useEventInteraction({
   initialGoingCount,
   fresh = false,
 }: UseEventInteractionArgs) {
-  // Seed store once on mount (or when eventId changes), not on every render
-  const [seeded, setSeeded] = useState(false);
-  useEffect(() => {
-    const data: EventInteraction = {
-      bookmarked: initialBookmarked,
-      bookmarkCount: Math.max(initialBookmarkCount, initialBookmarked ? 1 : 0),
-      going: initialGoing,
-      goingCount: Math.max(initialGoingCount, initialGoing ? 1 : 0),
-    };
-    if (fresh) {
-      refreshInteraction(eventId, data);
-    } else {
-      initInteraction(eventId, data);
-    }
-    setSeeded(true);
-    // Only run on mount / eventId change — initial values are captured once
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eventId]);
-
-  const [, tick] = useState(0);
-  useEffect(() => subscribe(() => tick((n) => n + 1)), []);
-
-  const state = getInteraction(eventId) ?? {
+  const data: EventInteraction = {
     bookmarked: initialBookmarked,
     bookmarkCount: Math.max(initialBookmarkCount, initialBookmarked ? 1 : 0),
     going: initialGoing,
     goingCount: Math.max(initialGoingCount, initialGoing ? 1 : 0),
   };
+  // Always init during render (safe — initInteraction never calls notify)
+  initInteraction(eventId, data);
+
+  const [, tick] = useState(0);
+  useEffect(() => subscribe(() => tick((n) => n + 1)), []);
+
+  // refreshInteraction calls notify() which triggers state updates — must be in useEffect
+  useEffect(() => {
+    if (fresh) {
+      refreshInteraction(eventId, data);
+    }
+    // data is intentionally excluded from deps: we only want to refresh on eventId change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId, fresh]);
+
+  const state = getInteraction(eventId)!;
 
   async function toggleBookmark() {
     const prev = state.bookmarked;
