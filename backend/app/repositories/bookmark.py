@@ -41,6 +41,31 @@ def get_bookmarks_by_user(
     return result.data or [], result.count or 0
 
 
+def get_bookmark_count_for_event(db: Client, event_id: str) -> int:
+    result = (
+        db.table("bookmarks")
+        .select("id", count="exact")
+        .eq("event_id", event_id)
+        .execute()
+    )
+    return result.count or 0
+
+
+def get_bookmark_counts_for_events(db: Client, event_ids: list[str]) -> dict[str, int]:
+    if not event_ids:
+        return {}
+    result = (
+        db.table("bookmarks")
+        .select("event_id")
+        .in_("event_id", event_ids)
+        .execute()
+    )
+    counts = {eid: 0 for eid in event_ids}
+    for row in (result.data or []):
+        counts[row["event_id"]] += 1
+    return counts
+
+
 def get_bookmark_status_for_events(
     db: Client, user_id: str, event_ids: list[str]
 ) -> set[str]:

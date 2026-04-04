@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 class CommentCreateRequest(BaseModel):
     text: str = Field(min_length=1)
+    parent_id: UUID | None = None
 
 
 class CommentAuthor(BaseModel):
@@ -19,6 +20,8 @@ class CommentResponse(BaseModel):
     user: CommentAuthor
     text: str
     created_at: datetime
+    parent_id: UUID | None = None
+    replies: list["CommentResponse"] = []
 
 
 class CommentListResponse(BaseModel):

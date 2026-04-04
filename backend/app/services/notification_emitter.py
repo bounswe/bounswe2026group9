@@ -6,15 +6,15 @@ from app.repositories import notification as notification_repo
 
 
 def _get_affected_user_ids(db: Client, event_id: str) -> set[str]:
-    """Get unique user IDs who bookmarked or are attending (going/interested) the event."""
+    """Get unique user IDs who bookmarked or are going to the event."""
     user_ids: set[str] = set()
 
-    # Attendees (going or interested)
+    # Attendees (going only — interested status removed, bookmark covers that role)
     attendees = (
         db.table("attendances")
         .select("user_id")
         .eq("event_id", event_id)
-        .in_("status", ["going", "interested"])
+        .eq("status", "going")
         .execute()
     )
     for row in (attendees.data or []):

@@ -12,10 +12,10 @@ from app.repositories import user as user_repo
 
 
 def set_attendance(db: Client, event_id: str, user_id: str, target_status: str) -> AttendanceResponse:
-    if target_status not in ("going", "interested"):
+    if target_status != "going":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid status. Must be 'going' or 'interested'",
+            detail="Invalid status. Must be 'going'",
         )
 
     event = event_repo.get_event_by_id(db, event_id)

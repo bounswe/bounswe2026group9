@@ -12,6 +12,35 @@ from app.models.comment import (
 from app.repositories import comment as comment_repo
 from app.repositories import event as event_repo
 
+MAX_NESTING_DEPTH = 3
+
+
+def _get_nesting_depth(db: Client, parent_id: str) -> int:
+    """Walk up the parent chain to calculate depth (1-indexed). Capped to prevent cycles."""
+    depth = 0
+    current = parent_id
+    while current:
+        depth += 1
+        if depth > MAX_NESTING_DEPTH + 1:
+            break  # Safety valve against data corruption cycles
+        comment = comment_repo.get_comment_by_id(db, current)
+        if not comment:
+            break
+        current = comment.get("parent_id")
+    return depth
+
+
+def _build_comment_tree(flat: list[CommentResponse]) -> list[CommentResponse]:
+    """Assemble flat comment list into a nested tree."""
+    by_id: dict[str, CommentResponse] = {str(c.id): c for c in flat}
+    roots: list[CommentResponse] = []
+    for c in flat:
+        if c.parent_id and str(c.parent_id) in by_id:
+            by_id[str(c.parent_id)].replies.append(c)
+        else:
+            roots.append(c)
+    return roots
+
 
 def create_comment(
     db: Client, event_id: str, user_id: str, body: CommentCreateRequest
@@ -28,11 +57,31 @@ def create_comment(
             detail="Cannot comment on this event",
         )
 
-    comment = comment_repo.insert_comment(db, {
+    parent_id_str: str | None = None
+    if body.parent_id:
+        parent_id_str = str(body.parent_id)
+        parent = comment_repo.get_comment_by_id(db, parent_id_str)
+        if not parent or parent["event_id"] != event_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Parent comment not found",
+            )
+        depth = _get_nesting_depth(db, parent_id_str)
+        if depth >= MAX_NESTING_DEPTH:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Maximum nesting depth of {MAX_NESTING_DEPTH} reached",
+            )
+
+    data: dict = {
         "event_id": event_id,
         "user_id": user_id,
         "text": body.text,
-    })
+    }
+    if parent_id_str:
+        data["parent_id"] = parent_id_str
+
+    comment = comment_repo.insert_comment(db, data)
 
     user = comment_repo.get_user_by_id(db, user_id)
     return CommentResponse(
@@ -41,6 +90,7 @@ def create_comment(
         user=CommentAuthor(id=user["id"], username=user["username"]),
         text=comment["text"],
         created_at=comment["created_at"],
+        parent_id=comment.get("parent_id"),
     )
 
 
@@ -66,7 +116,7 @@ def list_comments(
     user_ids = list({c["user_id"] for c in comments})
     users = comment_repo.get_users_by_ids(db, user_ids)
 
-    items = [
+    flat = [
         CommentResponse(
             id=c["id"],
             event_id=c["event_id"],
@@ -76,10 +126,13 @@ def list_comments(
             ),
             text=c["text"],
             created_at=c["created_at"],
+            parent_id=c.get("parent_id"),
         )
         for c in comments
         if c["user_id"] in users
     ]
+
+    items = _build_comment_tree(flat)
 
     return CommentListResponse(
         items=items, total=total, page=page, page_size=page_size, total_pages=total_pages

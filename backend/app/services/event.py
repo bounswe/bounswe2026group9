@@ -200,7 +200,7 @@ def _build_detail_response(
     is_bookmarked: bool | None = None,
     attendance_status: str | None = None,
     going_count: int | None = None,
-    interested_count: int = 0,
+    bookmark_count: int = 0,
 ) -> EventDetailResponse:
     actual_going = going_count if going_count is not None else event["attendee_count"]
     is_full = None
@@ -224,7 +224,7 @@ def _build_detail_response(
         is_bookmarked=is_bookmarked,
         attendance_status=attendance_status,
         going_count=actual_going,
-        interested_count=interested_count,
+        bookmark_count=bookmark_count,
         is_full=is_full,
         locations=locations,
         categories=categories,
@@ -279,7 +279,7 @@ def get_event_detail(
         if attendance:
             attendance_status = attendance["status"]
 
-    interested_count = attendance_repo.get_interested_count_for_event(db, event_id)
+    bookmark_count = bookmark_repo.get_bookmark_count_for_event(db, event_id)
 
     # Cancelled events show limited info with cancellation label
     if event["status"] == "cancelled" and (not user_id or event["host_id"] != user_id):
@@ -327,7 +327,7 @@ def get_event_detail(
         is_bookmarked=is_bookmarked,
         attendance_status=attendance_status,
         going_count=event["attendee_count"],
-        interested_count=interested_count
+        bookmark_count=bookmark_count
     )
 
 
@@ -559,13 +559,13 @@ def list_events(
     categories_by_event = event_repo.get_categories_for_events(db, event_ids)
     images_by_event = event_repo.get_primary_images_for_events(db, event_ids)
 
-    is_bookmarked_map = set()
+    is_bookmarked_map: set[str] = set()
     attendance_status_map: dict[str, str] = {}
     if user_id:
         is_bookmarked_map = bookmark_repo.get_bookmark_status_for_events(db, user_id, event_ids)
         attendance_status_map = attendance_repo.get_attendance_status_for_events(db, user_id, event_ids)
 
-    interested_counts = attendance_repo.get_interested_counts_for_events(db, event_ids)
+    bookmark_counts = bookmark_repo.get_bookmark_counts_for_events(db, event_ids)
 
     items = []
     for event in events:
@@ -587,7 +587,7 @@ def list_events(
             is_bookmarked=(event["id"] in is_bookmarked_map) if user_id else None,
             attendance_status=attendance_status_map.get(event["id"]) if user_id else None,
             going_count=event["attendee_count"],
-            interested_count=interested_counts.get(event["id"], 0),
+            bookmark_count=bookmark_counts.get(event["id"], 0),
             is_full=(event["attendee_count"] >= event["attendee_limit"]) if event["attendee_limit"] is not None else None,
             categories=categories_by_event.get(event["id"], []),
             # Location visible to all (needed for map view, even for private events)
