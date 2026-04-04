@@ -97,7 +97,7 @@ export function Navbar({
     if (isAuthenticated) {
       return (
         <>
-          <Link href="/notifications" className="relative text-white/70 transition-colors hover:text-white">
+          <Link href="/inbox" className="relative text-white/70 transition-colors hover:text-white">
             <Bell className="size-5" />
             {unreadCount > 0 && (
               <span className="absolute -right-1.5 -top-1.5 flex size-4 items-center justify-center rounded-full border-2 border-brand-dark bg-red-500 text-[9px] font-bold leading-none text-white">
@@ -162,7 +162,7 @@ export function Navbar({
       return (
         <>
           <Link
-            href="/notifications"
+            href="/inbox"
             className="relative rounded-lg border border-white/10 bg-white/5 p-2 text-white/80 transition-colors hover:bg-white/10 hover:text-white"
           >
             <Bell className="size-4" />
