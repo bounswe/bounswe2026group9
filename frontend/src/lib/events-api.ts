@@ -290,3 +290,68 @@ export async function deleteComment(eventId: string, commentId: string): Promise
 export async function fetchHostProfile(userId: string): Promise<HostProfile> {
   return apiRequest<HostProfile>(`/users/${userId}/profile`);
 }
+
+// ─── Notification Types ──────────────────────────────────────────────────────
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  event_id: string | null;
+  type: string;
+  message: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+export interface NotificationListResponse {
+  items: Notification[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface NotificationReadResponse {
+  id: string;
+  is_read: boolean;
+}
+
+export interface NotificationReadAllResponse {
+  updated_count: number;
+}
+
+// ─── Notification API Functions ──────────────────────────────────────────────
+
+export async function fetchNotifications(
+  page = 1,
+  pageSize = 20,
+): Promise<NotificationListResponse> {
+  return apiRequest<NotificationListResponse>(
+    `/notifications?page=${page}&page_size=${pageSize}`,
+    { auth: "required" },
+  );
+}
+
+export async function markNotificationRead(
+  notificationId: string,
+): Promise<NotificationReadResponse> {
+  return apiRequest<NotificationReadResponse>(
+    `/notifications/${notificationId}/read`,
+    { method: "PATCH", auth: "required" },
+  );
+}
+
+export async function markAllNotificationsRead(): Promise<NotificationReadAllResponse> {
+  return apiRequest<NotificationReadAllResponse>(
+    `/notifications/read-all`,
+    { method: "PATCH", auth: "required" },
+  );
+}
+
+export async function fetchUnreadNotificationCount(): Promise<number> {
+  const res = await apiRequest<{ unread_count: number }>(
+    `/notifications/unread-count`,
+    { auth: "required" },
+  );
+  return res.unread_count;
+}

@@ -33,23 +33,34 @@ export function useEventInteraction({
   initialGoingCount,
   fresh = false,
 }: UseEventInteractionArgs) {
-  const data = {
+  // Seed store once on mount (or when eventId changes), not on every render
+  const [seeded, setSeeded] = useState(false);
+  useEffect(() => {
+    const data: EventInteraction = {
+      bookmarked: initialBookmarked,
+      bookmarkCount: Math.max(initialBookmarkCount, initialBookmarked ? 1 : 0),
+      going: initialGoing,
+      goingCount: Math.max(initialGoingCount, initialGoing ? 1 : 0),
+    };
+    if (fresh) {
+      refreshInteraction(eventId, data);
+    } else {
+      initInteraction(eventId, data);
+    }
+    setSeeded(true);
+    // Only run on mount / eventId change — initial values are captured once
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId]);
+
+  const [, tick] = useState(0);
+  useEffect(() => subscribe(() => tick((n) => n + 1)), []);
+
+  const state = getInteraction(eventId) ?? {
     bookmarked: initialBookmarked,
     bookmarkCount: Math.max(initialBookmarkCount, initialBookmarked ? 1 : 0),
     going: initialGoing,
     goingCount: Math.max(initialGoingCount, initialGoing ? 1 : 0),
   };
-  // Detail page passes fresh=true to overwrite stale card data with server truth
-  if (fresh) {
-    refreshInteraction(eventId, data);
-  } else {
-    initInteraction(eventId, data);
-  }
-
-  const [, tick] = useState(0);
-  useEffect(() => subscribe(() => tick((n) => n + 1)), []);
-
-  const state = getInteraction(eventId)!;
 
   async function toggleBookmark() {
     const prev = state.bookmarked;

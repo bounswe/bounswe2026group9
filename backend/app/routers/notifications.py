@@ -10,14 +10,24 @@ from app.models.notification import (
     NotificationListResponse,
     NotificationReadAllResponse,
     NotificationReadResponse,
+    NotificationUnreadCountResponse,
 )
 from app.services.notification import (
+    get_unread_count,
     list_notifications,
     mark_all_as_read,
     mark_as_read,
 )
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
+
+
+@router.get("/unread-count", response_model=NotificationUnreadCountResponse)
+def unread_count_endpoint(
+    user_id: str = Depends(get_current_user_id),
+):
+    db = get_supabase()
+    return get_unread_count(db, user_id)
 
 
 @router.patch("/read-all", response_model=NotificationReadAllResponse)

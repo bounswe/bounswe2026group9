@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Bell, LogOut, Menu, Plus, Search } from "lucide-react";
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { CREATE_EVENT_PAGE_PATH } from "@/lib/event-routes";
+import { fetchUnreadNotificationCount } from "@/lib/events-api";
 import { cn } from "@/lib/utils";
 
 interface NavbarProps {
@@ -25,11 +26,31 @@ export function Navbar({
   showSearch = true,
 }: NavbarProps) {
   const { isAuthenticated, logout, status, user } = useAuth();
+  const pathname = usePathname();
 
   // Uncontrolled internal state when parent doesn't own search
   const [internalSearch, setInternalSearch] = useState(searchValue ?? "");
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const loadUnreadCount = useCallback(async () => {
+    try {
+      const count = await fetchUnreadNotificationCount();
+      setUnreadCount(count);
+    } catch {
+      // silently fail
+    }
+  }, []);
+
+  // Reload unread count on mount, auth change, and page navigation
+  useEffect(() => {
+    if (isAuthenticated) {
+      void loadUnreadCount();
+    } else {
+      setUnreadCount(0);
+    }
+  }, [isAuthenticated, loadUnreadCount, pathname]);
 
   const currentSearch = searchValue ?? internalSearch;
 
@@ -71,7 +92,11 @@ export function Navbar({
         <>
           <Link href="/notifications" className="relative text-white/70 transition-colors hover:text-white">
             <Bell className="size-5" />
-            <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full border-2 border-brand-dark bg-red-500" />
+            {unreadCount > 0 && (
+              <span className="absolute -right-1.5 -top-1.5 flex size-4 items-center justify-center rounded-full border-2 border-brand-dark bg-red-500 text-[9px] font-bold leading-none text-white">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
           </Link>
 
           <div className="flex items-center gap-2">
@@ -134,7 +159,11 @@ export function Navbar({
             className="relative rounded-lg border border-white/10 bg-white/5 p-2 text-white/80 transition-colors hover:bg-white/10 hover:text-white"
           >
             <Bell className="size-4" />
-            <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full border-2 border-brand-dark bg-red-500" />
+            {unreadCount > 0 && (
+              <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full border-2 border-brand-dark bg-red-500 text-[9px] font-bold leading-none text-white">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
           </Link>
           <div className="bg-brand-mid flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white">
             {initials}

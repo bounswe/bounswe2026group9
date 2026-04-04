@@ -33,3 +33,8 @@ class NotificationReadResponse(BaseModel):
 class NotificationReadAllResponse(BaseModel):
     """Bulk mark-as-read response."""
     updated_count: int
+
+
+class NotificationUnreadCountResponse(BaseModel):
+    """Unread notification count."""
+    unread_count: int
