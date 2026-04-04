@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -116,9 +117,11 @@ fun DiscoveryScreen(
                         }
                     }
                 }
-                uiState.events.isEmpty() -> {
+                uiState.displayedEvents.isEmpty() -> {
                     Text(
-                        "No events found",
+                        if (uiState.bookmarkedOnly) "No bookmarked events"
+                        else if (uiState.goingOnly) "No events you're going to"
+                        else "No events found",
                         modifier = Modifier.align(Alignment.Center),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -126,7 +129,7 @@ fun DiscoveryScreen(
                 else -> {
                     if (isMapView) {
                         EventMapView(
-                            events = uiState.events,
+                            events = uiState.displayedEvents,
                             onEventClick = onEventClick
                         )
                     } else {
@@ -135,7 +138,7 @@ fun DiscoveryScreen(
                             contentPadding = PaddingValues(16.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            items(uiState.events, key = { it.id }) { event ->
+                            items(uiState.displayedEvents, key = { it.id }) { event ->
                                 EventCard(event = event, onClick = { onEventClick(event.id) })
                             }
                             if (uiState.isLoadingMore) {
@@ -164,8 +167,11 @@ fun DiscoveryScreen(
         ) {
             FilterSheetContent(
                 uiState = uiState,
+                isLoggedIn = token != null,
                 onTemporalSelect = viewModel::onTemporalSelected,
                 onCategorySelect = viewModel::onCategorySelected,
+                onBookmarkedToggle = viewModel::onBookmarkedOnlyToggle,
+                onGoingToggle = viewModel::onGoingOnlyToggle,
                 onClear = {
                     viewModel.clearFilters()
                     scope.launch { sheetState.hide() }.invokeOnCompletion { showFilterSheet = false }
@@ -336,8 +342,11 @@ private fun DiscoveryTopBar(
 @Composable
 private fun FilterSheetContent(
     uiState: DiscoveryUiState,
+    isLoggedIn: Boolean,
     onTemporalSelect: (String?) -> Unit,
     onCategorySelect: (String?) -> Unit,
+    onBookmarkedToggle: () -> Unit,
+    onGoingToggle: () -> Unit,
     onClear: () -> Unit,
     onApply: () -> Unit
 ) {
@@ -360,7 +369,8 @@ private fun FilterSheetContent(
                 fontSize = 18.sp,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            if (uiState.selectedTemporal != null || uiState.selectedCategoryId != null) {
+            if (uiState.selectedTemporal != null || uiState.selectedCategoryId != null ||
+            uiState.bookmarkedOnly || uiState.goingOnly) {
                 TextButton(onClick = onClear) {
                     Text("Clear All", color = MaterialTheme.colorScheme.tertiary, fontSize = 13.sp)
                 }
@@ -386,7 +396,10 @@ private fun FilterSheetContent(
                     letterSpacing = 2.sp,
                     color = MaterialTheme.colorScheme.tertiary
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     listOf("today" to "Today", "this_week" to "This Week", "upcoming" to "Upcoming")
                         .forEach { (key, label) ->
                             val selected = uiState.selectedTemporal == key
@@ -394,6 +407,18 @@ private fun FilterSheetContent(
                                 onTemporalSelect(key)
                             }
                         }
+                    if (isLoggedIn) {
+                        FilterPill(
+                            label = "🔖 Bookmarked",
+                            selected = uiState.bookmarkedOnly,
+                            onClick = onBookmarkedToggle
+                        )
+                        FilterPill(
+                            label = "✓ Going",
+                            selected = uiState.goingOnly,
+                            onClick = onGoingToggle
+                        )
+                    }
                 }
             }
 

@@ -1,9 +1,13 @@
 package com.bounswe.group9.mobile.data.remote
 
+import com.google.gson.JsonObject
+import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
+import retrofit2.http.Path
 import retrofit2.http.Query
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
@@ -56,6 +60,7 @@ data class EventListItemDto(
     val attendee_count: Int,
     val status: String,
     val is_bookmarked: Boolean?,
+    val attendance_status: String?,
     val going_count: Int,
     val interested_count: Int,
     val is_full: Boolean?,
@@ -71,6 +76,13 @@ data class EventListResponse(
     val page_size: Int,
     val total_pages: Int
 )
+
+// ── Bookmark & Attendance ─────────────────────────────────────────────────────
+
+data class BookmarkResponse(val id: String, val event_id: String, val created_at: String)
+data class AttendanceRequest(val status: String) // "going" or "interested"
+data class AttendanceResponse(val id: String, val event_id: String, val user_id: String, val status: String, val marked_at: String)
+data class MessageResponse(val message: String)
 
 // ── API Interface ─────────────────────────────────────────────────────────────
 
@@ -95,6 +107,41 @@ interface ApiService {
         @Query("page") page: Int = 1,
         @Query("page_size") pageSize: Int = 20
     ): EventListResponse
+
+    @GET("events/{event_id}")
+    suspend fun getEventDetail(
+        @Path("event_id") eventId: String,
+        @Header("Authorization") token: String? = null
+    ): Response<JsonObject>
+
+    // ── Bookmark ──
+
+    @POST("events/{event_id}/bookmark")
+    suspend fun createBookmark(
+        @Path("event_id") eventId: String,
+        @Header("Authorization") token: String
+    ): BookmarkResponse
+
+    @DELETE("events/{event_id}/bookmark")
+    suspend fun removeBookmark(
+        @Path("event_id") eventId: String,
+        @Header("Authorization") token: String
+    ): MessageResponse
+
+    // ── Attendance ──
+
+    @POST("events/{event_id}/attendance")
+    suspend fun setAttendance(
+        @Path("event_id") eventId: String,
+        @Header("Authorization") token: String,
+        @Body body: AttendanceRequest
+    ): AttendanceResponse
+
+    @DELETE("events/{event_id}/attendance")
+    suspend fun removeAttendance(
+        @Path("event_id") eventId: String,
+        @Header("Authorization") token: String
+    ): MessageResponse
 
     @GET("categories")
     suspend fun getCategories(): List<CategoryDto>

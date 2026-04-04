@@ -58,6 +58,7 @@ class AuthViewModel(
                 onSuccess = { auth ->
                     sessionManager.saveToken(auth.accessToken)
                     sessionManager.saveUsername(auth.user.username)
+                    sessionManager.saveUserId(auth.user.id)
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         isLoggedIn = true,
@@ -84,6 +85,7 @@ class AuthViewModel(
                 onSuccess = { auth ->
                     sessionManager.saveToken(auth.accessToken)
                     sessionManager.saveUsername(auth.user.username)
+                    sessionManager.saveUserId(auth.user.id)
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         isLoggedIn = true,
@@ -104,7 +106,12 @@ class AuthViewModel(
             result.fold(
                 onSuccess = { auth ->
                     sessionManager.saveToken(auth.accessToken)
-                    _uiState.value = _uiState.value.copy(isLoggedIn = true)
+                    sessionManager.saveUsername(auth.user.username)
+                    sessionManager.saveUserId(auth.user.id)
+                    _uiState.value = _uiState.value.copy(
+                        isLoggedIn = true,
+                        username = auth.user.username
+                    )
                 },
                 onFailure = {
                     // Refresh token expired — force logout

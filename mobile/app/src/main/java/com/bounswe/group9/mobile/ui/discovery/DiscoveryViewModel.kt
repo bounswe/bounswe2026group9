@@ -64,15 +64,33 @@ class DiscoveryViewModel(
 
     fun refresh() = loadEvents(reset = true)
 
+    fun onBookmarkedOnlyToggle() {
+        val current = _uiState.value.bookmarkedOnly
+        _uiState.value = _uiState.value.copy(bookmarkedOnly = !current, goingOnly = false)
+    }
+
+    fun onGoingOnlyToggle() {
+        val current = _uiState.value.goingOnly
+        _uiState.value = _uiState.value.copy(goingOnly = !current, bookmarkedOnly = false)
+    }
+
     fun clearFilters() {
-        _uiState.value = _uiState.value.copy(selectedCategoryId = null, selectedTemporal = null)
+        _uiState.value = _uiState.value.copy(
+            selectedCategoryId = null,
+            selectedTemporal = null,
+            bookmarkedOnly = false,
+            goingOnly = false
+        )
         loadEvents(reset = true)
     }
 
     fun activeFilterCount(): Int {
+        val s = _uiState.value
         var count = 0
-        if (_uiState.value.selectedTemporal != null) count++
-        if (_uiState.value.selectedCategoryId != null) count++
+        if (s.selectedTemporal != null) count++
+        if (s.selectedCategoryId != null) count++
+        if (s.bookmarkedOnly) count++
+        if (s.goingOnly) count++
         return count
     }
 

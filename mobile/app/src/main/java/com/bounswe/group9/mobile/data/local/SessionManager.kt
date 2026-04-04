@@ -16,11 +16,13 @@ class SessionManager(private val context: Context) {
         private val ACCESS_TOKEN_KEY = stringPreferencesKey("auth_token")
         private val REFRESH_TOKEN_KEY = stringPreferencesKey("refresh_token")
         private val USERNAME_KEY = stringPreferencesKey("username")
+        private val USER_ID_KEY = stringPreferencesKey("user_id")
     }
 
     val tokenFlow: Flow<String?> = context.dataStore.data.map { it[ACCESS_TOKEN_KEY] }
     val refreshTokenFlow: Flow<String?> = context.dataStore.data.map { it[REFRESH_TOKEN_KEY] }
     val usernameFlow: Flow<String?> = context.dataStore.data.map { it[USERNAME_KEY] }
+    val userIdFlow: Flow<String?> = context.dataStore.data.map { it[USER_ID_KEY] }
 
     suspend fun saveToken(token: String) {
         context.dataStore.edit { it[ACCESS_TOKEN_KEY] = token }
@@ -32,6 +34,10 @@ class SessionManager(private val context: Context) {
 
     suspend fun saveUsername(username: String) {
         context.dataStore.edit { it[USERNAME_KEY] = username }
+    }
+
+    suspend fun saveUserId(userId: String) {
+        context.dataStore.edit { it[USER_ID_KEY] = userId }
     }
 
     suspend fun getAccessToken(): String? = tokenFlow.first()
