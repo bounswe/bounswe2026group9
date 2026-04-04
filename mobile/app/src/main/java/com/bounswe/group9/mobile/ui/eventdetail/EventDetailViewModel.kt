@@ -21,6 +21,7 @@ data class EventDetailUiState(
     // Comments
     val comments: List<CommentDto> = emptyList(),
     val commentsLoading: Boolean = false,
+    val commentsError: String? = null,
     val commentsTotal: Int = 0,
     val commentsPage: Int = 1,
     val commentsTotalPages: Int = 1,
@@ -121,7 +122,7 @@ class EventDetailViewModel(
     private fun loadComments(reset: Boolean) {
         val eventId = currentEventId ?: return
         val page = if (reset) 1 else _uiState.value.commentsPage + 1
-        _uiState.value = _uiState.value.copy(commentsLoading = true)
+        _uiState.value = _uiState.value.copy(commentsLoading = true, commentsError = null)
         viewModelScope.launch {
             repository.getComments(eventId, page).fold(
                 onSuccess = { response ->
@@ -131,11 +132,15 @@ class EventDetailViewModel(
                         commentsTotal = response.total,
                         commentsPage = response.page,
                         commentsTotalPages = response.total_pages,
-                        commentsLoading = false
+                        commentsLoading = false,
+                        commentsError = null
                     )
                 },
-                onFailure = {
-                    _uiState.value = _uiState.value.copy(commentsLoading = false)
+                onFailure = { e ->
+                    _uiState.value = _uiState.value.copy(
+                        commentsLoading = false,
+                        commentsError = e.message ?: "Failed to load comments"
+                    )
                 }
             )
         }

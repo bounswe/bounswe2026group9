@@ -62,7 +62,7 @@ data class EventListItemDto(
     val is_bookmarked: Boolean?,
     val attendance_status: String?,
     val going_count: Int,
-    val interested_count: Int,
+    val bookmark_count: Int = 0,
     val is_full: Boolean?,
     val categories: List<CategoryDto>,
     val primary_location: EventLocationDto?,

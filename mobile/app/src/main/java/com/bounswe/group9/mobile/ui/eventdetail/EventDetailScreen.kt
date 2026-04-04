@@ -338,6 +338,7 @@ private fun FullDetailContent(
                 commentText = uiState.commentText,
                 isPosting = uiState.commentPosting,
                 isLoading = uiState.commentsLoading,
+                errorMessage = uiState.commentsError,
                 hasMore = uiState.commentsPage < uiState.commentsTotalPages,
                 isAuthenticated = token != null,
                 currentUserId = currentUserId,
@@ -346,7 +347,8 @@ private fun FullDetailContent(
                 onTextChange = { viewModel.onCommentTextChange(it) },
                 onPost = { viewModel.postComment() },
                 onDelete = { viewModel.deleteComment(it) },
-                onLoadMore = { viewModel.loadMoreComments() }
+                onLoadMore = { viewModel.loadMoreComments() },
+                onRetry = { viewModel.loadMoreComments() }
             )
 
             Spacer(Modifier.height(32.dp))
@@ -364,6 +366,7 @@ private fun CommentSection(
     commentText: String,
     isPosting: Boolean,
     isLoading: Boolean,
+    errorMessage: String?,
     hasMore: Boolean,
     isAuthenticated: Boolean,
     currentUserId: String?,
@@ -372,7 +375,8 @@ private fun CommentSection(
     onTextChange: (String) -> Unit,
     onPost: () -> Unit,
     onDelete: (String) -> Unit,
-    onLoadMore: () -> Unit
+    onLoadMore: () -> Unit,
+    onRetry: () -> Unit
 ) {
     SectionHeader("Comments")
 
@@ -405,7 +409,13 @@ private fun CommentSection(
         Spacer(Modifier.height(12.dp))
     }
 
-    if (comments.isEmpty() && !isLoading) {
+    if (errorMessage != null && comments.isEmpty()) {
+        Column {
+            Text(errorMessage, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
+            Spacer(Modifier.height(8.dp))
+            TextButton(onClick = onRetry) { Text("Retry") }
+        }
+    } else if (comments.isEmpty() && !isLoading) {
         Text("No comments yet", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     } else {
         comments.forEach { comment ->
