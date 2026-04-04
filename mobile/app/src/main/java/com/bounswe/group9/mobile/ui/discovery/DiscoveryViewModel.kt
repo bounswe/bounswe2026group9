@@ -18,15 +18,17 @@ class DiscoveryViewModel(
     val uiState: StateFlow<DiscoveryUiState> = _uiState.asStateFlow()
 
     private var token: String? = null
+    private var tokenInitialized = false
     private var searchJob: Job? = null
 
     init {
         loadCategories()
-        loadEvents(reset = true)
     }
 
     fun setToken(t: String?) {
+        if (tokenInitialized && t == token) return
         token = t
+        tokenInitialized = true
         loadEvents(reset = true)
     }
 

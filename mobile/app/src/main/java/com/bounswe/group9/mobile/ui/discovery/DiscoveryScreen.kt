@@ -387,7 +387,7 @@ private fun FilterSheetContent(
                     color = MaterialTheme.colorScheme.tertiary
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("today" to "Today", "this_week" to "This Week", "weekend" to "Weekend")
+                    listOf("today" to "Today", "this_week" to "This Week", "upcoming" to "Upcoming")
                         .forEach { (key, label) ->
                             val selected = uiState.selectedTemporal == key
                             FilterPill(label = label, selected = selected) {
