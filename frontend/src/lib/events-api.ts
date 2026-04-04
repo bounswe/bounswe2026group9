@@ -306,6 +306,7 @@ export interface Notification {
 export interface NotificationListResponse {
   items: Notification[];
   total: number;
+  unread_count: number;
   page: number;
   page_size: number;
   total_pages: number;
@@ -349,9 +350,8 @@ export async function markAllNotificationsRead(): Promise<NotificationReadAllRes
 }
 
 export async function fetchUnreadNotificationCount(): Promise<number> {
-  const res = await apiRequest<{ unread_count: number }>(
-    `/notifications/unread-count`,
-    { auth: "required" },
-  );
-  return res.unread_count;
+  // Fetch first page; use server-provided unread_count if available,
+  // otherwise count from the items array (works with older backends).
+  const res = await fetchNotifications(1, 50);
+  return res.unread_count ?? res.items.filter((n) => !n.is_read).length;
 }

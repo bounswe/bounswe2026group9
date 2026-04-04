@@ -794,7 +794,7 @@ function FullView({
 
 export default function EventDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, isInitialized } = useAuth();
 
   const [event, setEvent] = useState<AnyEventDetail | null>(null);
   const [host, setHost] = useState<HostProfile | null>(null);
@@ -802,7 +802,12 @@ export default function EventDetailPage() {
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
-    if (!id) return;
+    // Wait for session to initialize so the token is available before fetching.
+    // Without this, the request races with refreshSession and sends no token,
+    // causing the backend to return a limited/guest response for logged-in users.
+    if (!id || !isInitialized) return;
+    setLoading(true);
+    setNotFound(false);
     fetchEventDetail(id)
       .then((ev) => {
         setEvent(ev);
@@ -814,7 +819,7 @@ export default function EventDetailPage() {
       })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, isInitialized]);
 
   const isHost =
     event?._type === "full" && !!user && !!event.host_id && event.host_id === user.id;

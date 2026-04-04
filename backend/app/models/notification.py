@@ -19,6 +19,7 @@ class NotificationListResponse(BaseModel):
     """Paginated notification list."""
     items: list[NotificationResponse]
     total: int
+    unread_count: int
     page: int
     page_size: int
     total_pages: int

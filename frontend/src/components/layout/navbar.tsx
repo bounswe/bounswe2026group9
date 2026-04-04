@@ -43,13 +43,20 @@ export function Navbar({
     }
   }, []);
 
-  // Reload unread count on mount, auth change, and page navigation
+  // Reload unread count on mount, auth change, page navigation, and every 60s
   useEffect(() => {
-    if (isAuthenticated) {
-      void loadUnreadCount();
-    } else {
+    if (!isAuthenticated) {
       setUnreadCount(0);
+      return;
     }
+
+    void loadUnreadCount();
+
+    const interval = setInterval(() => {
+      void loadUnreadCount();
+    }, 60_000);
+
+    return () => clearInterval(interval);
   }, [isAuthenticated, loadUnreadCount, pathname]);
 
   const currentSearch = searchValue ?? internalSearch;

@@ -19,11 +19,13 @@ def list_notifications(
     items, total = notification_repo.get_notifications_by_user(
         db, user_id, page=page, page_size=page_size
     )
+    unread_count = notification_repo.get_unread_count(db, user_id)
     total_pages = (total + page_size - 1) // page_size if total > 0 else 0
 
     return NotificationListResponse(
         items=[NotificationResponse(**n) for n in items],
         total=total,
+        unread_count=unread_count,
         page=page,
         page_size=page_size,
         total_pages=total_pages,
