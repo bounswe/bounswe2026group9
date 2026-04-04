@@ -3,6 +3,7 @@ import {
   type EventInteraction,
   getInteraction,
   initInteraction,
+  refreshInteraction,
   setBookmarked as storeSetBookmarked,
   setGoing as storeSetGoing,
   subscribe,
@@ -20,6 +21,8 @@ interface UseEventInteractionArgs {
   initialBookmarkCount: number;
   initialGoing: boolean;
   initialGoingCount: number;
+  /** When true, overwrite any existing store data with these values (use for detail page with fresh server data). */
+  fresh?: boolean;
 }
 
 export function useEventInteraction({
@@ -28,14 +31,20 @@ export function useEventInteraction({
   initialBookmarkCount,
   initialGoing,
   initialGoingCount,
+  fresh = false,
 }: UseEventInteractionArgs) {
-  // Seed store on first mount
-  initInteraction(eventId, {
+  const data = {
     bookmarked: initialBookmarked,
     bookmarkCount: Math.max(initialBookmarkCount, initialBookmarked ? 1 : 0),
     going: initialGoing,
     goingCount: Math.max(initialGoingCount, initialGoing ? 1 : 0),
-  });
+  };
+  // Detail page passes fresh=true to overwrite stale card data with server truth
+  if (fresh) {
+    refreshInteraction(eventId, data);
+  } else {
+    initInteraction(eventId, data);
+  }
 
   const [, tick] = useState(0);
   useEffect(() => subscribe(() => tick((n) => n + 1)), []);

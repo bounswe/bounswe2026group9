@@ -183,6 +183,7 @@ function FullView({
       initialBookmarkCount: event.bookmark_count ?? 0,
       initialGoing: event.attendance_status === "going",
       initialGoingCount: event.going_count ?? 0,
+      fresh: true, // Detail page has fresh server data — overwrite stale card state
     });
 
   const [showCancelDialog, setShowCancelDialog] = useState(false);

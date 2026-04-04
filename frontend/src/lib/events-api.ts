@@ -40,7 +40,7 @@ export interface EventListItem {
   primary_image_url: string | null;
 }
 
-export type AttendanceStatus = "going" | "interested" | null;
+export type AttendanceStatus = "going" | null;
 export type PersonalFilter = "bookmarked" | "going";
 
 export interface EventListResponse {
@@ -263,7 +263,7 @@ export async function fetchEventDetail(id: string): Promise<AnyEventDetail> {
 
 export async function setAttendance(
   eventId: string,
-  status: "going" | "interested",
+  status: "going",
 ): Promise<void> {
   await apiRequest(`/events/${eventId}/attendance`, {
     method: "POST",

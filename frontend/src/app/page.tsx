@@ -27,7 +27,6 @@ import {
   fetchEventAttendanceStatus,
   fetchEvents,
   fetchCategories,
-  enrichEventsWithAttendance,
   type AttendanceStatus,
   type Category,
   type DiscoveryParams,
@@ -452,12 +451,8 @@ function DiscoveryPage() {
         setTotal(nextResult.total);
         setTotalPages(nextResult.totalPages);
 
-        // Enrich with per-user attendance/bookmark data (background, non-blocking)
-        if (isAuthenticated && nextResult.items.length > 0) {
-          enrichEventsWithAttendance(nextResult.items).then((enriched) => {
-            if (!cancelled) setEvents(enriched);
-          }).catch(() => {});
-        }
+        // attendance_status and is_bookmarked are now returned directly by the list endpoint
+        // when authenticated — no separate enrichment needed.
       } catch {
         if (cancelled) return;
         setEvents([]);

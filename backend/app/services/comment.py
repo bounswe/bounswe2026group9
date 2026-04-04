@@ -16,11 +16,13 @@ MAX_NESTING_DEPTH = 3
 
 
 def _get_nesting_depth(db: Client, parent_id: str) -> int:
-    """Walk up the parent chain to calculate depth (1-indexed)."""
+    """Walk up the parent chain to calculate depth (1-indexed). Capped to prevent cycles."""
     depth = 0
     current = parent_id
     while current:
         depth += 1
+        if depth > MAX_NESTING_DEPTH + 1:
+            break  # Safety valve against data corruption cycles
         comment = comment_repo.get_comment_by_id(db, current)
         if not comment:
             break

@@ -11,19 +11,44 @@ def insert_comment(db: Client, comment_data: dict) -> dict:
 def get_comments_by_event(
     db: Client, event_id: str, *, page: int = 1, page_size: int = 20
 ) -> tuple[list[dict], int]:
-    query = (
+    """Fetch root comments (paginated) and all their descendants for tree building."""
+    # Count only root comments for pagination
+    root_count_result = (
         db.table("comments")
-        .select("id,user_id,event_id,text,created_at,parent_id", count="exact")
+        .select("id", count="exact")
         .eq("event_id", event_id)
+        .is_("parent_id", "null")
+        .execute()
     )
+    total = root_count_result.count or 0
+
+    # Fetch paginated root comments
     offset = (page - 1) * page_size
-    result = (
-        query
+    root_result = (
+        db.table("comments")
+        .select("id,user_id,event_id,text,created_at,parent_id")
+        .eq("event_id", event_id)
+        .is_("parent_id", "null")
         .order("created_at", desc=True)
         .range(offset, offset + page_size - 1)
         .execute()
     )
-    return result.data or [], result.count or 0
+    roots = root_result.data or []
+    if not roots:
+        return [], total
+
+    # Fetch all descendants for these roots (all comments with parent_id != null for this event)
+    children_result = (
+        db.table("comments")
+        .select("id,user_id,event_id,text,created_at,parent_id")
+        .eq("event_id", event_id)
+        .not_.is_("parent_id", "null")
+        .order("created_at")
+        .execute()
+    )
+    children = children_result.data or []
+
+    return roots + children, total
 
 
 def get_comment_by_id(db: Client, comment_id: str) -> dict | None:
