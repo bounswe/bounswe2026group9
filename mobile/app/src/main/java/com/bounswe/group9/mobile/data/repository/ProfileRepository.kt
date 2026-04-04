@@ -1,0 +1,48 @@
+package com.bounswe.group9.mobile.data.repository
+
+import android.util.Log
+import com.bounswe.group9.mobile.data.remote.HostProfileDto
+import com.bounswe.group9.mobile.data.remote.RatingRequest
+import com.bounswe.group9.mobile.data.remote.RetrofitProvider
+import com.google.gson.Gson
+
+class ProfileRepository {
+
+    suspend fun getHostProfile(token: String?, userId: String): Result<HostProfileDto> {
+        return try {
+            val authHeader = token?.let { "Bearer $it" }
+            val profile = RetrofitProvider.apiService.getHostProfile(userId, authHeader)
+            Result.success(profile)
+        } catch (e: retrofit2.HttpException) {
+            val body = e.response()?.errorBody()?.string() ?: "Unknown error"
+            Log.e("ProfileRepository", "getHostProfile HTTP ${e.code()}: $body")
+            Result.failure(Exception(parseErrorMessage(body, e.code())))
+        } catch (e: Exception) {
+            Log.e("ProfileRepository", "getHostProfile failed: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun rateHost(token: String, hostId: String, score: Double): Result<Unit> {
+        return try {
+            RetrofitProvider.apiService.rateHost(hostId, "Bearer $token", RatingRequest(score))
+            Result.success(Unit)
+        } catch (e: retrofit2.HttpException) {
+            val body = e.response()?.errorBody()?.string() ?: "Unknown error"
+            Log.e("ProfileRepository", "rateHost HTTP ${e.code()}: $body")
+            Result.failure(Exception(parseErrorMessage(body, e.code())))
+        } catch (e: Exception) {
+            Log.e("ProfileRepository", "rateHost failed: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+}
+
+private fun parseErrorMessage(body: String, code: Int): String {
+    return try {
+        val json = Gson().fromJson(body, com.google.gson.JsonObject::class.java)
+        json.get("detail")?.asString ?: "Error $code"
+    } catch (_: Exception) {
+        "Error $code"
+    }
+}

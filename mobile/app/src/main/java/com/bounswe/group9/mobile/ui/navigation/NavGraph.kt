@@ -19,12 +19,16 @@ import com.bounswe.group9.mobile.ui.discovery.DiscoveryScreen
 import com.bounswe.group9.mobile.ui.discovery.DiscoveryViewModel
 import com.bounswe.group9.mobile.ui.eventdetail.EventDetailScreen
 import com.bounswe.group9.mobile.ui.eventdetail.EventDetailViewModel
+import com.bounswe.group9.mobile.ui.hostprofile.HostProfileScreen
+import com.bounswe.group9.mobile.ui.hostprofile.HostProfileViewModel
 
 object Routes {
     const val LOGIN = "login"
     const val DISCOVERY = "discovery"
     const val EVENT_DETAIL = "eventDetail/{eventId}"
+    const val HOST_PROFILE = "hostProfile/{userId}"
     fun eventDetail(eventId: String) = "eventDetail/$eventId"
+    fun hostProfile(userId: String) = "hostProfile/$userId"
 }
 
 @Composable
@@ -81,6 +85,26 @@ fun AppNavGraph(
                 onBack = {
                     navController.popBackStack()
                     discoveryViewModel.refresh() // Sync bookmark/going state
+                },
+                onNavigateToHost = { hostId ->
+                    navController.navigate(Routes.hostProfile(hostId))
+                }
+            )
+        }
+        composable(
+            route = Routes.HOST_PROFILE,
+            arguments = listOf(navArgument("userId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val profileUserId = backStackEntry.arguments?.getString("userId") ?: return@composable
+            val profileViewModel = remember(profileUserId) { HostProfileViewModel() }
+            HostProfileScreen(
+                viewModel = profileViewModel,
+                userId = profileUserId,
+                token = token,
+                currentUserId = userId,
+                onBack = { navController.popBackStack() },
+                onEventClick = { eventId ->
+                    navController.navigate(Routes.eventDetail(eventId))
                 }
             )
         }
