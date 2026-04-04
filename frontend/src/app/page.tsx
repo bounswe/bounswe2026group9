@@ -27,6 +27,7 @@ import {
   fetchEventAttendanceStatus,
   fetchEvents,
   fetchCategories,
+  enrichEventsWithAttendance,
   type AttendanceStatus,
   type Category,
   type DiscoveryParams,
@@ -450,6 +451,13 @@ function DiscoveryPage() {
         setEvents(nextResult.items);
         setTotal(nextResult.total);
         setTotalPages(nextResult.totalPages);
+
+        // Enrich with per-user attendance/bookmark data (background, non-blocking)
+        if (isAuthenticated && nextResult.items.length > 0) {
+          enrichEventsWithAttendance(nextResult.items).then((enriched) => {
+            if (!cancelled) setEvents(enriched);
+          }).catch(() => {});
+        }
       } catch {
         if (cancelled) return;
         setEvents([]);

@@ -13,7 +13,7 @@ def get_comments_by_event(
 ) -> tuple[list[dict], int]:
     query = (
         db.table("comments")
-        .select("id,user_id,event_id,text,created_at", count="exact")
+        .select("id,user_id,event_id,text,created_at,parent_id", count="exact")
         .eq("event_id", event_id)
     )
     offset = (page - 1) * page_size
@@ -27,7 +27,7 @@ def get_comments_by_event(
 
 
 def get_comment_by_id(db: Client, comment_id: str) -> dict | None:
-    result = db.table("comments").select("id,user_id,event_id,text,created_at").eq("id", comment_id).execute()
+    result = db.table("comments").select("id,user_id,event_id,text,created_at,parent_id").eq("id", comment_id).execute()
     return result.data[0] if result.data else None
 
 

@@ -67,35 +67,24 @@ def test_attendance_and_capacity(mock_upload, client, db):
     res = client.post(f"/events/{event_id}/attendance", headers={"Authorization": f"Bearer {t3}"}, json={"status": "going"})
     assert res.status_code == 403
 
-    # User 1 interested
-    res = client.post(f"/events/{event_id}/attendance", headers={"Authorization": f"Bearer {t1}"}, json={"status": "interested"})
+    # User 1 going
+    res = client.post(f"/events/{event_id}/attendance", headers={"Authorization": f"Bearer {t1}"}, json={"status": "going"})
     assert res.status_code == 200
 
     # Check counts
     res = client.get(f"/events/{event_id}", headers={"Authorization": f"Bearer {t1}"})
     assert res.status_code == 200
-    assert res.json()["interested_count"] == 1
-    assert res.json()["going_count"] == 0
-    assert res.json()["is_full"] is False
-
-    # User 2 going
-    res = client.post(f"/events/{event_id}/attendance", headers={"Authorization": f"Bearer {t2}"}, json={"status": "going"})
-    assert res.status_code == 200
-
-    # Check counts
-    res = client.get(f"/events/{event_id}", headers={"Authorization": f"Bearer {t2}"})
-    assert res.status_code == 200
     assert res.json()["going_count"] == 1
     assert res.json()["is_full"] is True
 
-    # User 1 tries to switch interested to going
-    res = client.post(f"/events/{event_id}/attendance", headers={"Authorization": f"Bearer {t1}"}, json={"status": "going"})
+    # User 2 going — should be rejected (event full)
+    res = client.post(f"/events/{event_id}/attendance", headers={"Authorization": f"Bearer {t2}"}, json={"status": "going"})
     assert res.status_code == 400  # full
 
-    # User 2 removes attendance
-    res = client.delete(f"/events/{event_id}/attendance", headers={"Authorization": f"Bearer {t2}"})
+    # User 1 removes attendance — frees up the spot
+    res = client.delete(f"/events/{event_id}/attendance", headers={"Authorization": f"Bearer {t1}"})
     assert res.status_code == 200
 
-    # User 1 can now switch
-    res = client.post(f"/events/{event_id}/attendance", headers={"Authorization": f"Bearer {t1}"}, json={"status": "going"})
+    # User 2 can now go
+    res = client.post(f"/events/{event_id}/attendance", headers={"Authorization": f"Bearer {t2}"}, json={"status": "going"})
     assert res.status_code == 200

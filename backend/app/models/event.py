@@ -126,7 +126,7 @@ class EventDetailResponse(BaseModel):
     is_bookmarked: bool | None = None
     attendance_status: str | None = None
     going_count: int = 0
-    interested_count: int = 0
+    bookmark_count: int = 0
     is_full: bool | None = None
     locations: list[LocationResponse] = []
     categories: list[CategoryResponse] = []
@@ -172,8 +172,9 @@ class EventListItemResponse(BaseModel):
     attendee_count: int
     status: str
     is_bookmarked: bool | None = None
+    attendance_status: str | None = None
     going_count: int = 0
-    interested_count: int = 0
+    bookmark_count: int = 0
     is_full: bool | None = None
     categories: list[CategoryResponse] = []
     primary_location: LocationResponse | None = None

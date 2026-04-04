@@ -9,7 +9,7 @@ import {
 const DEFAULT_API_BASE_URL = "http://localhost:8888";
 const JSON_CONTENT_TYPE = "application/json";
 
-type ApiAuthMode = "none" | "required";
+type ApiAuthMode = "none" | "optional" | "required";
 type ApiParseMode = "json" | "text" | "void";
 
 type JsonBody = object;
@@ -128,7 +128,7 @@ export interface EventDetailResponse {
   host_id: string;
   id: string;
   images: EventImage[];
-  interested_count: number;
+  bookmark_count?: number;
   is_age_restricted: boolean;
   is_bookmarked: boolean | null;
   is_full: boolean | null;
@@ -173,6 +173,10 @@ let refreshRequest: Promise<AuthResponse> | null = null;
 let authRedirectSuppressed = false;
 
 function getApiBaseUrl() {
+  if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_API_BASE_URL) {
+    // In the browser, use the Next.js rewrite proxy to avoid CORS issues
+    return "/api/proxy";
+  }
   return process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "") ?? DEFAULT_API_BASE_URL;
 }
 
@@ -284,7 +288,7 @@ async function sendRequest(
   headers.set("Accept", JSON_CONTENT_TYPE);
 
   const accessToken = getSessionState().accessToken;
-  if (auth === "required" && accessToken) {
+  if ((auth === "required" || auth === "optional") && accessToken) {
     headers.set("Authorization", `Bearer ${accessToken}`);
   }
 
@@ -365,18 +369,27 @@ export async function apiRequest<T>(
     auth,
   });
 
-  if (response.status !== 401 || auth !== "required" || !retryOnAuthFailure) {
-    return parseApiResponse<T>(response, parseAs);
+  // Required auth: try refresh then retry
+  if (response.status === 401 && auth === "required" && retryOnAuthFailure) {
+    await refreshSession({ redirectOnFailure: redirectOnAuthFailure });
+    const retriedResponse = await sendRequest(path, { ...options, auth });
+    return parseApiResponse<T>(retriedResponse, parseAs);
   }
 
-  await refreshSession({ redirectOnFailure: redirectOnAuthFailure });
+  // Optional auth: token may be stale → try refresh first, then fall back to guest
+  if (response.status === 401 && auth === "optional") {
+    try {
+      await refreshSession();
+      const retriedResponse = await sendRequest(path, { ...options, auth });
+      return parseApiResponse<T>(retriedResponse, parseAs);
+    } catch {
+      // Refresh failed (e.g. localhost cookie issue) — fall back to guest
+      const guestResponse = await sendRequest(path, { ...options, auth: "none" });
+      return parseApiResponse<T>(guestResponse, parseAs);
+    }
+  }
 
-  const retriedResponse = await sendRequest(path, {
-    ...options,
-    auth,
-  });
-
-  return parseApiResponse<T>(retriedResponse, parseAs);
+  return parseApiResponse<T>(response, parseAs);
 }
 
 export async function login(payload: LoginPayload) {
@@ -415,9 +428,9 @@ export async function logout() {
 }
 
 export function getGoogleLoginUrl(mode: "login" | "signup" = "login") {
-  const url = new URL(buildApiUrl("/auth/google"));
-  url.searchParams.set("mode", mode);
-  return url.toString();
+  // Google OAuth requires a full URL redirect to the backend, not the proxy
+  const backendBase = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "") ?? DEFAULT_API_BASE_URL;
+  return `${backendBase}/auth/google?mode=${mode}`;
 }
 
 export function getLoginRedirectUrl(reason: string) {
