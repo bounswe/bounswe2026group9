@@ -139,6 +139,44 @@ class EventRepository {
         }
     }
 
+    // ── Comments ──
+
+    suspend fun getComments(eventId: String, page: Int = 1): Result<com.bounswe.group9.mobile.data.remote.CommentListResponseDto> {
+        return try {
+            val response = RetrofitProvider.apiService.getComments(eventId, page)
+            Result.success(response)
+        } catch (e: Exception) {
+            Log.e("EventRepository", "getComments failed: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun postComment(token: String, eventId: String, text: String): Result<com.bounswe.group9.mobile.data.remote.CommentDto> {
+        return try {
+            val comment = RetrofitProvider.apiService.postComment(
+                eventId, "Bearer $token", com.bounswe.group9.mobile.data.remote.CommentCreateRequest(text)
+            )
+            Result.success(comment)
+        } catch (e: retrofit2.HttpException) {
+            val body = e.response()?.errorBody()?.string() ?: "Unknown error"
+            Result.failure(Exception(parseErrorMessage(body, e.code())))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteComment(token: String, eventId: String, commentId: String): Result<Unit> {
+        return try {
+            RetrofitProvider.apiService.deleteComment(eventId, commentId, "Bearer $token")
+            Result.success(Unit)
+        } catch (e: retrofit2.HttpException) {
+            val body = e.response()?.errorBody()?.string() ?: "Unknown error"
+            Result.failure(Exception(parseErrorMessage(body, e.code())))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     // ── Categories ──
 
     suspend fun getCategories(): Result<List<CategoryDto>> {

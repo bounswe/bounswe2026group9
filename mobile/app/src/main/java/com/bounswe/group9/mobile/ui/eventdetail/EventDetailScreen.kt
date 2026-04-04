@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -48,7 +49,8 @@ fun EventDetailScreen(
     eventId: String,
     token: String?,
     currentUserId: String? = null,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onNavigateToHost: (String) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -103,7 +105,14 @@ fun EventDetailScreen(
                     message = uiState.errorMessage!!,
                     onRetry = { viewModel.loadEvent(eventId, token) }
                 )
-                uiState.fullDetail != null -> FullDetailContent(uiState.fullDetail!!)
+                uiState.fullDetail != null -> FullDetailContent(
+                    event = uiState.fullDetail!!,
+                    uiState = uiState,
+                    viewModel = viewModel,
+                    token = token,
+                    currentUserId = currentUserId,
+                    onNavigateToHost = onNavigateToHost
+                )
                 uiState.limitedPreview != null -> LimitedPreviewContent(uiState.limitedPreview!!)
             }
         }
@@ -175,7 +184,14 @@ private fun LimitedPreviewContent(event: EventLimitedDto) {
 // region Full Detail
 
 @Composable
-private fun FullDetailContent(event: EventDetailDto) {
+private fun FullDetailContent(
+    event: EventDetailDto,
+    uiState: EventDetailUiState,
+    viewModel: EventDetailViewModel,
+    token: String?,
+    currentUserId: String?,
+    onNavigateToHost: (String) -> Unit
+) {
     Column(
         Modifier
             .fillMaxSize()
@@ -308,7 +324,153 @@ private fun FullDetailContent(event: EventDetailDto) {
                 }
             }
 
+            // Host link
+            Spacer(Modifier.height(16.dp))
+            SectionHeader("Host")
+            TextButton(onClick = { onNavigateToHost(event.host_id) }) {
+                Text("View host profile", fontSize = 14.sp)
+            }
+
+            // Comments
+            Spacer(Modifier.height(16.dp))
+            CommentSection(
+                comments = uiState.comments,
+                commentText = uiState.commentText,
+                isPosting = uiState.commentPosting,
+                isLoading = uiState.commentsLoading,
+                errorMessage = uiState.commentsError,
+                hasMore = uiState.commentsPage < uiState.commentsTotalPages,
+                isAuthenticated = token != null,
+                currentUserId = currentUserId,
+                hostId = event.host_id,
+                isActiveEvent = event.status in listOf("published", "updated"),
+                onTextChange = { viewModel.onCommentTextChange(it) },
+                onPost = { viewModel.postComment() },
+                onDelete = { viewModel.deleteComment(it) },
+                onLoadMore = { viewModel.loadMoreComments() },
+                onRetry = { viewModel.loadMoreComments() }
+            )
+
             Spacer(Modifier.height(32.dp))
+        }
+    }
+}
+
+// endregion
+
+// region Comment Section
+
+@Composable
+private fun CommentSection(
+    comments: List<com.bounswe.group9.mobile.data.remote.CommentDto>,
+    commentText: String,
+    isPosting: Boolean,
+    isLoading: Boolean,
+    errorMessage: String?,
+    hasMore: Boolean,
+    isAuthenticated: Boolean,
+    currentUserId: String?,
+    hostId: String,
+    isActiveEvent: Boolean,
+    onTextChange: (String) -> Unit,
+    onPost: () -> Unit,
+    onDelete: (String) -> Unit,
+    onLoadMore: () -> Unit,
+    onRetry: () -> Unit
+) {
+    SectionHeader("Comments")
+
+    // Comment input (auth only, active events only)
+    if (isAuthenticated && isActiveEvent) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedTextField(
+                value = commentText,
+                onValueChange = onTextChange,
+                placeholder = { Text("Write a comment...", fontSize = 14.sp) },
+                modifier = Modifier.weight(1f),
+                maxLines = 3,
+                textStyle = MaterialTheme.typography.bodyMedium
+            )
+            Spacer(Modifier.width(8.dp))
+            Button(
+                onClick = onPost,
+                enabled = commentText.isNotBlank() && !isPosting
+            ) {
+                if (isPosting) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                } else {
+                    Text("Post", fontSize = 13.sp)
+                }
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+    }
+
+    if (errorMessage != null && comments.isEmpty()) {
+        Column {
+            Text(errorMessage, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
+            Spacer(Modifier.height(8.dp))
+            TextButton(onClick = onRetry) { Text("Retry") }
+        }
+    } else if (comments.isEmpty() && !isLoading) {
+        Text("No comments yet", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    } else {
+        comments.forEach { comment ->
+            CommentItem(
+                comment = comment,
+                canDelete = currentUserId == comment.user.id || currentUserId == hostId,
+                onDelete = { onDelete(comment.id) }
+            )
+            Spacer(Modifier.height(8.dp))
+        }
+
+        if (hasMore) {
+            TextButton(onClick = onLoadMore, modifier = Modifier.fillMaxWidth()) {
+                if (isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                } else {
+                    Text("Load more comments")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CommentItem(
+    comment: com.bounswe.group9.mobile.data.remote.CommentDto,
+    canDelete: Boolean,
+    onDelete: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+    ) {
+        Column(Modifier.padding(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(comment.user.username, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        formatCommentTime(comment.created_at),
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (canDelete) {
+                        IconButton(onClick = onDelete, modifier = Modifier.size(28.dp)) {
+                            Icon(Icons.Default.Close, contentDescription = "Delete", modifier = Modifier.size(14.dp))
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+            Text(comment.text, style = MaterialTheme.typography.bodyMedium)
         }
     }
 }
@@ -433,6 +595,17 @@ private fun formatDateRange(start: String, end: String): String {
         }
     } catch (_: Exception) {
         start
+    }
+}
+
+private fun formatCommentTime(iso: String): String {
+    return try {
+        val parser = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.getDefault())
+        val display = SimpleDateFormat("MMM d, HH:mm", Locale.getDefault())
+        val date = parser.parse(iso)
+        if (date != null) display.format(date) else iso
+    } catch (_: Exception) {
+        iso
     }
 }
 

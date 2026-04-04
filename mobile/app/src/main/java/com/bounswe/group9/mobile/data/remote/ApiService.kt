@@ -62,7 +62,7 @@ data class EventListItemDto(
     val is_bookmarked: Boolean?,
     val attendance_status: String?,
     val going_count: Int,
-    val interested_count: Int,
+    val bookmark_count: Int = 0,
     val is_full: Boolean?,
     val categories: List<CategoryDto>,
     val primary_location: EventLocationDto?,
@@ -83,6 +83,50 @@ data class BookmarkResponse(val id: String, val event_id: String, val created_at
 data class AttendanceRequest(val status: String) // "going" or "interested"
 data class AttendanceResponse(val id: String, val event_id: String, val user_id: String, val status: String, val marked_at: String)
 data class MessageResponse(val message: String)
+
+// ── Comments ─────────────────────────────────────────────────────────────────
+
+data class CommentAuthorDto(val id: String, val username: String)
+
+data class CommentDto(
+    val id: String,
+    val event_id: String,
+    val user: CommentAuthorDto,
+    val text: String,
+    val created_at: String
+)
+
+data class CommentListResponseDto(
+    val items: List<CommentDto>,
+    val total: Int,
+    val page: Int,
+    val page_size: Int,
+    val total_pages: Int
+)
+
+data class CommentCreateRequest(val text: String)
+
+// ── Host Profile & Rating ────────────────────────────────────────────────────
+
+data class HostProfileDto(
+    val id: String,
+    val username: String,
+    val email: String?,
+    val phone_number: String?,
+    val average_rating: Double?,
+    val hosted_events_count: Int,
+    val hosted_events: List<EventListItemDto>
+)
+
+data class RatingRequest(val score: Double)
+
+data class RatingResponseDto(
+    val id: String,
+    val rater_id: String,
+    val host_id: String,
+    val score: Double,
+    val created_at: String
+)
 
 // ── API Interface ─────────────────────────────────────────────────────────────
 
@@ -142,6 +186,44 @@ interface ApiService {
         @Path("event_id") eventId: String,
         @Header("Authorization") token: String
     ): MessageResponse
+
+    // ── Comments ──
+
+    @GET("events/{event_id}/comments")
+    suspend fun getComments(
+        @Path("event_id") eventId: String,
+        @Query("page") page: Int = 1,
+        @Query("page_size") pageSize: Int = 20
+    ): CommentListResponseDto
+
+    @POST("events/{event_id}/comments")
+    suspend fun postComment(
+        @Path("event_id") eventId: String,
+        @Header("Authorization") token: String,
+        @Body body: CommentCreateRequest
+    ): CommentDto
+
+    @DELETE("events/{event_id}/comments/{comment_id}")
+    suspend fun deleteComment(
+        @Path("event_id") eventId: String,
+        @Path("comment_id") commentId: String,
+        @Header("Authorization") token: String
+    ): MessageResponse
+
+    // ── Host Profile & Rating ──
+
+    @GET("users/{user_id}/profile")
+    suspend fun getHostProfile(
+        @Path("user_id") userId: String,
+        @Header("Authorization") token: String? = null
+    ): HostProfileDto
+
+    @POST("users/{host_id}/ratings")
+    suspend fun rateHost(
+        @Path("host_id") hostId: String,
+        @Header("Authorization") token: String,
+        @Body body: RatingRequest
+    ): RatingResponseDto
 
     @GET("categories")
     suspend fun getCategories(): List<CategoryDto>
