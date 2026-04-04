@@ -18,9 +18,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun LoginScreen(viewModel: AuthViewModel) {
+fun LoginScreen(viewModel: AuthViewModel, onLoginSuccess: () -> Unit = {}) {
     val uiState by viewModel.uiState.collectAsState()
     var isLoginTab by remember { mutableStateOf(true) }
+
+    var wasLoggedIn by remember { mutableStateOf(uiState.isLoggedIn) }
+    LaunchedEffect(uiState.isLoggedIn) {
+        if (uiState.isLoggedIn && !wasLoggedIn) onLoginSuccess()
+        wasLoggedIn = uiState.isLoggedIn
+    }
 
     Box(
         modifier = Modifier
