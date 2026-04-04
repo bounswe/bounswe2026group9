@@ -52,31 +52,34 @@ export function useEventInteraction({
   const state = getInteraction(eventId)!;
 
   async function toggleBookmark() {
+    const prev = state.bookmarked;
+    // Optimistic update
+    storeSetBookmarked(eventId, !prev);
     try {
-      if (state.bookmarked) {
+      if (prev) {
         await removeBookmark(eventId);
-        storeSetBookmarked(eventId, false);
       } else {
         await addBookmark(eventId);
-        storeSetBookmarked(eventId, true);
       }
     } catch {
-      // 409/404 — flip to sync
-      storeSetBookmarked(eventId, !state.bookmarked);
+      // Rollback on failure — restore previous state
+      storeSetBookmarked(eventId, prev);
     }
   }
 
   async function toggleGoing() {
+    const prev = state.going;
+    // Optimistic update
+    storeSetGoing(eventId, !prev);
     try {
-      if (state.going) {
+      if (prev) {
         await removeAttendance(eventId);
-        storeSetGoing(eventId, false);
       } else {
         await setAttendance(eventId, "going");
-        storeSetGoing(eventId, true);
       }
     } catch {
-      storeSetGoing(eventId, !state.going);
+      // Rollback on failure — restore previous state
+      storeSetGoing(eventId, prev);
     }
   }
 

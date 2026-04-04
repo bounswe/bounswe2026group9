@@ -24,10 +24,8 @@ import { FilterSidebar, type FilterState } from "@/components/discovery/filter-s
 import { ListView } from "@/components/discovery/list-view";
 import {
   fetchAllEvents,
-  fetchEventAttendanceStatus,
   fetchEvents,
   fetchCategories,
-  type AttendanceStatus,
   type Category,
   type DiscoveryParams,
   type EventListItem,
@@ -147,28 +145,20 @@ function applyTemporalFilter(
   return events.filter((event) => isWeekendEvent(event.start_datetime));
 }
 
-async function applyPersonalFilter(
+function applyPersonalFilter(
   events: EventListItem[],
   personal: PersonalFilter | null,
-): Promise<EventListItem[]> {
+): EventListItem[] {
   if (personal === "bookmarked") {
     return events.filter((event) => event.is_bookmarked);
   }
 
-  if (personal !== "going") {
-    return events;
+  if (personal === "going") {
+    // attendance_status is now returned directly by the list endpoint for authenticated users
+    return events.filter((event) => event.attendance_status === "going");
   }
 
-  const attendanceStatuses = await Promise.all(
-    events.map(async (event) => ({
-      event,
-      status: await fetchEventAttendanceStatus(event.id).catch((): AttendanceStatus => null),
-    })),
-  );
-
-  return attendanceStatuses
-    .filter(({ status }) => status === "going")
-    .map(({ event }) => event);
+  return events;
 }
 
 function sortDiscoveryEvents(a: EventListItem, b: EventListItem): number {

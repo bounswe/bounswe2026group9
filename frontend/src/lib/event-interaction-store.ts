@@ -31,7 +31,7 @@ export function initInteraction(eventId: string, data: EventInteraction) {
   }
 }
 
-/** Overwrite with fresh server data (e.g. after enrichEventsWithAttendance). */
+/** Overwrite with fresh server data (e.g. from detail page fetch). */
 export function refreshInteraction(eventId: string, data: EventInteraction) {
   store.set(eventId, data);
   notify();

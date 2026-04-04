@@ -93,55 +93,6 @@ export async function fetchAllEvents(params: DiscoveryParams = {}): Promise<Even
   return [firstPage, ...remainingPages].flatMap((page) => page.items);
 }
 
-export async function fetchEventAttendanceStatus(eventId: string): Promise<AttendanceStatus> {
-  const event = await apiRequest<{ attendance_status?: AttendanceStatus }>(`/events/${eventId}`, { auth: "optional" });
-  return event.attendance_status ?? null;
-}
-
-/**
- * Enrich event list items with per-user attendance_status from the detail endpoint.
- * Needed because the list endpoint on the live backend may not yet return attendance_status.
- * Fetches each event detail in parallel — safe for small lists (< 50 events).
- */
-export async function enrichEventsWithAttendance(events: EventListItem[]): Promise<EventListItem[]> {
-  // Only enrich events that don't already have attendance_status
-  const needsEnrich = events.filter((e) => e.attendance_status == null);
-  if (needsEnrich.length === 0) return events;
-
-  const results = await Promise.allSettled(
-    needsEnrich.map((e) =>
-      apiRequest<{ attendance_status?: string; is_bookmarked?: boolean; bookmark_count?: number; going_count?: number }>(
-        `/events/${e.id}`,
-        { auth: "optional" },
-      ).then((detail) => ({ id: e.id, detail })),
-    ),
-  );
-
-  const statusMap = new Map<string, { attendance_status: string | null; is_bookmarked: boolean | null; bookmark_count: number; going_count: number }>();
-  for (const r of results) {
-    if (r.status === "fulfilled") {
-      statusMap.set(r.value.id, {
-        attendance_status: r.value.detail.attendance_status ?? null,
-        is_bookmarked: r.value.detail.is_bookmarked ?? null,
-        bookmark_count: r.value.detail.bookmark_count ?? 0,
-        going_count: r.value.detail.going_count ?? 0,
-      });
-    }
-  }
-
-  return events.map((e) => {
-    const enriched = statusMap.get(e.id);
-    if (!enriched) return e;
-    return {
-      ...e,
-      attendance_status: enriched.attendance_status,
-      is_bookmarked: enriched.is_bookmarked ?? e.is_bookmarked,
-      bookmark_count: enriched.bookmark_count,
-      going_count: enriched.going_count,
-    };
-  });
-}
-
 export async function fetchCategories(): Promise<Category[]> {
   return apiRequest<Category[]>("/categories");
 }
@@ -191,7 +142,7 @@ export interface EventDetail {
   is_bookmarked: boolean | null;
   attendance_status: string | null;
   going_count: number;
-  bookmark_count?: number;
+  bookmark_count: number;
   is_full: boolean | null;
   locations: EventLocation[];
   categories: Category[];

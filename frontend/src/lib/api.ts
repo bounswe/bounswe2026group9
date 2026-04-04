@@ -128,7 +128,7 @@ export interface EventDetailResponse {
   host_id: string;
   id: string;
   images: EventImage[];
-  bookmark_count?: number;
+  bookmark_count: number;
   is_age_restricted: boolean;
   is_bookmarked: boolean | null;
   is_full: boolean | null;

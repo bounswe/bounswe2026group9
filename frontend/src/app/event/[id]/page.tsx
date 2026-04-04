@@ -145,6 +145,14 @@ function LimitedView({
               </Link>
             </div>
           </>
+        ) : event.status === "cancelled" ? (
+          <>
+            <XCircle className="size-6 text-red-500 mx-auto mb-3 opacity-70" />
+            <p className="text-brand-dark font-semibold mb-1">This event has been cancelled</p>
+            <p className="text-brand-mid text-sm">
+              The host cancelled this event. It is no longer taking place.
+            </p>
+          </>
         ) : (
           <>
             <Lock className="size-6 text-brand-mid mx-auto mb-3 opacity-50" />

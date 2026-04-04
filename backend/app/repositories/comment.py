@@ -37,18 +37,26 @@ def get_comments_by_event(
     if not roots:
         return [], total
 
-    # Fetch all descendants for these roots (all comments with parent_id != null for this event)
-    children_result = (
-        db.table("comments")
-        .select("id,user_id,event_id,text,created_at,parent_id")
-        .eq("event_id", event_id)
-        .not_.is_("parent_id", "null")
-        .order("created_at")
-        .execute()
-    )
-    children = children_result.data or []
+    # Fetch descendants only for the current page's roots (walk down max 3 levels)
+    parent_ids = [r["id"] for r in roots]
+    all_children: list[dict] = []
+    for _ in range(3):  # max nesting depth
+        if not parent_ids:
+            break
+        level_result = (
+            db.table("comments")
+            .select("id,user_id,event_id,text,created_at,parent_id")
+            .in_("parent_id", parent_ids)
+            .order("created_at")
+            .execute()
+        )
+        level = level_result.data or []
+        if not level:
+            break
+        all_children.extend(level)
+        parent_ids = [c["id"] for c in level]
 
-    return roots + children, total
+    return roots + all_children, total
 
 
 def get_comment_by_id(db: Client, comment_id: str) -> dict | None:
