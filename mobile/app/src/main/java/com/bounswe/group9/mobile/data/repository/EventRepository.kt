@@ -60,7 +60,7 @@ class EventRepository {
             if (!response.isSuccessful) {
                 val body = response.errorBody()?.string() ?: "Unknown error"
                 Log.e("EventRepository", "getEventDetail HTTP ${response.code()}: $body")
-                return Result.failure(Exception("${response.code()}: $body"))
+                return Result.failure(parseEventDetailError(response.code(), body))
             }
             val json = response.body()
                 ?: return Result.failure(Exception("Empty response body"))
@@ -177,6 +177,36 @@ class EventRepository {
         }
     }
 
+    // ── Profile Update (DOB) ──
+
+    suspend fun updateDateOfBirth(token: String, dateOfBirth: String): Result<Unit> {
+        return try {
+            RetrofitProvider.apiService.updateProfile(
+                "Bearer $token", mapOf("date_of_birth" to dateOfBirth)
+            )
+            Result.success(Unit)
+        } catch (e: retrofit2.HttpException) {
+            val body = e.response()?.errorBody()?.string() ?: "Unknown error"
+            Result.failure(Exception(parseErrorMessage(body, e.code())))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // ── Access Request ──
+
+    suspend fun requestAccess(token: String, eventId: String): Result<Unit> {
+        return try {
+            RetrofitProvider.apiService.createAccessRequest(eventId, "Bearer $token")
+            Result.success(Unit)
+        } catch (e: retrofit2.HttpException) {
+            val body = e.response()?.errorBody()?.string() ?: "Unknown error"
+            Result.failure(Exception(parseErrorMessage(body, e.code())))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     // ── Categories ──
 
     suspend fun getCategories(): Result<List<CategoryDto>> {
@@ -195,6 +225,14 @@ sealed class EventDetailResult {
     data class Limited(val preview: EventLimitedDto) : EventDetailResult()
 }
 
+/** Typed error for event detail — allows UI to show specific screens. */
+sealed class EventDetailError(message: String) : Exception(message) {
+    class NotFound : EventDetailError("Event not found")
+    class Underage : EventDetailError("You must be 18 or older to view this event")
+    class DobRequired : EventDetailError("Date of birth is required to view age-restricted events")
+    class Generic(message: String) : EventDetailError(message)
+}
+
 /** Extract human-readable error from backend JSON error body. */
 private fun parseErrorMessage(body: String, code: Int): String {
     return try {
@@ -202,5 +240,16 @@ private fun parseErrorMessage(body: String, code: Int): String {
         json.get("detail")?.asString ?: "Error $code"
     } catch (_: Exception) {
         "Error $code"
+    }
+}
+
+/** Parse HTTP error into typed EventDetailError. */
+private fun parseEventDetailError(code: Int, body: String): EventDetailError {
+    val message = parseErrorMessage(body, code)
+    return when {
+        code == 404 -> EventDetailError.NotFound()
+        code == 403 && message.contains("18", ignoreCase = true) -> EventDetailError.Underage()
+        code == 403 && message.contains("date of birth", ignoreCase = true) -> EventDetailError.DobRequired()
+        else -> EventDetailError.Generic(message)
     }
 }
