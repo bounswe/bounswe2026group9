@@ -60,6 +60,7 @@ data class EventListItemDto(
     val attendee_count: Int,
     val status: String,
     val is_bookmarked: Boolean?,
+    val attendance_status: String?,
     val going_count: Int,
     val interested_count: Int,
     val is_full: Boolean?,

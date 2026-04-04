@@ -65,7 +65,7 @@ fun EventDetailScreen(
         }
     }
 
-    val isActiveEvent = uiState.fullDetail?.status in listOf("published", "updated")
+    val isActiveEvent = uiState.fullDetail?.status == "published"
     val isHost = currentUserId != null && uiState.fullDetail?.host_id == currentUserId
 
     Scaffold(

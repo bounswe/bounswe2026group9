@@ -172,6 +172,7 @@ class EventListItemResponse(BaseModel):
     attendee_count: int
     status: str
     is_bookmarked: bool | None = None
+    attendance_status: str | None = None
     going_count: int = 0
     interested_count: int = 0
     is_full: bool | None = None
