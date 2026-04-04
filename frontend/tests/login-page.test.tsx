@@ -32,6 +32,7 @@ describe("LoginPage", () => {
       accessToken: null,
       isAuthenticated: false,
       isInitialized: true,
+      isLoggingOut: false,
       login: loginMock,
       logout: vi.fn(),
       refreshSession: vi.fn(),
@@ -48,7 +49,7 @@ describe("LoginPage", () => {
 
     render(<LoginPage />);
 
-    expect(screen.getByText("Please sign in to access the dashboard.")).toBeInTheDocument();
+    expect(screen.getByText("Please sign in to continue.")).toBeInTheDocument();
   });
 
   it("submits valid login credentials and redirects to the requested path", async () => {

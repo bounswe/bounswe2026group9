@@ -1,5 +1,7 @@
 "use client";
 
+import { Suspense } from "react";
+
 import Link from "next/link";
 import { startTransition, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -183,7 +185,7 @@ function PasswordRequirement({ isMet, label }: { isMet: boolean; label: string }
   );
 }
 
-export default function RegisterPage() {
+function RegisterPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { register } = useAuth();
@@ -198,7 +200,7 @@ export default function RegisterPage() {
   const nextPath = useMemo(() => {
     const candidate = searchParams.get("next");
 
-    return candidate?.startsWith("/") ? candidate : "/dashboard";
+    return candidate?.startsWith("/") ? candidate : "/";
   }, [searchParams]);
   const checks = passwordChecks(form.password);
   const fulfilledChecks = Object.values(checks).filter(Boolean).length;
@@ -243,7 +245,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <GuestOnlyRoute fallbackPath="/dashboard">
+    <GuestOnlyRoute fallbackPath="/">
       <AuthShell>
         <Card className="border-0 bg-transparent shadow-none">
           <CardHeader className="px-0 pt-0">
@@ -461,5 +463,13 @@ export default function RegisterPage() {
         </Card>
       </AuthShell>
     </GuestOnlyRoute>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense>
+      <RegisterPageInner />
+    </Suspense>
   );
 }

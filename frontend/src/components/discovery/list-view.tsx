@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 
 interface ListViewProps {
   events: EventListItem[];
+  currentUserId: string | null;
   isAuthenticated: boolean;
   total: number;
   page: number;
@@ -15,6 +16,7 @@ interface ListViewProps {
 
 export function ListView({
   events,
+  currentUserId,
   isAuthenticated,
   total,
   page,
@@ -48,7 +50,12 @@ export function ListView({
       {/* Grid */}
       <div className="grid flex-1 content-start grid-cols-1 gap-4 px-4 pb-4 sm:grid-cols-2 sm:gap-5 sm:px-6 sm:pb-6 xl:grid-cols-3 xl:gap-6 xl:px-8">
         {events.map((event) => (
-          <EventCard key={event.id} event={event} isAuthenticated={isAuthenticated} />
+          <EventCard
+            key={event.id}
+            event={event}
+            currentUserId={currentUserId}
+            isAuthenticated={isAuthenticated}
+          />
         ))}
       </div>
 

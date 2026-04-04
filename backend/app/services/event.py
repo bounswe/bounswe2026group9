@@ -18,6 +18,7 @@ from app.repositories import bookmark as bookmark_repo
 from app.repositories import event as event_repo
 from app.repositories import image as image_repo
 from app.repositories import user as user_repo
+from app.services.rate_limit import is_rate_limit_exempt_email
 
 # --- Validators ---
 
@@ -77,6 +78,10 @@ def check_duplicate_event(
 
 
 def check_rate_limit(db: Client, host_id: str) -> None:
+    host_email = user_repo.get_user_email_by_id(db, host_id)
+    if is_rate_limit_exempt_email(host_email):
+        return
+
     config = event_repo.get_rate_limit_config(db)
     if not config:
         return
@@ -563,12 +568,13 @@ def list_events(
     items = []
     for event in events:
         is_private = event["visibility"] == "private"
-        # Full details only for authenticated users viewing public events
-        is_full = user_id is not None and not is_private
+        # Discovery previews stay limited for private events and guests.
+        show_preview_details = user_id is not None and not is_private
         items.append(EventListItemResponse(
             id=event["id"],
+            host_id=event["host_id"],
             title=event["title"],
-            description=event["description"] if is_full else None,
+            description=event["description"] if show_preview_details else None,
             start_datetime=event["start_datetime"],
             end_datetime=event["end_datetime"],
             visibility=event["visibility"],
@@ -581,10 +587,9 @@ def list_events(
             interested_count=interested_counts.get(event["id"], 0),
             is_full=(event["attendee_count"] >= event["attendee_limit"]) if event["attendee_limit"] is not None else None,
             categories=categories_by_event.get(event["id"], []),
-            # Private events: no location in list (venue is private)
-            # Public events: location visible to all (needed for map view)
-            primary_location=locations_by_event.get(event["id"]) if not is_private else None,
-            primary_image_url=images_by_event.get(event["id"]) if is_full else None,
+            # Location visible to all (needed for map view, even for private events)
+            primary_location=locations_by_event.get(event["id"]),
+            primary_image_url=images_by_event.get(event["id"]),
         ))
 
     return EventListResponse(items=items, total=total, page=page, page_size=page_size, total_pages=total_pages)

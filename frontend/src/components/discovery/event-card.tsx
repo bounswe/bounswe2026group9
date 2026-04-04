@@ -1,10 +1,12 @@
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Users, Bookmark, Check, Lock } from "lucide-react";
+import { Users, Bookmark, Check, Lock, Pencil } from "lucide-react";
 
 import type { EventListItem } from "@/lib/events-api";
 import { cn } from "@/lib/utils";
 
 interface EventCardProps {
+  currentUserId: string | null;
   event: EventListItem;
   isAuthenticated: boolean;
 }
@@ -27,10 +29,13 @@ function formatTime(dateStr: string): string {
   });
 }
 
-export function EventCard({ event, isAuthenticated }: EventCardProps) {
+export function EventCard({ currentUserId, event, isAuthenticated }: EventCardProps) {
+  const router = useRouter();
   const isFull = event.is_full ?? event.going_count >= (event.attendee_limit ?? Infinity);
   const isPrivate = event.visibility === "private";
-  const primaryCategory = event.categories[0];
+  const isOwner = currentUserId === event.host_id;
+  const visibleCategories = event.categories.slice(0, 3);
+  const hiddenCategoryCount = Math.max(event.categories.length - visibleCategories.length, 0);
 
   return (
     <Link
@@ -87,11 +92,23 @@ export function EventCard({ event, isAuthenticated }: EventCardProps) {
           {formatDateShort(event.start_datetime)} · {formatTime(event.start_datetime)}
         </p>
 
-        {/* Category tag */}
-        {primaryCategory && (
-          <span className="bg-brand-mid-alpha text-brand-dark mb-3 w-fit rounded-full px-3 py-0.5 text-[11px] font-bold">
-            {primaryCategory.name}
-          </span>
+        {/* Category tags */}
+        {visibleCategories.length > 0 && (
+          <div className="mb-3 flex flex-wrap gap-1.5">
+            {visibleCategories.map((category) => (
+              <span
+                className="bg-brand-mid-alpha text-brand-dark rounded-full px-3 py-0.5 text-[11px] font-bold"
+                key={category.id}
+              >
+                {category.name}
+              </span>
+            ))}
+            {hiddenCategoryCount > 0 ? (
+              <span className="bg-background text-brand-dark rounded-full border border-brand-mid-alpha px-3 py-0.5 text-[11px] font-bold">
+                +{hiddenCategoryCount}
+              </span>
+            ) : null}
+          </div>
         )}
 
         {/* Attendee count */}
@@ -106,38 +123,53 @@ export function EventCard({ event, isAuthenticated }: EventCardProps) {
         {/* Actions — only for registered users, pushed to bottom */}
         {isAuthenticated && (
           <div className="border-brand-mid-alpha mt-auto flex gap-2 border-t pt-3">
-            <button
-              onClick={(e) => {
-                e.preventDefault(); // Don't navigate to detail
-                // Bookmark action will be wired in Task 7
-              }}
-              className={cn(
-                "border-brand-mid flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors",
-                event.is_bookmarked
-                  ? "bg-brand-mid text-white"
-                  : "text-brand-dark hover:bg-brand-mid-alpha",
-              )}
-            >
-              <Bookmark className="size-3.5" />
-              {event.is_bookmarked ? "Saved" : "Bookmark"}
-            </button>
+            {isOwner ? (
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  router.push(`/events/${event.id}/edit`);
+                }}
+                className="bg-brand-dark flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-brand-dark/85"
+              >
+                <Pencil className="size-3.5" />
+                Edit
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault(); // Don't navigate to detail
+                    // Bookmark action will be wired in Task 7
+                  }}
+                  className={cn(
+                    "border-brand-mid flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors",
+                    event.is_bookmarked
+                      ? "bg-brand-mid text-white"
+                      : "text-brand-dark hover:bg-brand-mid-alpha",
+                  )}
+                >
+                  <Bookmark className="size-3.5" />
+                  {event.is_bookmarked ? "Saved" : "Bookmark"}
+                </button>
 
-            <button
-              onClick={(e) => {
-                e.preventDefault(); // Don't navigate to detail
-                // Going action will be wired in Task 7
-              }}
-              disabled={isFull}
-              className={cn(
-                "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors",
-                isFull
-                  ? "cursor-not-allowed bg-brand-mid-alpha text-brand-dark/40"
-                  : "bg-brand-mid text-white hover:bg-brand-mid/80",
-              )}
-            >
-              <Check className="size-3.5" />
-              {isFull ? "Full" : "Going"}
-            </button>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault(); // Don't navigate to detail
+                    // Going action will be wired in Task 7
+                  }}
+                  disabled={isFull}
+                  className={cn(
+                    "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors",
+                    isFull
+                      ? "cursor-not-allowed bg-brand-mid-alpha text-brand-dark/40"
+                      : "bg-brand-mid text-white hover:bg-brand-mid/80",
+                  )}
+                >
+                  <Check className="size-3.5" />
+                  {isFull ? "Full" : "Going"}
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>

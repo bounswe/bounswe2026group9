@@ -41,6 +41,7 @@ from app.services.oauth import (
     generate_oauth_state,
     get_google_user_info,
 )
+from app.services.rate_limit import is_rate_limit_exempt_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -124,15 +125,17 @@ def login(request: Request, body: UserLoginRequest, response: Response):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     user = result.data[0]
+    is_rate_limit_exempt = is_rate_limit_exempt_email(user.get("email"))
 
     # Check if account is active
     if not user["is_active"]:
         raise HTTPException(status_code=403, detail="Account is deactivated")
 
     # Check if account is locked
-    is_locked, lock_msg = check_account_locked(user)
-    if is_locked:
-        raise HTTPException(status_code=429, detail=lock_msg)
+    if not is_rate_limit_exempt:
+        is_locked, lock_msg = check_account_locked(user)
+        if is_locked:
+            raise HTTPException(status_code=429, detail=lock_msg)
 
     # Check auth provider
     if user["auth_provider"] != "local" and not user["hashed_password"]:
@@ -143,7 +146,8 @@ def login(request: Request, body: UserLoginRequest, response: Response):
 
     # Verify password
     if not verify_password(body.password, user["hashed_password"]):
-        increment_failed_attempts(user["id"], user["failed_login_attempts"])
+        if not is_rate_limit_exempt:
+            increment_failed_attempts(user["id"], user["failed_login_attempts"])
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     # Success — reset failed attempts

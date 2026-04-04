@@ -602,10 +602,15 @@ function DiscoveryPage() {
             >
               {params.view === "map" ? (
                 <div className="flex min-h-[22rem] flex-1 sm:min-h-[28rem] lg:min-h-0">
-                  <MapView events={events} isAuthenticated={isAuthenticated} />
+                  <MapView
+                    currentUserId={user?.id ?? null}
+                    events={events}
+                    isAuthenticated={isAuthenticated}
+                  />
                 </div>
               ) : (
                 <ListView
+                  currentUserId={user?.id ?? null}
                   events={events}
                   isAuthenticated={isAuthenticated}
                   total={total}

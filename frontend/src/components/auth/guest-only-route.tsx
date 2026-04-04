@@ -23,7 +23,7 @@ function resolveRedirectPath(
   return fallbackPath;
 }
 
-export function GuestOnlyRoute({ children, fallbackPath = "/dashboard" }: GuestOnlyRouteProps) {
+export function GuestOnlyRoute({ children, fallbackPath = "/" }: GuestOnlyRouteProps) {
   const { isInitialized, status } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();

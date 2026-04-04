@@ -58,6 +58,7 @@ describe("ProtectedRoute", () => {
       accessToken: null,
       isAuthenticated: false,
       isInitialized: false,
+      isLoggingOut: false,
       login: vi.fn(),
       register: vi.fn(),
       logout: vi.fn(),
@@ -81,6 +82,7 @@ describe("ProtectedRoute", () => {
       accessToken: null,
       isAuthenticated: false,
       isInitialized: true,
+      isLoggingOut: false,
       login: vi.fn(),
       register: vi.fn(),
       logout: vi.fn(),
@@ -102,11 +104,37 @@ describe("ProtectedRoute", () => {
     });
   });
 
+  it("does not redirect guests while logout is in progress", async () => {
+    vi.mocked(useAuth).mockReturnValue({
+      accessToken: null,
+      isAuthenticated: false,
+      isInitialized: true,
+      isLoggingOut: true,
+      login: vi.fn(),
+      register: vi.fn(),
+      logout: vi.fn(),
+      refreshSession: vi.fn(),
+      status: "guest",
+      user: null,
+    });
+
+    render(
+      <ProtectedRoute>
+        <div>Secret dashboard</div>
+      </ProtectedRoute>,
+    );
+
+    await waitFor(() => {
+      expect(replaceMock).not.toHaveBeenCalled();
+    });
+  });
+
   it("renders children for authenticated users", () => {
     vi.mocked(useAuth).mockReturnValue({
       accessToken: "access-token",
       isAuthenticated: true,
       isInitialized: true,
+      isLoggingOut: false,
       login: vi.fn(),
       register: vi.fn(),
       logout: vi.fn(),
