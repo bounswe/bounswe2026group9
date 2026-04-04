@@ -7,6 +7,7 @@ import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
+import { CREATE_EVENT_PAGE_PATH } from "@/lib/event-routes";
 import { cn } from "@/lib/utils";
 
 interface NavbarProps {
@@ -301,7 +302,7 @@ export function ActionBar({ view, onViewChange, activeFilterCount, onToggleFilte
         <div className="ml-auto flex items-center gap-2">
           <Button
             size="icon-sm"
-            onClick={() => router.push("/events/create")}
+            onClick={() => router.push(CREATE_EVENT_PAGE_PATH)}
             className="border-0 bg-brand-mid text-white hover:bg-brand-mid/80 sm:hidden"
             aria-label="Create Event"
           >
@@ -309,7 +310,7 @@ export function ActionBar({ view, onViewChange, activeFilterCount, onToggleFilte
           </Button>
           <Button
             size="sm"
-            onClick={() => router.push("/events/create")}
+            onClick={() => router.push(CREATE_EVENT_PAGE_PATH)}
             className="hidden gap-1.5 border-0 bg-brand-mid text-white hover:bg-brand-mid/80 sm:flex"
           >
             <Plus className="size-4" />

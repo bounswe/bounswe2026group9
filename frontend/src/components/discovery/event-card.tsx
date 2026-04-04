@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Users, Bookmark, Check, Lock, Pencil } from "lucide-react";
 
 import type { EventListItem } from "@/lib/events-api";
+import { getEditEventPagePath } from "@/lib/event-routes";
 import { cn } from "@/lib/utils";
 
 interface EventCardProps {
@@ -127,7 +128,7 @@ export function EventCard({ currentUserId, event, isAuthenticated }: EventCardPr
               <button
                 onClick={(e) => {
                   e.preventDefault();
-                  router.push(`/events/${event.id}/edit`);
+                  router.push(getEditEventPagePath(event.id));
                 }}
                 className="bg-brand-dark flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-brand-dark/85"
               >

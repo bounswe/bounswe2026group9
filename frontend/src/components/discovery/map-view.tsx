@@ -6,6 +6,7 @@ import { Minus, Pencil, Plus, Users, X } from "lucide-react";
 import Link from "next/link";
 
 import type { EventListItem } from "@/lib/events-api";
+import { getEditEventPagePath } from "@/lib/event-routes";
 import { cn } from "@/lib/utils";
 
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -224,7 +225,7 @@ export function MapView({ currentUserId, events, isAuthenticated }: MapViewProps
                   <div className="border-brand-mid-alpha mt-3 flex gap-2 border-t pt-3">
                     {currentUserId === popup.event.host_id ? (
                       <Link
-                        href={`/events/${popup.event.id}/edit`}
+                        href={getEditEventPagePath(popup.event.id)}
                         className="bg-brand-dark flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-brand-dark/85"
                       >
                         <Pencil className="size-3.5" />
