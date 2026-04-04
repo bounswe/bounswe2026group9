@@ -39,15 +39,20 @@ export function useEventInteraction({
     going: initialGoing,
     goingCount: Math.max(initialGoingCount, initialGoing ? 1 : 0),
   };
-  // Detail page passes fresh=true to overwrite stale card data with server truth
-  if (fresh) {
-    refreshInteraction(eventId, data);
-  } else {
-    initInteraction(eventId, data);
-  }
+  // Always init during render (safe — initInteraction never calls notify)
+  initInteraction(eventId, data);
 
   const [, tick] = useState(0);
   useEffect(() => subscribe(() => tick((n) => n + 1)), []);
+
+  // refreshInteraction calls notify() which triggers state updates — must be in useEffect
+  useEffect(() => {
+    if (fresh) {
+      refreshInteraction(eventId, data);
+    }
+    // data is intentionally excluded from deps: we only want to refresh on eventId change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId, fresh]);
 
   const state = getInteraction(eventId)!;
 
