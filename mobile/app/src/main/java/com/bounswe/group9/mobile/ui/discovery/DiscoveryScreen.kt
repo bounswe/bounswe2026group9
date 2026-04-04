@@ -30,9 +30,7 @@ import coil.compose.AsyncImage
 import com.bounswe.group9.mobile.data.remote.CategoryDto
 import com.bounswe.group9.mobile.data.remote.EventListItemDto
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Locale
-import java.util.TimeZone
+import com.bounswe.group9.mobile.ui.common.formatEventDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -620,19 +618,3 @@ private fun SmallBadgeIcon(text: String, color: Color) {
     }
 }
 
-fun formatEventDate(dateStr: String): String {
-    return try {
-        val formats = listOf("yyyy-MM-dd'T'HH:mm:ssXXX", "yyyy-MM-dd'T'HH:mm:ss.SSSXXX",
-            "yyyy-MM-dd'T'HH:mm:ssZ", "yyyy-MM-dd'T'HH:mm:ss")
-        var date: java.util.Date? = null
-        for (fmt in formats) {
-            try {
-                val sdf = SimpleDateFormat(fmt, Locale.ENGLISH)
-                sdf.timeZone = TimeZone.getTimeZone("UTC")
-                date = sdf.parse(dateStr)
-                break
-            } catch (_: Exception) {}
-        }
-        date?.let { SimpleDateFormat("EEE, MMM d · HH:mm", Locale.ENGLISH).format(it) } ?: dateStr
-    } catch (e: Exception) { dateStr }
-}

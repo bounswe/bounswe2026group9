@@ -25,8 +25,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bounswe.group9.mobile.data.remote.EventListItemDto
-import java.text.SimpleDateFormat
-import java.util.Locale
+import com.bounswe.group9.mobile.ui.common.formatEventDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -272,13 +271,3 @@ private fun HostedEventCard(event: EventListItemDto, onClick: () -> Unit) {
     }
 }
 
-private fun formatEventDate(iso: String): String {
-    return try {
-        val parser = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.getDefault())
-        val display = SimpleDateFormat("EEE, MMM d · HH:mm", Locale.getDefault())
-        val date = parser.parse(iso)
-        if (date != null) display.format(date) else iso
-    } catch (_: Exception) {
-        iso
-    }
-}

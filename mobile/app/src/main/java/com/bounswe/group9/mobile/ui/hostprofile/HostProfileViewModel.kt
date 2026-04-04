@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.bounswe.group9.mobile.data.remote.EventListItemDto
 import com.bounswe.group9.mobile.data.remote.HostProfileDto
 import com.bounswe.group9.mobile.data.repository.ProfileRepository
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -58,7 +59,8 @@ class HostProfileViewModel(
                         ratingSubmitting = false,
                         ratingSuccess = true
                     )
-                    // Reload profile to get updated average
+                    // Let "Updated" show briefly, then reload to get new average
+                    delay(800)
                     _uiState.value.profile?.let { loadProfile(it.id, currentToken) }
                 },
                 onFailure = { e ->
