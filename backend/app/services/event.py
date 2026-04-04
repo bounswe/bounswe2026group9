@@ -560,10 +560,10 @@ def list_events(
     images_by_event = event_repo.get_primary_images_for_events(db, event_ids)
 
     is_bookmarked_map: set[str] = set()
-    attendance_map: dict[str, str] = {}
+    attendance_status_map: dict[str, str] = {}
     if user_id:
         is_bookmarked_map = bookmark_repo.get_bookmark_status_for_events(db, user_id, event_ids)
-        attendance_map = attendance_repo.get_attendance_status_for_events(db, user_id, event_ids)
+        attendance_status_map = attendance_repo.get_attendance_status_for_events(db, user_id, event_ids)
 
     bookmark_counts = bookmark_repo.get_bookmark_counts_for_events(db, event_ids)
 
@@ -585,7 +585,7 @@ def list_events(
             attendee_count=event["attendee_count"],
             status=event["status"],
             is_bookmarked=(event["id"] in is_bookmarked_map) if user_id else None,
-            attendance_status=attendance_map.get(event["id"]) if user_id else None,
+            attendance_status=attendance_status_map.get(event["id"]) if user_id else None,
             going_count=event["attendee_count"],
             bookmark_count=bookmark_counts.get(event["id"], 0),
             is_full=(event["attendee_count"] >= event["attendee_limit"]) if event["attendee_limit"] is not None else None,
