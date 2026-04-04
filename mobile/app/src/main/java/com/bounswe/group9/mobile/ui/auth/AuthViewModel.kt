@@ -27,73 +27,48 @@ class AuthViewModel(
         }
     }
 
-    fun onUsernameChange(newUsername: String) {
-        _uiState.value = _uiState.value.copy(username = newUsername)
-    }
-
-    fun onEmailChange(newEmail: String) {
-        _uiState.value = _uiState.value.copy(email = newEmail)
-    }
-
-    fun onPasswordChange(newPassword: String) {
-        _uiState.value = _uiState.value.copy(password = newPassword)
-    }
-
-    fun onDateOfBirthChange(newDateOfBirth: String) {
-        _uiState.value = _uiState.value.copy(dateOfBirth = newDateOfBirth)
-    }
+    fun onUsernameChange(v: String)    { _uiState.value = _uiState.value.copy(username = v) }
+    fun onEmailChange(v: String)       { _uiState.value = _uiState.value.copy(email = v) }
+    fun onPasswordChange(v: String)    { _uiState.value = _uiState.value.copy(password = v) }
+    fun onDateOfBirthChange(v: String) { _uiState.value = _uiState.value.copy(dateOfBirth = v) }
 
     fun login() {
         _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
-
         viewModelScope.launch {
-            val token = repository.login(
+            val result = repository.login(
                 email = _uiState.value.email,
                 password = _uiState.value.password
             )
-
-            _uiState.value = if (token != null) {
-                sessionManager.saveToken(token)
-                _uiState.value.copy(
-                    isLoading = false,
-                    errorMessage = null,
-                    isLoggedIn = true
-                )
-            } else {
-                _uiState.value.copy(
-                    isLoading = false,
-                    errorMessage = "Login failed",
-                    isLoggedIn = false
-                )
-            }
+            result.fold(
+                onSuccess = { token ->
+                    sessionManager.saveToken(token)
+                    _uiState.value = _uiState.value.copy(isLoading = false, isLoggedIn = true)
+                },
+                onFailure = { e ->
+                    _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = e.message)
+                }
+            )
         }
     }
 
     fun register() {
         _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
-
         viewModelScope.launch {
-            val token = repository.register(
+            val result = repository.register(
                 username = _uiState.value.username,
                 email = _uiState.value.email,
                 password = _uiState.value.password,
                 dateOfBirth = _uiState.value.dateOfBirth
             )
-
-            _uiState.value = if (token != null) {
-                sessionManager.saveToken(token)
-                _uiState.value.copy(
-                    isLoading = false,
-                    errorMessage = null,
-                    isLoggedIn = true
-                )
-            } else {
-                _uiState.value.copy(
-                    isLoading = false,
-                    errorMessage = "Registration failed",
-                    isLoggedIn = false
-                )
-            }
+            result.fold(
+                onSuccess = { token ->
+                    sessionManager.saveToken(token)
+                    _uiState.value = _uiState.value.copy(isLoading = false, isLoggedIn = true)
+                },
+                onFailure = { e ->
+                    _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = e.message)
+                }
+            )
         }
     }
 
