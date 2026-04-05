@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.Accessible
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Check
@@ -101,6 +102,14 @@ fun EventDetailScreen(
         ) {
             when {
                 uiState.isLoading -> LoadingState()
+                uiState.detailError is com.bounswe.group9.mobile.data.repository.EventDetailError.NotFound -> NotFoundScreen(onBack = onBack)
+                uiState.detailError is com.bounswe.group9.mobile.data.repository.EventDetailError.Underage -> UnderageScreen()
+                uiState.detailError is com.bounswe.group9.mobile.data.repository.EventDetailError.DobRequired -> DobRequiredScreen(
+                    dobInput = uiState.dobInput,
+                    isSubmitting = uiState.dobSubmitting,
+                    onDobChange = { viewModel.onDobChange(it) },
+                    onSubmit = { viewModel.submitDob() }
+                )
                 uiState.errorMessage != null -> ErrorState(
                     message = uiState.errorMessage!!,
                     onRetry = { viewModel.loadEvent(eventId, token) }
@@ -113,7 +122,13 @@ fun EventDetailScreen(
                     currentUserId = currentUserId,
                     onNavigateToHost = onNavigateToHost
                 )
-                uiState.limitedPreview != null -> LimitedPreviewContent(uiState.limitedPreview!!)
+                uiState.limitedPreview != null -> LimitedPreviewContent(
+                    event = uiState.limitedPreview!!,
+                    isAuthenticated = token != null,
+                    isRequesting = uiState.accessRequesting,
+                    requestSent = uiState.accessRequestSent,
+                    onRequestAccess = { viewModel.requestAccess() }
+                )
             }
         }
     }
@@ -145,14 +160,104 @@ private fun ErrorState(message: String, onRetry: () -> Unit) {
     }
 }
 
+@Composable
+private fun NotFoundScreen(onBack: () -> Unit) {
+    Column(
+        Modifier.fillMaxSize().padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text("404", fontSize = 72.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.height(8.dp))
+        Text("Event Not Found", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "This event may have been removed or the link is incorrect.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(24.dp))
+        Button(onClick = onBack) { Text("Back to Discovery") }
+    }
+}
+
+@Composable
+private fun UnderageScreen() {
+    Column(
+        Modifier.fillMaxSize().padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(Icons.Default.Shield, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.error)
+        Spacer(Modifier.height(16.dp))
+        Text("Age Restricted", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "You must be 18 or older to view this event. This restriction is based on your date of birth.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun DobRequiredScreen(
+    dobInput: String,
+    isSubmitting: Boolean,
+    onDobChange: (String) -> Unit,
+    onSubmit: () -> Unit
+) {
+    Column(
+        Modifier.fillMaxSize().padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(Icons.Default.Shield, contentDescription = null, modifier = Modifier.size(64.dp), tint = Color(0xFFFFA000))
+        Spacer(Modifier.height(16.dp))
+        Text("Age Verification Required", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "This event is age-restricted. Please enter your date of birth to verify your age.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(24.dp))
+        OutlinedTextField(
+            value = dobInput,
+            onValueChange = onDobChange,
+            label = { Text("Date of Birth") },
+            placeholder = { Text("YYYY-MM-DD") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(0.7f)
+        )
+        Spacer(Modifier.height(16.dp))
+        Button(
+            onClick = onSubmit,
+            enabled = dobInput.matches(Regex("\\d{4}-\\d{2}-\\d{2}")) && !isSubmitting
+        ) {
+            if (isSubmitting) {
+                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+            } else {
+                Text("Verify Age")
+            }
+        }
+    }
+}
+
 // endregion
 
 // region Limited Preview
 
 @Composable
-private fun LimitedPreviewContent(event: EventLimitedDto) {
+private fun LimitedPreviewContent(
+    event: EventLimitedDto,
+    isAuthenticated: Boolean = false,
+    isRequesting: Boolean = false,
+    requestSent: Boolean = false,
+    onRequestAccess: () -> Unit = {}
+) {
     Column(
-        Modifier.fillMaxSize().padding(24.dp),
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -170,12 +275,54 @@ private fun LimitedPreviewContent(event: EventLimitedDto) {
             }
         }
         Spacer(Modifier.height(16.dp))
-        val reason = when {
-            event.visibility == "private" -> "This is a private event. Request access from the host to see full details."
-            event.status == "cancelled" -> "This event has been cancelled."
-            else -> "Sign in to view full event details."
+        when {
+            event.visibility == "private" -> {
+                Text(
+                    "This is a private event.",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Event details are only visible to the host and invited attendees.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(16.dp))
+                if (!isAuthenticated) {
+                    Text("Sign in to request access to this event.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else if (requestSent) {
+                    Text("Access request sent! Waiting for host approval.", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
+                } else {
+                    OutlinedButton(
+                        onClick = onRequestAccess,
+                        enabled = !isRequesting
+                    ) {
+                        if (isRequesting) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        } else {
+                            Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Request Access")
+                        }
+                    }
+                }
+            }
+            event.status == "cancelled" -> {
+                Text(
+                    "This event has been cancelled.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+            else -> {
+                Text(
+                    "Sign in to view full event details.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
-        Text(reason, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
