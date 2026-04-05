@@ -7,6 +7,7 @@ import com.bounswe.group9.mobile.data.remote.CommentDto
 import com.bounswe.group9.mobile.data.remote.EventDetailDto
 import com.bounswe.group9.mobile.data.remote.EventLimitedDto
 import com.bounswe.group9.mobile.data.remote.InviteResponseDto
+import com.bounswe.group9.mobile.data.repository.EventDetailError
 import com.bounswe.group9.mobile.data.repository.EventDetailResult
 import com.bounswe.group9.mobile.data.repository.EventRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,7 +20,14 @@ data class EventDetailUiState(
     val limitedPreview: EventLimitedDto? = null,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
+    val detailError: EventDetailError? = null,
     val actionError: String? = null,
+    // DOB verification
+    val dobInput: String = "",
+    val dobSubmitting: Boolean = false,
+    // Access request
+    val accessRequesting: Boolean = false,
+    val accessRequestSent: Boolean = false,
     // Comments
     val comments: List<CommentDto> = emptyList(),
     val commentsLoading: Boolean = false,
@@ -80,7 +88,65 @@ class EventDetailViewModel(
                     }
                 },
                 onFailure = { e ->
-                    _uiState.value = EventDetailUiState(errorMessage = e.message)
+                    val typedError = e as? EventDetailError
+                    _uiState.value = EventDetailUiState(
+                        errorMessage = e.message,
+                        detailError = typedError
+                    )
+                }
+            )
+        }
+    }
+
+    // ── DOB Verification ──
+
+    fun onDobChange(dob: String) {
+        _uiState.value = _uiState.value.copy(dobInput = dob)
+    }
+
+    fun submitDob() {
+        val token = currentToken ?: return
+        val dob = _uiState.value.dobInput.trim()
+        if (dob.isEmpty()) return
+
+        _uiState.value = _uiState.value.copy(dobSubmitting = true, actionError = null)
+        viewModelScope.launch {
+            repository.updateDateOfBirth(token, dob).fold(
+                onSuccess = {
+                    // DOB saved — reload event detail (backend will now allow or deny based on age)
+                    _uiState.value = _uiState.value.copy(dobSubmitting = false)
+                    currentEventId?.let { loadEvent(it, currentToken) }
+                },
+                onFailure = { e ->
+                    _uiState.value = _uiState.value.copy(
+                        dobSubmitting = false,
+                        actionError = e.message
+                    )
+                }
+            )
+        }
+    }
+
+    // ── Access Request ──
+
+    fun requestAccess() {
+        val token = currentToken ?: return
+        val eventId = currentEventId ?: return
+
+        _uiState.value = _uiState.value.copy(accessRequesting = true, actionError = null)
+        viewModelScope.launch {
+            repository.requestAccess(token, eventId).fold(
+                onSuccess = {
+                    _uiState.value = _uiState.value.copy(
+                        accessRequesting = false,
+                        accessRequestSent = true
+                    )
+                },
+                onFailure = { e ->
+                    _uiState.value = _uiState.value.copy(
+                        accessRequesting = false,
+                        actionError = e.message
+                    )
                 }
             )
         }

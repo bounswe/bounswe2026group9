@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Accessible
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
@@ -108,6 +109,14 @@ fun EventDetailScreen(
         ) {
             when {
                 uiState.isLoading -> LoadingState()
+                uiState.detailError is com.bounswe.group9.mobile.data.repository.EventDetailError.NotFound -> NotFoundScreen(onBack = onBack)
+                uiState.detailError is com.bounswe.group9.mobile.data.repository.EventDetailError.Underage -> UnderageScreen()
+                uiState.detailError is com.bounswe.group9.mobile.data.repository.EventDetailError.DobRequired -> DobRequiredScreen(
+                    dobInput = uiState.dobInput,
+                    isSubmitting = uiState.dobSubmitting,
+                    onDobChange = { viewModel.onDobChange(it) },
+                    onSubmit = { viewModel.submitDob() }
+                )
                 uiState.errorMessage != null -> ErrorState(
                     message = uiState.errorMessage!!,
                     onRetry = { viewModel.loadEvent(eventId, token) }
@@ -159,6 +168,90 @@ private fun ErrorState(message: String, onRetry: () -> Unit) {
     }
 }
 
+@Composable
+private fun NotFoundScreen(onBack: () -> Unit) {
+    Column(
+        Modifier.fillMaxSize().padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text("404", fontSize = 72.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.height(8.dp))
+        Text("Event Not Found", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "This event may have been removed or the link is incorrect.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(24.dp))
+        Button(onClick = onBack) { Text("Back to Discovery") }
+    }
+}
+
+@Composable
+private fun UnderageScreen() {
+    Column(
+        Modifier.fillMaxSize().padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(Icons.Default.Shield, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.error)
+        Spacer(Modifier.height(16.dp))
+        Text("Age Restricted", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "You must be 18 or older to view this event. This restriction is based on your date of birth.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun DobRequiredScreen(
+    dobInput: String,
+    isSubmitting: Boolean,
+    onDobChange: (String) -> Unit,
+    onSubmit: () -> Unit
+) {
+    Column(
+        Modifier.fillMaxSize().padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(Icons.Default.Shield, contentDescription = null, modifier = Modifier.size(64.dp), tint = Color(0xFFFFA000))
+        Spacer(Modifier.height(16.dp))
+        Text("Age Verification Required", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "This event is age-restricted. Please enter your date of birth to verify your age.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(24.dp))
+        OutlinedTextField(
+            value = dobInput,
+            onValueChange = onDobChange,
+            label = { Text("Date of Birth") },
+            placeholder = { Text("YYYY-MM-DD") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(0.7f)
+        )
+        Spacer(Modifier.height(16.dp))
+        Button(
+            onClick = onSubmit,
+            enabled = dobInput.matches(Regex("\\d{4}-\\d{2}-\\d{2}")) && !isSubmitting
+        ) {
+            if (isSubmitting) {
+                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+            } else {
+                Text("Verify Age")
+            }
+        }
+    }
+}
+
 // endregion
 
 // region Limited Preview
@@ -172,7 +265,7 @@ private fun LimitedPreviewContent(
     onRequestAccess: () -> Unit
 ) {
     Column(
-        Modifier.fillMaxSize().padding(24.dp),
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -195,89 +288,100 @@ private fun LimitedPreviewContent(
         Spacer(Modifier.height(20.dp))
 
         // Request Access UI
-        if (event.visibility == "private" && token != null) {
-            when (accessRequestStatus) {
-                null -> {
-                    Button(
-                        onClick = onRequestAccess,
-                        enabled = !isRequestingAccess,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
-                        )
-                    ) {
-                        if (isRequestingAccess) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                color = Color.White,
-                                strokeWidth = 2.dp
+        when {
+            event.visibility == "private" && token != null -> {
+                when (accessRequestStatus) {
+                    null -> {
+                        Button(
+                            onClick = onRequestAccess,
+                            enabled = !isRequestingAccess,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary
                             )
-                            Spacer(Modifier.width(8.dp))
-                        }
-                        Icon(Icons.Default.Lock, contentDescription = null,
-                            modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Request Access")
-                    }
-                }
-                "pending" -> {
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        tonalElevation = 2.dp
-                    ) {
-                        Row(
-                            Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                strokeWidth = 2.dp,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                            Text(
-                                "Access Requested — Pending",
-                                color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                fontWeight = FontWeight.Medium
-                            )
+                            if (isRequestingAccess) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(Modifier.width(8.dp))
+                            }
+                            Icon(Icons.Default.Lock, contentDescription = null,
+                                modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Request Access")
                         }
                     }
-                }
-                "rejected" -> {
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.errorContainer,
-                        tonalElevation = 2.dp
-                    ) {
-                        Row(
-                            Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    "pending" -> {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            tonalElevation = 2.dp
                         ) {
-                            Icon(Icons.Default.Close, contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onErrorContainer,
-                                modifier = Modifier.size(18.dp))
-                            Text(
-                                "Access Request Rejected",
-                                color = MaterialTheme.colorScheme.onErrorContainer,
-                                fontWeight = FontWeight.Medium
-                            )
+                            Row(
+                                Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                                Text(
+                                    "Access Requested — Pending",
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
+                    "rejected" -> {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            tonalElevation = 2.dp
+                        ) {
+                            Row(
+                                Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(Icons.Default.Close, contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                                    modifier = Modifier.size(18.dp))
+                                Text(
+                                    "Access Request Rejected",
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
                         }
                     }
                 }
             }
-        } else if (event.visibility == "private" && token == null) {
-            Text(
-                "Sign in to request access to this private event.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        } else {
-            Text(
-                "Sign in to view full event details.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            event.visibility == "private" -> {
+                Text(
+                    "Sign in to request access to this private event.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            event.status == "cancelled" -> {
+                Text(
+                    "This event has been cancelled.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+            else -> {
+                Text(
+                    "Sign in to view full event details.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }

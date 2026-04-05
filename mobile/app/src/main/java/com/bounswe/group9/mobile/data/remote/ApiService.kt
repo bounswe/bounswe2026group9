@@ -335,6 +335,22 @@ interface ApiService {
         @Body body: RatingRequest
     ): RatingResponseDto
 
+    // ── Profile Update ──
+
+    @PUT("users/me")
+    suspend fun updateProfile(
+        @Header("Authorization") token: String,
+        @Body body: Map<String, String>
+    ): JsonObject
+
+    // ── Access Request ──
+
+    @POST("events/{event_id}/access-requests")
+    suspend fun createAccessRequest(
+        @Path("event_id") eventId: String,
+        @Header("Authorization") token: String
+    ): JsonObject
+
     @GET("categories")
     suspend fun getCategories(): List<CategoryDto>
 
