@@ -193,20 +193,6 @@ class EventRepository {
         }
     }
 
-    // ── Access Request ──
-
-    suspend fun requestAccess(token: String, eventId: String): Result<Unit> {
-        return try {
-            RetrofitProvider.apiService.createAccessRequest(eventId, "Bearer $token")
-            Result.success(Unit)
-        } catch (e: retrofit2.HttpException) {
-            val body = e.response()?.errorBody()?.string() ?: "Unknown error"
-            Result.failure(Exception(parseErrorMessage(body, e.code())))
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
     // ── Categories ──
 
     suspend fun getCategories(): Result<List<CategoryDto>> {

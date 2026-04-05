@@ -127,31 +127,6 @@ class EventDetailViewModel(
         }
     }
 
-    // ── Access Request ──
-
-    fun requestAccess() {
-        val token = currentToken ?: return
-        val eventId = currentEventId ?: return
-
-        _uiState.value = _uiState.value.copy(accessRequesting = true, actionError = null)
-        viewModelScope.launch {
-            repository.requestAccess(token, eventId).fold(
-                onSuccess = {
-                    _uiState.value = _uiState.value.copy(
-                        accessRequesting = false,
-                        accessRequestSent = true
-                    )
-                },
-                onFailure = { e ->
-                    _uiState.value = _uiState.value.copy(
-                        accessRequesting = false,
-                        actionError = e.message
-                    )
-                }
-            )
-        }
-    }
-
     // ── Comments ──
 
     fun onCommentTextChange(text: String) {

@@ -343,14 +343,6 @@ interface ApiService {
         @Body body: Map<String, String>
     ): JsonObject
 
-    // ── Access Request ──
-
-    @POST("events/{event_id}/access-requests")
-    suspend fun createAccessRequest(
-        @Path("event_id") eventId: String,
-        @Header("Authorization") token: String
-    ): JsonObject
-
     @GET("categories")
     suspend fun getCategories(): List<CategoryDto>
 
