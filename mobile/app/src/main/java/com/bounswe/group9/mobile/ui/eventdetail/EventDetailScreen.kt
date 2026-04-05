@@ -1,6 +1,7 @@
 package com.bounswe.group9.mobile.ui.eventdetail
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -10,15 +11,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Accessible
-import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -30,14 +33,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.bounswe.group9.mobile.data.remote.AccessRequestResponseDto
 import com.bounswe.group9.mobile.data.remote.EventDetailDto
 import com.bounswe.group9.mobile.data.remote.EventLimitedDto
 import com.bounswe.group9.mobile.data.remote.EquipmentDto
+import com.bounswe.group9.mobile.data.remote.InviteResponseDto
 import com.bounswe.group9.mobile.data.remote.VenueMetadataDto
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -120,13 +127,14 @@ fun EventDetailScreen(
                     viewModel = viewModel,
                     token = token,
                     currentUserId = currentUserId,
+                    isHost = isHost,
                     onNavigateToHost = onNavigateToHost
                 )
                 uiState.limitedPreview != null -> LimitedPreviewContent(
                     event = uiState.limitedPreview!!,
-                    isAuthenticated = token != null,
-                    isRequesting = uiState.accessRequesting,
-                    requestSent = uiState.accessRequestSent,
+                    token = token,
+                    accessRequestStatus = uiState.accessRequestStatus,
+                    isRequestingAccess = uiState.isRequestingAccess,
                     onRequestAccess = { viewModel.requestAccess() }
                 )
             }
@@ -251,21 +259,24 @@ private fun DobRequiredScreen(
 @Composable
 private fun LimitedPreviewContent(
     event: EventLimitedDto,
-    isAuthenticated: Boolean = false,
-    isRequesting: Boolean = false,
-    requestSent: Boolean = false,
-    onRequestAccess: () -> Unit = {}
+    token: String?,
+    accessRequestStatus: String?,
+    isRequestingAccess: Boolean,
+    onRequestAccess: () -> Unit
 ) {
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(64.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(16.dp))
         Text(event.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(8.dp))
-        Text(formatDateRange(event.start_datetime, event.end_datetime), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(formatDateRange(event.start_datetime, event.end_datetime),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(12.dp))
         if (event.categories.isNotEmpty()) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -274,39 +285,88 @@ private fun LimitedPreviewContent(
                 }
             }
         }
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
+
+        // Request Access UI
         when {
-            event.visibility == "private" -> {
-                Text(
-                    "This is a private event.",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    "Event details are only visible to the host and invited attendees.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(16.dp))
-                if (!isAuthenticated) {
-                    Text("Sign in to request access to this event.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                } else if (requestSent) {
-                    Text("Access request sent! Waiting for host approval.", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
-                } else {
-                    OutlinedButton(
-                        onClick = onRequestAccess,
-                        enabled = !isRequesting
-                    ) {
-                        if (isRequesting) {
-                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                        } else {
-                            Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(16.dp))
+            event.visibility == "private" && token != null -> {
+                when (accessRequestStatus) {
+                    null -> {
+                        Button(
+                            onClick = onRequestAccess,
+                            enabled = !isRequestingAccess,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary
+                            )
+                        ) {
+                            if (isRequestingAccess) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(Modifier.width(8.dp))
+                            }
+                            Icon(Icons.Default.Lock, contentDescription = null,
+                                modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(6.dp))
                             Text("Request Access")
                         }
                     }
+                    "pending" -> {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            tonalElevation = 2.dp
+                        ) {
+                            Row(
+                                Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                                Text(
+                                    "Access Requested — Pending",
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
+                    "rejected" -> {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            tonalElevation = 2.dp
+                        ) {
+                            Row(
+                                Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(Icons.Default.Close, contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                                    modifier = Modifier.size(18.dp))
+                                Text(
+                                    "Access Request Rejected",
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
                 }
+            }
+            event.visibility == "private" -> {
+                Text(
+                    "Sign in to request access to this private event.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
             event.status == "cancelled" -> {
                 Text(
@@ -337,6 +397,7 @@ private fun FullDetailContent(
     viewModel: EventDetailViewModel,
     token: String?,
     currentUserId: String?,
+    isHost: Boolean,
     onNavigateToHost: (String) -> Unit
 ) {
     Column(
@@ -476,6 +537,17 @@ private fun FullDetailContent(
             SectionHeader("Host")
             TextButton(onClick = { onNavigateToHost(event.host_id) }) {
                 Text("View host profile", fontSize = 14.sp)
+            }
+
+            // Manage Invites (host only)
+            if (isHost && event.visibility == "private") {
+                Spacer(Modifier.height(16.dp))
+                ManageInvitesSection(
+                    uiState = uiState,
+                    onCreateInvite = { viewModel.createInvite() },
+                    onApprove = { id -> viewModel.decideRequest(id, "approved") },
+                    onReject = { id -> viewModel.decideRequest(id, "rejected") }
+                )
             }
 
             // Comments
@@ -678,6 +750,185 @@ private fun BadgeRow(event: EventDetailDto) {
         if (event.is_full == true) {
             Badge(containerColor = MaterialTheme.colorScheme.error) {
                 Text("Full", fontSize = 10.sp, color = Color.White, modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun ManageInvitesSection(
+    uiState: EventDetailUiState,
+    onCreateInvite: () -> Unit,
+    onApprove: (String) -> Unit,
+    onReject: (String) -> Unit
+) {
+    val clipboard = LocalClipboardManager.current
+
+    SectionHeader("Manage Invites")
+
+    // Invite creation
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        OutlinedButton(
+            onClick = onCreateInvite,
+            enabled = !uiState.isCreatingInvite,
+            modifier = Modifier.weight(1f)
+        ) {
+            if (uiState.isCreatingInvite) {
+                CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
+                Spacer(Modifier.width(6.dp))
+            } else {
+                Icon(Icons.Default.Link, contentDescription = null, modifier = Modifier.size(14.dp))
+                Spacer(Modifier.width(6.dp))
+            }
+            Text("Generate Invite Link", fontSize = 13.sp)
+        }
+    }
+
+    // Active invite links
+    if (uiState.invites.isNotEmpty()) {
+        Spacer(Modifier.height(8.dp))
+        uiState.invites.take(3).forEach { invite ->
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                ),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        // App deep link (sem:// scheme) which the recipient opens in-app
+                        val appLink = "sem://invite/${invite.event_id}/${invite.token}"
+                        Text(
+                            text = appLink,
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = "Uses: ${invite.use_count}${invite.max_uses?.let { "/$it" } ?: ""}",
+                            fontSize = 10.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+                    }
+                    IconButton(
+                        onClick = {
+                            val appLink = "sem://invite/${invite.event_id}/${invite.token}"
+                            clipboard.setText(AnnotatedString(appLink))
+                        },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.ContentCopy,
+                            contentDescription = "Copy link",
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+        }
+    }
+
+    // Pending access requests
+    if (uiState.isLoadingInviteSection) {
+        Spacer(Modifier.height(8.dp))
+        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+    } else if (uiState.accessRequests.isNotEmpty()) {
+        Spacer(Modifier.height(12.dp))
+        Text(
+            "Pending Access Requests",
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Spacer(Modifier.height(6.dp))
+        uiState.accessRequests.forEach { req ->
+            AccessRequestRow(
+                request = req,
+                onApprove = { onApprove(req.id) },
+                onReject = { onReject(req.id) }
+            )
+            Spacer(Modifier.height(4.dp))
+        }
+    } else {
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "No pending access requests",
+            fontSize = 13.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun AccessRequestRow(
+    request: AccessRequestResponseDto,
+    onApprove: () -> Unit,
+    onReject: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(10.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                request.username,
+                fontWeight = FontWeight.Medium,
+                fontSize = 14.sp,
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(Modifier.width(8.dp))
+            // Approve button
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xFF16A34A).copy(alpha = 0.12f))
+                    .clickable { onApprove() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.Check,
+                    contentDescription = "Approve",
+                    tint = Color(0xFF16A34A),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Spacer(Modifier.width(6.dp))
+            // Reject button
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.errorContainer)
+                    .clickable { onReject() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = "Reject",
+                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.size(18.dp)
+                )
             }
         }
     }

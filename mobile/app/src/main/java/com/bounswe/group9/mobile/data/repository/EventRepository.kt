@@ -193,20 +193,6 @@ class EventRepository {
         }
     }
 
-    // ── Access Request ──
-
-    suspend fun requestAccess(token: String, eventId: String): Result<Unit> {
-        return try {
-            RetrofitProvider.apiService.createAccessRequest(eventId, "Bearer $token")
-            Result.success(Unit)
-        } catch (e: retrofit2.HttpException) {
-            val body = e.response()?.errorBody()?.string() ?: "Unknown error"
-            Result.failure(Exception(parseErrorMessage(body, e.code())))
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
     // ── Categories ──
 
     suspend fun getCategories(): Result<List<CategoryDto>> {
@@ -217,6 +203,65 @@ class EventRepository {
             Log.e("EventRepository", "getCategories failed: ${e.message}", e)
             Result.failure(e)
         }
+    }
+
+    // ── Invites ──
+
+    suspend fun createInvite(token: String, eventId: String): Result<com.bounswe.group9.mobile.data.remote.InviteResponseDto> {
+        return try {
+            Result.success(RetrofitProvider.apiService.createInvite(eventId, "Bearer $token"))
+        } catch (e: retrofit2.HttpException) {
+            val body = e.response()?.errorBody()?.string() ?: "Unknown error"
+            Result.failure(Exception(parseErrorMessage(body, e.code())))
+        } catch (e: Exception) { Result.failure(e) }
+    }
+
+    suspend fun listInvites(token: String, eventId: String): Result<com.bounswe.group9.mobile.data.remote.InviteListResponseDto> {
+        return try {
+            Result.success(RetrofitProvider.apiService.listInvites(eventId, "Bearer $token"))
+        } catch (e: retrofit2.HttpException) {
+            val body = e.response()?.errorBody()?.string() ?: "Unknown error"
+            Result.failure(Exception(parseErrorMessage(body, e.code())))
+        } catch (e: Exception) { Result.failure(e) }
+    }
+
+    suspend fun acceptInvite(token: String, eventId: String, inviteToken: String): Result<Unit> {
+        return try {
+            RetrofitProvider.apiService.acceptInvite(eventId, inviteToken, "Bearer $token")
+            Result.success(Unit)
+        } catch (e: retrofit2.HttpException) {
+            val body = e.response()?.errorBody()?.string() ?: "Unknown error"
+            Result.failure(Exception(parseErrorMessage(body, e.code())))
+        } catch (e: Exception) { Result.failure(e) }
+    }
+
+    // ── Access Requests ──
+
+    suspend fun requestAccess(token: String, eventId: String): Result<com.bounswe.group9.mobile.data.remote.AccessRequestResponseDto> {
+        return try {
+            Result.success(RetrofitProvider.apiService.createAccessRequest(eventId, "Bearer $token"))
+        } catch (e: retrofit2.HttpException) {
+            val body = e.response()?.errorBody()?.string() ?: "Unknown error"
+            Result.failure(Exception(parseErrorMessage(body, e.code())))
+        } catch (e: Exception) { Result.failure(e) }
+    }
+
+    suspend fun listAccessRequests(token: String, eventId: String): Result<com.bounswe.group9.mobile.data.remote.AccessRequestListResponseDto> {
+        return try {
+            Result.success(RetrofitProvider.apiService.listAccessRequests(eventId, "Bearer $token"))
+        } catch (e: retrofit2.HttpException) {
+            val body = e.response()?.errorBody()?.string() ?: "Unknown error"
+            Result.failure(Exception(parseErrorMessage(body, e.code())))
+        } catch (e: Exception) { Result.failure(e) }
+    }
+
+    suspend fun decideAccessRequest(token: String, eventId: String, requestId: String, decision: String): Result<com.bounswe.group9.mobile.data.remote.AccessRequestResponseDto> {
+        return try {
+            Result.success(RetrofitProvider.apiService.decideAccessRequest(eventId, requestId, "Bearer $token", com.bounswe.group9.mobile.data.remote.AccessRequestDecisionDto(decision)))
+        } catch (e: retrofit2.HttpException) {
+            val body = e.response()?.errorBody()?.string() ?: "Unknown error"
+            Result.failure(Exception(parseErrorMessage(body, e.code())))
+        } catch (e: Exception) { Result.failure(e) }
     }
 }
 

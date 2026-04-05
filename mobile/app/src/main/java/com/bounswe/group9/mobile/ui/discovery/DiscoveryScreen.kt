@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -40,7 +41,10 @@ fun DiscoveryScreen(
     onEventClick: (String) -> Unit,
     onLoginClick: () -> Unit = {},
     onLogout: () -> Unit = {},
-    username: String? = null
+    username: String? = null,
+    unreadNotificationCount: Int = 0,
+    onNotificationsClick: () -> Unit = {},
+    onProfileClick: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
@@ -82,7 +86,10 @@ fun DiscoveryScreen(
                 onLoginClick = onLoginClick,
                 onLogout = onLogout,
                 isMapView = isMapView,
-                onViewToggle = { isMapView = !isMapView }
+                onViewToggle = { isMapView = !isMapView },
+                unreadNotificationCount = unreadNotificationCount,
+                onNotificationsClick = onNotificationsClick,
+                onProfileClick = onProfileClick
             )
         },
         containerColor = MaterialTheme.colorScheme.background
@@ -194,7 +201,10 @@ private fun DiscoveryTopBar(
     onLoginClick: () -> Unit,
     onLogout: () -> Unit,
     isMapView: Boolean,
-    onViewToggle: () -> Unit
+    onViewToggle: () -> Unit,
+    unreadNotificationCount: Int = 0,
+    onNotificationsClick: () -> Unit = {},
+    onProfileClick: () -> Unit = {}
 ) {
     Surface(
         color = MaterialTheme.colorScheme.primary,
@@ -227,12 +237,47 @@ private fun DiscoveryTopBar(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    if (isLoggedIn) {
+                        // Bell icon with unread badge
+                        Box(modifier = Modifier.size(34.dp)) {
+                            IconButton(
+                                onClick = onNotificationsClick,
+                                modifier = Modifier.size(34.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Notifications,
+                                    contentDescription = "Notifications",
+                                    tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f),
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                            if (unreadNotificationCount > 0) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .size(16.dp)
+                                        .clip(RoundedCornerShape(50))
+                                        .background(Color(0xFFE53935)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = if (unreadNotificationCount > 9) "9+" else "$unreadNotificationCount",
+                                        color = Color.White,
+                                        fontSize = 8.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        lineHeight = 8.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
                     if (isLoggedIn && username != null) {
                         Box(
                             modifier = Modifier
                                 .size(34.dp)
                                 .clip(RoundedCornerShape(50))
-                                .background(MaterialTheme.colorScheme.tertiary),
+                                .background(MaterialTheme.colorScheme.tertiary)
+                                .clickable { onProfileClick() },
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
@@ -250,7 +295,7 @@ private fun DiscoveryTopBar(
                         ) {
                             Text("Logout", fontSize = 12.sp)
                         }
-                    } else {
+                    } else if (!isLoggedIn) {
                         OutlinedButton(
                             onClick = onLoginClick,
                             colors = ButtonDefaults.outlinedButtonColors(

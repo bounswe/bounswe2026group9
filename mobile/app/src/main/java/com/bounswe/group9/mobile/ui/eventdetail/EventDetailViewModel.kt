@@ -2,9 +2,11 @@ package com.bounswe.group9.mobile.ui.eventdetail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.bounswe.group9.mobile.data.remote.AccessRequestResponseDto
 import com.bounswe.group9.mobile.data.remote.CommentDto
 import com.bounswe.group9.mobile.data.remote.EventDetailDto
 import com.bounswe.group9.mobile.data.remote.EventLimitedDto
+import com.bounswe.group9.mobile.data.remote.InviteResponseDto
 import com.bounswe.group9.mobile.data.repository.EventDetailError
 import com.bounswe.group9.mobile.data.repository.EventDetailResult
 import com.bounswe.group9.mobile.data.repository.EventRepository
@@ -34,7 +36,16 @@ data class EventDetailUiState(
     val commentsPage: Int = 1,
     val commentsTotalPages: Int = 1,
     val commentText: String = "",
-    val commentPosting: Boolean = false
+    val commentPosting: Boolean = false,
+    // Access request (non-host)
+    val accessRequestStatus: String? = null,  // null | "pending" | "approved" | "rejected"
+    val isRequestingAccess: Boolean = false,
+    // Invite & access request management (host)
+    val invites: List<InviteResponseDto> = emptyList(),
+    val accessRequests: List<AccessRequestResponseDto> = emptyList(),
+    val isLoadingInviteSection: Boolean = false,
+    val isCreatingInvite: Boolean = false,
+    val inviteSectionError: String? = null
 ) {
     val isLimited: Boolean get() = limitedPreview != null && fullDetail == null
     val hasData: Boolean get() = fullDetail != null || limitedPreview != null
@@ -50,6 +61,12 @@ class EventDetailViewModel(
     private var currentToken: String? = null
     private var currentEventId: String? = null
 
+    companion object {
+        // Session-level cache: eventId -> accessRequestStatus
+        // Persists across ViewModel recreations while the app is alive
+        private val accessRequestCache = mutableMapOf<String, String>()
+    }
+
     fun loadEvent(eventId: String, token: String?) {
         currentToken = token
         currentEventId = eventId
@@ -63,6 +80,12 @@ class EventDetailViewModel(
                     }
                     // Load comments for full detail view
                     if (result is EventDetailResult.Full) loadComments(reset = true)
+                    // Load invite section for host; check access request status for non-host limited
+                    if (result is EventDetailResult.Full && token != null) {
+                        loadInviteSection()
+                    } else if (result is EventDetailResult.Limited) {
+                        checkAccessRequestStatus()
+                    }
                 },
                 onFailure = { e ->
                     val typedError = e as? EventDetailError
@@ -97,31 +120,6 @@ class EventDetailViewModel(
                 onFailure = { e ->
                     _uiState.value = _uiState.value.copy(
                         dobSubmitting = false,
-                        actionError = e.message
-                    )
-                }
-            )
-        }
-    }
-
-    // ── Access Request ──
-
-    fun requestAccess() {
-        val token = currentToken ?: return
-        val eventId = currentEventId ?: return
-
-        _uiState.value = _uiState.value.copy(accessRequesting = true, actionError = null)
-        viewModelScope.launch {
-            repository.requestAccess(token, eventId).fold(
-                onSuccess = {
-                    _uiState.value = _uiState.value.copy(
-                        accessRequesting = false,
-                        accessRequestSent = true
-                    )
-                },
-                onFailure = { e ->
-                    _uiState.value = _uiState.value.copy(
-                        accessRequesting = false,
                         actionError = e.message
                     )
                 }
@@ -307,5 +305,122 @@ class EventDetailViewModel(
                 )
             }
         }
+    }
+
+    // ── Invite Section (host) ─────────────────────────────────────────────────
+
+    fun loadInviteSection() {
+        val token = currentToken ?: return
+        val eventId = currentEventId ?: return
+        _uiState.value = _uiState.value.copy(isLoadingInviteSection = true, inviteSectionError = null)
+        viewModelScope.launch {
+            val invitesResult = repository.listInvites(token, eventId)
+            val requestsResult = repository.listAccessRequests(token, eventId)
+            _uiState.value = _uiState.value.copy(
+                invites = invitesResult.getOrDefault(com.bounswe.group9.mobile.data.remote.InviteListResponseDto(emptyList())).items,
+                accessRequests = requestsResult.getOrDefault(com.bounswe.group9.mobile.data.remote.AccessRequestListResponseDto(emptyList())).items
+                    .filter { it.status == "pending" },
+                isLoadingInviteSection = false,
+                inviteSectionError = invitesResult.exceptionOrNull()?.message
+                    ?: requestsResult.exceptionOrNull()?.message
+            )
+        }
+    }
+
+    fun createInvite() {
+        val token = currentToken ?: return
+        val eventId = currentEventId ?: return
+        _uiState.value = _uiState.value.copy(isCreatingInvite = true)
+        viewModelScope.launch {
+            repository.createInvite(token, eventId).fold(
+                onSuccess = { invite ->
+                    _uiState.value = _uiState.value.copy(
+                        invites = listOf(invite) + _uiState.value.invites,
+                        isCreatingInvite = false
+                    )
+                },
+                onFailure = { e ->
+                    _uiState.value = _uiState.value.copy(
+                        isCreatingInvite = false,
+                        actionError = e.message
+                    )
+                }
+            )
+        }
+    }
+
+    fun decideRequest(requestId: String, decision: String) {
+        val token = currentToken ?: return
+        val eventId = currentEventId ?: return
+        viewModelScope.launch {
+            repository.decideAccessRequest(token, eventId, requestId, decision).fold(
+                onSuccess = {
+                    // Remove from pending list
+                    _uiState.value = _uiState.value.copy(
+                        accessRequests = _uiState.value.accessRequests.filter { it.id != requestId }
+                    )
+                    // If approved → reload event so approved user sees full view next time
+                    if (decision == "approved") loadEvent(eventId, token)
+                },
+                onFailure = { e ->
+                    _uiState.value = _uiState.value.copy(actionError = e.message)
+                }
+            )
+        }
+    }
+
+    // ── Access Request (non-host) ─────────────────────────────────────────────
+
+    fun requestAccess() {
+        val token = currentToken ?: return
+        val eventId = currentEventId ?: return
+        _uiState.value = _uiState.value.copy(isRequestingAccess = true)
+        viewModelScope.launch {
+            repository.requestAccess(token, eventId).fold(
+                onSuccess = { req ->
+                    accessRequestCache[eventId] = req.status
+                    _uiState.value = _uiState.value.copy(
+                        accessRequestStatus = req.status,
+                        isRequestingAccess = false
+                    )
+                },
+                onFailure = { e ->
+                    val msg = e.message ?: ""
+                    when {
+                        msg.contains("already exists", ignoreCase = true) -> {
+                            accessRequestCache[eventId] = "pending"
+                            _uiState.value = _uiState.value.copy(
+                                accessRequestStatus = "pending",
+                                isRequestingAccess = false
+                            )
+                        }
+                        msg.contains("already granted", ignoreCase = true) -> {
+                            accessRequestCache[eventId] = "approved"
+                            _uiState.value = _uiState.value.copy(isRequestingAccess = false)
+                            loadEvent(eventId, token)
+                        }
+                        else -> {
+                            _uiState.value = _uiState.value.copy(
+                                isRequestingAccess = false,
+                                actionError = e.message
+                            )
+                        }
+                    }
+                }
+            )
+        }
+    }
+
+    /** On limited view load — only restore status from session cache. No auto-request creation. */
+    private fun checkAccessRequestStatus() {
+        val eventId = currentEventId ?: return
+        val cached = accessRequestCache[eventId]
+        if (cached != null) {
+            _uiState.value = _uiState.value.copy(accessRequestStatus = cached)
+            if (cached == "approved") {
+                loadEvent(eventId, currentToken)
+            }
+        }
+        // If no cache → show "Request Access" button (status = null). User must explicitly click.
     }
 }
