@@ -177,6 +177,103 @@ private fun EventMapPopup(
     }
 }
 
+// ── Location picker map (used in Create Event Step 2) ──────────────────────────
+
+@Composable
+fun LocationPickerMapView(
+    selectedLat: Double?,
+    selectedLng: Double?,
+    onLocationPicked: (lat: Double, lng: Double) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val markerRef = remember { mutableStateOf<org.maplibre.android.annotations.Marker?>(null) }
+
+    Box(modifier = modifier) {
+        AndroidView(
+            factory = { context ->
+                MapLibre.getInstance(context)
+                MapView(context).apply {
+                    getMapAsync { map ->
+                        map.setStyle(MAP_STYLE) { _ ->
+                            // Center on existing pin or Istanbul default
+                            val initLat = selectedLat ?: DEFAULT_LAT
+                            val initLng = selectedLng ?: DEFAULT_LNG
+                            val zoom = if (selectedLat != null) 14.0 else DEFAULT_ZOOM
+                            map.cameraPosition = CameraPosition.Builder()
+                                .target(LatLng(initLat, initLng))
+                                .zoom(zoom)
+                                .build()
+
+                            val icon = IconFactory.getInstance(context)
+                                .fromBitmap(createMarkerBitmap())
+
+                            // Place initial marker if coords exist
+                            if (selectedLat != null && selectedLng != null) {
+                                markerRef.value = map.addMarker(
+                                    MarkerOptions()
+                                        .position(LatLng(selectedLat, selectedLng))
+                                        .icon(icon)
+                                )
+                            }
+
+                            map.addOnMapClickListener { latLng ->
+                                // Remove old marker
+                                markerRef.value?.let { map.removeMarker(it) }
+                                // Add new marker
+                                markerRef.value = map.addMarker(
+                                    MarkerOptions()
+                                        .position(latLng)
+                                        .icon(icon)
+                                )
+                                onLocationPicked(latLng.latitude, latLng.longitude)
+                                true
+                            }
+                        }
+                    }
+                    onCreate(null)
+                }
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+
+        // Hint overlay at the top
+        Surface(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 10.dp),
+            shape = RoundedCornerShape(20.dp),
+            color = Color.Black.copy(alpha = 0.6f)
+        ) {
+            Text(
+                text = "📍 Tap map to pin location",
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                color = Color.White,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+
+        // Coordinate display at the bottom if selected
+        if (selectedLat != null && selectedLng != null) {
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 10.dp),
+                shape = RoundedCornerShape(20.dp),
+                color = Color(0xFF493628).copy(alpha = 0.9f)
+            ) {
+                Text(
+                    text = "%.5f, %.5f".format(selectedLat, selectedLng),
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                    color = Color.White,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+    }
+}
+
 private fun createMarkerBitmap(): Bitmap {
     val size = 80
     val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)

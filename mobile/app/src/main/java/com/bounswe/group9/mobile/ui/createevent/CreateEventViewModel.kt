@@ -200,6 +200,14 @@ class CreateEventViewModel(
     fun onLocationNameChange(v: String) = update { copy(locationName = v, locationError = null) }
     fun onLocationLatChange(v: String) = update { copy(locationLat = v, locationError = null) }
     fun onLocationLngChange(v: String) = update { copy(locationLng = v, locationError = null) }
+    /** Called when the user taps the map in Step 2 — sets both coordinates atomically. */
+    fun onLocationPicked(lat: Double, lng: Double) = update {
+        copy(
+            locationLat = lat.toString(),
+            locationLng = lng.toString(),
+            locationError = null
+        )
+    }
     fun onHealthRequirementsChange(v: String) = update { copy(healthRequirements = v) }
     fun onWheelchairAccessChange(v: Boolean) = update { copy(wheelchairAccess = v) }
     fun onAccessibleRestroomChange(v: Boolean) = update { copy(accessibleRestroom = v) }
@@ -358,14 +366,18 @@ class CreateEventViewModel(
         }
     }
 
-    private fun buildIso(date: String, time: String): String {
+    private fun buildIso(date: String, time: String, isEnd: Boolean = false): String {
         return try {
             val parser = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US)
-            val parsed = parser.parse("$date $time") ?: return "${date}T${time}:00+00:00"
+            val parsed = parser.parse("$date $time")
+            if (parsed == null) {
+                // Return a valid future datetime fallback for drafts
+                return if (isEnd) "2099-12-31T23:59:00+00:00" else "2099-12-31T00:00:00+00:00"
+            }
             val formatter = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US)
             formatter.format(parsed)
         } catch (_: Exception) {
-            "${date}T${time}:00+00:00"
+            if (isEnd) "2099-12-31T23:59:00+00:00" else "2099-12-31T00:00:00+00:00"
         }
     }
 
@@ -379,25 +391,51 @@ class CreateEventViewModel(
         quiet_friendly = s.quietFriendly
     )
 
-    private fun buildCreateRequest(s: CreateEventUiState, status: String) = EventCreateRequest(
-        title = s.title, description = s.description,
-        start_datetime = buildIso(s.startDate, s.startTime), end_datetime = buildIso(s.endDate, s.endTime),
-        visibility = s.visibility, is_age_restricted = s.isAgeRestricted,
-        attendee_limit = if (s.attendeeLimitEnabled) s.attendeeLimit.toIntOrNull() else null,
-        status = status, category_ids = s.selectedCategoryIds.toList(),
-        locations = listOf(LocationRequest(s.locationName, s.locationLat.toDoubleOrNull() ?: 0.0, s.locationLng.toDoubleOrNull() ?: 0.0)),
-        venue_metadata = buildVenueMetadata(s)
-    )
+    private fun buildCreateRequest(s: CreateEventUiState, status: String): EventCreateRequest {
+        val safeTitle = s.title.ifBlank { "Untitled Event" }
+        val safeDesc = s.description.ifBlank { "No description provided yet." }
+        val safeStart = buildIso(s.startDate, s.startTime)
+        val safeEnd = buildIso(s.endDate, s.endTime, isEnd = true)
+        val safeLocName = s.locationName.ifBlank { "TBD" }
+        val safeLat = s.locationLat.toDoubleOrNull() ?: 0.0
+        val safeLng = s.locationLng.toDoubleOrNull() ?: 0.0
+        val safeCategoryIds = s.selectedCategoryIds.toList().ifEmpty {
+            s.availableCategories.firstOrNull()?.id?.let { listOf(it) } ?: emptyList()
+        }
 
-    private fun buildUpdateRequest(s: CreateEventUiState) = EventUpdateRequest(
-        title = s.title, description = s.description,
-        start_datetime = buildIso(s.startDate, s.startTime), end_datetime = buildIso(s.endDate, s.endTime),
-        visibility = s.visibility, is_age_restricted = s.isAgeRestricted,
-        attendee_limit = if (s.attendeeLimitEnabled) s.attendeeLimit.toIntOrNull() else null,
-        clear_attendee_limit = !s.attendeeLimitEnabled, category_ids = s.selectedCategoryIds.toList(),
-        locations = listOf(LocationRequest(s.locationName, s.locationLat.toDoubleOrNull() ?: 0.0, s.locationLng.toDoubleOrNull() ?: 0.0)),
-        venue_metadata = buildVenueMetadata(s)
-    )
+        return EventCreateRequest(
+            title = safeTitle, description = safeDesc,
+            start_datetime = safeStart, end_datetime = safeEnd,
+            visibility = s.visibility, is_age_restricted = s.isAgeRestricted,
+            attendee_limit = if (s.attendeeLimitEnabled) s.attendeeLimit.toIntOrNull() else null,
+            status = status, category_ids = safeCategoryIds,
+            locations = listOf(LocationRequest(safeLocName, safeLat, safeLng)),
+            venue_metadata = buildVenueMetadata(s)
+        )
+    }
+
+    private fun buildUpdateRequest(s: CreateEventUiState): EventUpdateRequest {
+        val safeTitle = s.title.ifBlank { "Untitled Event" }
+        val safeDesc = s.description.ifBlank { "No description provided yet." }
+        val safeStart = buildIso(s.startDate, s.startTime)
+        val safeEnd = buildIso(s.endDate, s.endTime, isEnd = true)
+        val safeLocName = s.locationName.ifBlank { "TBD" }
+        val safeLat = s.locationLat.toDoubleOrNull() ?: 0.0
+        val safeLng = s.locationLng.toDoubleOrNull() ?: 0.0
+        val safeCategoryIds = s.selectedCategoryIds.toList().ifEmpty {
+            s.availableCategories.firstOrNull()?.id?.let { listOf(it) } ?: emptyList()
+        }
+
+        return EventUpdateRequest(
+            title = safeTitle, description = safeDesc,
+            start_datetime = safeStart, end_datetime = safeEnd,
+            visibility = s.visibility, is_age_restricted = s.isAgeRestricted,
+            attendee_limit = if (s.attendeeLimitEnabled) s.attendeeLimit.toIntOrNull() else null,
+            clear_attendee_limit = !s.attendeeLimitEnabled, category_ids = safeCategoryIds,
+            locations = listOf(LocationRequest(safeLocName, safeLat, safeLng)),
+            venue_metadata = buildVenueMetadata(s)
+        )
+    }
 
     private fun update(block: CreateEventUiState.() -> CreateEventUiState) { _uiState.value = _uiState.value.block() }
 }

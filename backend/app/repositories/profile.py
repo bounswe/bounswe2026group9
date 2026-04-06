@@ -35,14 +35,15 @@ _EVENT_COLS = (
 )
 
 
-def get_hosted_events(db: Client, user_id: str) -> list[dict]:
-    # all events except drafts
-    result = (
+def get_hosted_events(db: Client, user_id: str, include_drafts: bool = False) -> list[dict]:
+    query = (
         db.table("events")
         .select(_EVENT_COLS)
         .eq("host_id", user_id)
-        .neq("status", "draft")
-        .order("start_datetime", desc=False)
-        .execute()
     )
+    
+    if not include_drafts:
+        query = query.neq("status", "draft")
+        
+    result = query.order("start_datetime", desc=False).execute()
     return result.data or []

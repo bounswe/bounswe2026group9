@@ -56,6 +56,7 @@ import coil.compose.AsyncImage
 import java.util.Date
 import java.util.Locale
 import com.bounswe.group9.mobile.data.remote.EventDetailDto
+import com.bounswe.group9.mobile.ui.discovery.LocationPickerMapView
 import com.bounswe.group9.mobile.ui.theme.BrandDark
 import com.bounswe.group9.mobile.ui.theme.BrandMid
 import com.bounswe.group9.mobile.ui.theme.BrandSurfaceLight
@@ -116,16 +117,6 @@ fun CreateEventScreen(
     val imagePickerLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetMultipleContents()
     ) { uris: List<Uri> -> uris.forEach { viewModel.addImageUri(it) } }
-
-    if (showStepDrawer) {
-        StepDrawer(
-            steps = EVENT_EDITOR_STEPS,
-            currentStep = uiState.currentStep,
-            uiState = uiState,
-            onStepSelect = { viewModel.goToStep(it); showStepDrawer = false },
-            onDismiss = { showStepDrawer = false }
-        )
-    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
@@ -241,6 +232,17 @@ fun CreateEventScreen(
             }
         }
     }
+
+    // Modal drawer drawn on top of scaffold context
+    if (showStepDrawer) {
+        StepDrawer(
+            steps = EVENT_EDITOR_STEPS,
+            currentStep = uiState.currentStep,
+            uiState = uiState,
+            onStepSelect = { viewModel.goToStep(it); showStepDrawer = false },
+            onDismiss = { showStepDrawer = false }
+        )
+    }
 }
 
 // ── Step progress bar ─────────────────────────────────────────────────────────
@@ -284,7 +286,7 @@ private fun StepProgressBar(currentStep: Int, totalSteps: Int) {
 private val STEP_DESCRIPTIONS = listOf(
     "Name the event, describe the vibe, and tag the right categories.",
     "Choose a future timeslot and make sure the end time wraps after the start.",
-    "Add the primary venue — name it and enter the coordinates.",
+    "Add the primary venue — give it a name and tap the map to pin its location.",
     "Upload the cover and supporting images for the event gallery.",
     "Optional venue details help attendees understand accessibility and logistics.",
     "Choose whether the event is visible to everyone or only to approved viewers.",
@@ -409,12 +411,7 @@ private fun StepDrawer(
                                 modifier = Modifier.padding(top = 6.dp),
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
-                                color = when {
-                                    isActive -> BrandDark
-                                    isComplete -> MaterialTheme.colorScheme.onSurface
-                                    canSelect -> MaterialTheme.colorScheme.onSurfaceVariant
-                                    else -> Color(0xFFBDB5B0)
-                                }
+                                color = Color.Black
                             )
                         }
                     }
@@ -791,6 +788,10 @@ private fun ScheduleStep(uiState: CreateEventUiState, viewModel: CreateEventView
 
 @Composable
 private fun LocationStep(uiState: CreateEventUiState, viewModel: CreateEventViewModel) {
+    val readOnly = uiState.eventAlreadyStarted
+    val selectedLat = uiState.locationLat.toDoubleOrNull()
+    val selectedLng = uiState.locationLng.toDoubleOrNull()
+
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         if (uiState.eventAlreadyStarted) {
             FeedbackBanner(
@@ -799,11 +800,10 @@ private fun LocationStep(uiState: CreateEventUiState, viewModel: CreateEventView
             )
         }
 
-        val readOnly = uiState.eventAlreadyStarted
-
+        // Place name field
         StepCard {
-            FieldLabel("Primary venue", helper = "Enter the location name and its coordinates. Tip: find coords on maps.google.com.")
-            Spacer(Modifier.height(12.dp))
+            FieldLabel("Place name", helper = "Give your venue a recognisable name.")
+            Spacer(Modifier.height(8.dp))
             OutlinedTextField(
                 value = uiState.locationName,
                 onValueChange = { if (!readOnly) viewModel.onLocationNameChange(it) },
@@ -814,44 +814,79 @@ private fun LocationStep(uiState: CreateEventUiState, viewModel: CreateEventView
                 enabled = !readOnly,
                 isError = uiState.locationError != null
             )
-            Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = uiState.locationLat,
-                    onValueChange = { if (!readOnly) viewModel.onLocationLatChange(it) },
-                    modifier = Modifier.weight(1f),
-                    label = { Text("Latitude") },
-                    placeholder = { Text("41.0082") },
-                    singleLine = true,
-                    enabled = !readOnly,
-                    isError = uiState.locationError != null,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
-                )
-                OutlinedTextField(
-                    value = uiState.locationLng,
-                    onValueChange = { if (!readOnly) viewModel.onLocationLngChange(it) },
-                    modifier = Modifier.weight(1f),
-                    label = { Text("Longitude") },
-                    placeholder = { Text("28.9784") },
-                    singleLine = true,
-                    enabled = !readOnly,
-                    isError = uiState.locationError != null,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
-                )
+            uiState.locationError?.let {
+                Spacer(Modifier.height(4.dp))
+                Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
-            uiState.locationError?.let { Spacer(Modifier.height(4.dp)); Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+        }
 
-            if (uiState.locationLat.isNotBlank() && uiState.locationLng.isNotBlank()) {
+        // Map picker card
+        StepCard {
+            FieldLabel(
+                "Pin on map",
+                helper = if (readOnly) "Location is locked for started events."
+                         else "Tap anywhere on the map to set the venue coordinates."
+            )
+            Spacer(Modifier.height(10.dp))
+
+            // The map — fixed height so it sits inside the scroll layout nicely
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(320.dp)
+                    .clip(RoundedCornerShape(12.dp))
+            ) {
+                LocationPickerMapView(
+                    selectedLat = selectedLat,
+                    selectedLng = selectedLng,
+                    onLocationPicked = { lat, lng ->
+                        if (!readOnly) viewModel.onLocationPicked(lat, lng)
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
+
+                // Lock overlay when readOnly
+                if (readOnly) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.35f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = Color.Black.copy(alpha = 0.6f)
+                        ) {
+                            Text(
+                                "🔒 Location locked",
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                color = Color.White,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Coordinate summary row
+            if (selectedLat != null && selectedLng != null) {
                 Spacer(Modifier.height(10.dp))
                 Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFF0EDE9)) {
                     Text(
-                        "📍 ${uiState.locationName.ifBlank { "Location" }} — ${uiState.locationLat}, ${uiState.locationLng}",
+                        "📍 ${uiState.locationName.ifBlank { "Location" }} — ${"%.5f".format(selectedLat)}, ${"%.5f".format(selectedLng)}",
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                         style = MaterialTheme.typography.bodySmall,
                         color = BrandDark,
                         fontWeight = FontWeight.Medium
                     )
                 }
+            } else if (!readOnly) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "No location pinned yet — tap the map above.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF9C9390)
+                )
             }
         }
     }

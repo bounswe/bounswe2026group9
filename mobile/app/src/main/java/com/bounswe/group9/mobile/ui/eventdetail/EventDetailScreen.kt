@@ -1140,7 +1140,7 @@ private fun HostActionBottomBar(
     onCancel: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val status = event.status
+    val status = event.status.lowercase()
 
     Surface(tonalElevation = 3.dp, shadowElevation = 8.dp) {
         Column(
@@ -1157,8 +1157,8 @@ private fun HostActionBottomBar(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Edit — available for draft and published events
-                if (status in listOf("draft", "published")) {
+                // Edit — available for all active events
+                if (status != "cancelled" && status != "ended") {
                     OutlinedButton(
                         onClick = onEdit,
                         modifier = Modifier.weight(1f),
@@ -1179,8 +1179,8 @@ private fun HostActionBottomBar(
                     }
                 }
 
-                // Cancel — only for published (upcoming) events
-                if (status == "published") {
+                // Cancel — available for all non-draft active events
+                if (status != "draft" && status != "cancelled" && status != "ended") {
                     Button(
                         onClick = onCancel,
                         modifier = Modifier.weight(1f),
@@ -1194,7 +1194,7 @@ private fun HostActionBottomBar(
                 }
 
                 // Delete — only for cancelled or ended events
-                if (status in listOf("cancelled", "ended")) {
+                if (status == "cancelled" || status == "ended") {
                     Button(
                         onClick = onDelete,
                         modifier = Modifier.weight(1f),
