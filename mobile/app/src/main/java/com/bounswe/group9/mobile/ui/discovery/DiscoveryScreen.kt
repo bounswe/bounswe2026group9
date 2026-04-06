@@ -44,7 +44,8 @@ fun DiscoveryScreen(
     username: String? = null,
     unreadNotificationCount: Int = 0,
     onNotificationsClick: () -> Unit = {},
-    onProfileClick: () -> Unit = {}
+    onProfileClick: () -> Unit = {},
+    onCreateEvent: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
@@ -67,7 +68,7 @@ fun DiscoveryScreen(
         floatingActionButton = {
             if (token != null) {
                 ExtendedFloatingActionButton(
-                    onClick = { /* Create event — Task #? */ },
+                    onClick = onCreateEvent,
                     containerColor = MaterialTheme.colorScheme.tertiary,
                     contentColor = Color.White
                 ) {
@@ -295,7 +296,23 @@ private fun DiscoveryTopBar(
                         ) {
                             Text("Logout", fontSize = 12.sp)
                         }
-                    } else if (!isLoggedIn) {
+                    } else if (isLoggedIn) {
+                        // Token exists but username still loading — show placeholder avatar
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(RoundedCornerShape(50))
+                                .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.5f))
+                                .clickable { onProfileClick() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = Color.White
+                            )
+                        }
+                    } else {
                         OutlinedButton(
                             onClick = onLoginClick,
                             colors = ButtonDefaults.outlinedButtonColors(
@@ -413,7 +430,7 @@ private fun FilterSheetContent(
                 color = MaterialTheme.colorScheme.onSurface
             )
             if (uiState.selectedTemporal != null || uiState.selectedCategoryId != null ||
-            uiState.bookmarkedOnly || uiState.goingOnly) {
+                uiState.bookmarkedOnly || uiState.goingOnly) {
                 TextButton(onClick = onClear) {
                     Text("Clear All", color = MaterialTheme.colorScheme.tertiary, fontSize = 13.sp)
                 }
@@ -549,7 +566,7 @@ private fun FilterPill(label: String, selected: Boolean, onClick: () -> Unit) {
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
             color = if (selected) MaterialTheme.colorScheme.onPrimary
-                    else MaterialTheme.colorScheme.onSurface
+            else MaterialTheme.colorScheme.onSurface
         )
     }
 }
@@ -662,4 +679,3 @@ private fun SmallBadgeIcon(text: String, color: Color) {
         Text(text, color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold)
     }
 }
-

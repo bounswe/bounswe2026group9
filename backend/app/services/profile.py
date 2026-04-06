@@ -22,7 +22,9 @@ def get_host_profile(db: Client, target_user_id: str, current_user_id: str | Non
     # We can fetch events from event_repo manually or adapt the list helper.
     # We'll just fetch from profile_repo and construct the list items manually because the main helper needs refactoring.
 
-    events = profile_repo.get_hosted_events(db, target_user_id)
+    # Only include drafts if the current user is viewing their own profile
+    is_owner = current_user_id == target_user_id
+    events = profile_repo.get_hosted_events(db, target_user_id, include_drafts=is_owner)
     event_ids = [e["id"] for e in events]
 
     locations_by_event = event_repo.get_primary_locations_for_events(db, event_ids)
