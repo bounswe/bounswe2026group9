@@ -7,6 +7,7 @@ export interface AuthUser {
   phone_number: string | null;
   date_of_birth: string | null;
   email_visibility: boolean;
+  phone_visibility?: boolean;
   role: string;
   auth_provider: string;
   email_verified: boolean;
