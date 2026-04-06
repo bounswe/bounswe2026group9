@@ -659,7 +659,7 @@ function FullView({
                 </div>
               )}
               <p className="text-[13px] text-brand-mid mb-3">
-                {host.events_hosted} events hosted
+                {host.hosted_events_count} events hosted
               </p>
               {event.host_id && (
                 <Link
@@ -798,7 +798,6 @@ export default function EventDetailPage() {
 
   const [event, setEvent] = useState<AnyEventDetail | null>(null);
   const [host, setHost] = useState<HostProfile | null>(null);
-  const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
@@ -806,20 +805,49 @@ export default function EventDetailPage() {
     // Without this, the request races with refreshSession and may send no token,
     // causing the backend to return a limited/guest response even for logged-in users.
     if (!id || !isInitialized) return;
-    setLoading(true);
-    setNotFound(false);
+
+    let active = true;
+
     fetchEventDetail(id)
       .then((ev) => {
+        if (!active) {
+          return;
+        }
+
         setEvent(ev);
+        setNotFound(false);
+        setHost(null);
+
         if (ev._type === "full") {
           void fetchHostProfile(ev.host_id)
-            .then(setHost)
-            .catch(() => setHost(null));
+            .then((profile) => {
+              if (active) {
+                setHost(profile);
+              }
+            })
+            .catch(() => {
+              if (active) {
+                setHost(null);
+              }
+            });
         }
       })
-      .catch(() => setNotFound(true))
-      .finally(() => setLoading(false));
+      .catch(() => {
+        if (!active) {
+          return;
+        }
+
+        setEvent(null);
+        setHost(null);
+        setNotFound(true);
+      });
+
+    return () => {
+      active = false;
+    };
   }, [id, isInitialized]);
+
+  const loading = !id || !isInitialized || (!notFound && event?.id !== id);
 
   const isHost =
     event?._type === "full" && !!user && !!event.host_id && event.host_id === user.id;
@@ -854,7 +882,7 @@ export default function EventDetailPage() {
         <LimitedView event={event} isGuest={isGuest} />
       ) : (
         <FullView
-          event={event as EventDetail}
+          event={event}
           host={host}
           isHost={isHost}
           currentUserId={user?.id ?? null}
