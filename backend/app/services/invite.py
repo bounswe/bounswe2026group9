@@ -19,8 +19,8 @@ from app.repositories import event as event_repo
 from app.repositories import invite as invite_repo
 
 
-def _build_invite_url(token: str) -> str:
-    return f"{settings.FRONTEND_URL}/events/invite/{token}"
+def _build_invite_url(event_id: str, token: str) -> str:
+    return f"{settings.FRONTEND_URL}/event/{event_id}/invite/{token}"
 
 
 def _invite_to_response(invite: dict) -> InviteResponse:
@@ -28,7 +28,7 @@ def _invite_to_response(invite: dict) -> InviteResponse:
         id=invite["id"],
         event_id=invite["event_id"],
         token=invite["token"],
-        invite_url=_build_invite_url(invite["token"]),
+        invite_url=_build_invite_url(invite["event_id"], invite["token"]),
         expires_at=invite.get("expires_at"),
         max_uses=invite.get("max_uses"),
         use_count=invite["use_count"],
@@ -237,14 +237,31 @@ def decide_access_request(
         "resolved_at": now,
     })
 
+    from app.repositories import notification as notification_repo
+    from app.repositories import user as user_repo
+
     if body.status == "approved":
         invite_repo.insert_access_grant(db, {
             "event_id": event_id,
             "user_id": request["user_id"],
             "granted_via": "request",
         })
+        notification_repo.insert_notification(db, {
+            "user_id": request["user_id"],
+            "event_id": event_id,
+            "type": "access_approved",
+            "message": f"Your access request for '{event['title']}' has been approved. You can now view and attend this event.",
+            "is_read": False,
+        })
+    else:
+        notification_repo.insert_notification(db, {
+            "user_id": request["user_id"],
+            "event_id": event_id,
+            "type": "access_rejected",
+            "message": f"Your access request for '{event['title']}' has been declined.",
+            "is_read": False,
+        })
 
-    from app.repositories import user as user_repo
     user = user_repo.get_user_by_id(db, request["user_id"])
 
     return AccessRequestResponse(

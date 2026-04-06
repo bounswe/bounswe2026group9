@@ -31,3 +31,11 @@ def get_user_date_of_birth(db: Client, user_id: str) -> str | None:
     if not result.data:
         return None
     return result.data[0].get("date_of_birth")
+
+
+def get_users_by_ids(db: Client, user_ids: list[str]) -> list[dict]:
+    if not user_ids:
+        return []
+
+    result = db.table("users").select("id,username").in_("id", user_ids).execute()
+    return result.data or []

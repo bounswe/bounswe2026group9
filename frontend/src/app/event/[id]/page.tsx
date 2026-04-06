@@ -4,16 +4,21 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
+  AlertTriangle,
   ArrowLeft,
   Bookmark,
   BookmarkCheck,
   Calendar,
   Car,
   Check,
+  CheckCircle,
   Clock,
+  Copy,
   Edit,
   Globe,
   Info,
+  Link2,
+  Loader2,
   Lock,
   MapPin,
   MessageSquareOff,
@@ -34,13 +39,25 @@ import { AttendeeAvatarStack } from "@/components/event/attendee-avatar-stack";
 import { LocationMapModal } from "@/components/event/location-map-modal";
 import { cn } from "@/lib/utils";
 import {
+  clearAccessRequestPending,
+  isAccessRequestPending,
+  markAccessRequestPending,
+} from "@/lib/access-request-store";
+import {
   fetchEventDetail,
   fetchHostProfile,
   changeEventStatus,
+  requestAccess,
+  fetchAccessRequests,
+  updateAccessRequest,
+  createInvite,
+  fetchInvites,
   type EventDetail,
   type EventDetailLimited,
   type AnyEventDetail,
   type HostProfile,
+  type AccessRequest,
+  type Invite,
 } from "@/lib/events-api";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -87,18 +104,225 @@ function buildGoogleCalendarUrl(event: EventDetail, locationName?: string) {
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
+async function copyTextWithFallback(value: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(value);
+    return true;
+  } catch {
+    if (typeof document === "undefined") {
+      return false;
+    }
+
+    const textarea = document.createElement("textarea");
+    textarea.value = value;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    textarea.style.pointerEvents = "none";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    try {
+      return document.execCommand("copy");
+    } catch {
+      return false;
+    } finally {
+      document.body.removeChild(textarea);
+    }
+  }
+}
+
+// ─── Age gate (18+ events) ────────────────────────────────────────────────────
+
+function isAtLeast18(dob: string): boolean {
+  const birth = new Date(dob);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  return age >= 18;
+}
+
+function AgeGate({
+  eventId,
+  isAuthenticated,
+  userDob,
+}: {
+  eventId: string;
+  isAuthenticated: boolean;
+  userDob: string | null;
+}) {
+
+  // If user has dob and is underage — show block screen
+  if (userDob && !isAtLeast18(userDob)) {
+    return (
+      <div className="min-h-[80vh] relative overflow-hidden flex flex-col items-center justify-center px-6 py-20 text-center">
+        <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 font-heading text-[200px] font-bold text-brand-dark/[0.06] select-none pointer-events-none leading-none max-sm:text-[120px]">
+          18+
+        </span>
+        <div className="relative z-[1]">
+          <div className="mb-6">
+            <AlertTriangle className="size-20 text-red-400 mx-auto" strokeWidth={1.5} />
+          </div>
+          <h1 className="font-heading text-4xl font-bold text-brand-dark mb-4">Age Restricted Event</h1>
+          <p className="text-[17px] leading-[1.7] text-brand-dark/75 max-w-[440px] mb-2">
+            This event is restricted to attendees aged 18 and above.
+          </p>
+          <p className="text-[15px] text-brand-mid max-w-[400px] mb-8">
+            Your account indicates you do not meet the age requirement for this event.
+          </p>
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 text-[15px] font-bold text-brand-mid hover:text-brand-dark transition-colors"
+          >
+            <ArrowLeft className="size-4" />
+            Back to Discovery
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Guests and users without a stored DOB cannot access 18+ events by default.
+  return (
+    <div className="min-h-[80vh] relative overflow-hidden flex flex-col items-center justify-center px-6 py-20 text-center">
+      <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 font-heading text-[200px] font-bold text-brand-dark/[0.06] select-none pointer-events-none leading-none max-sm:text-[120px]">
+        18+
+      </span>
+      <div className="relative z-[1] flex flex-col items-center max-w-[600px]">
+        <div className="mb-6">
+          <AlertTriangle className="size-20 text-red-400 mx-auto" strokeWidth={1.5} />
+        </div>
+        <h1 className="font-heading text-4xl font-bold text-brand-dark mb-4">Age Restricted Event</h1>
+        <p className="text-[17px] leading-[1.7] text-brand-dark/75 max-w-[440px]">
+          This event is restricted to attendees aged 18 and above.
+        </p>
+
+        <div className="bg-brand-surface rounded-xl p-8 max-w-[420px] w-full mt-8 text-center">
+          {isAuthenticated ? (
+            <>
+              <h3 className="font-heading text-xl font-semibold text-brand-dark mb-3">
+                Date of birth required
+              </h3>
+              <p className="text-[15px] leading-[1.7] text-brand-dark/75 mb-6">
+                Add your date of birth in your profile settings to access 18+ events.
+              </p>
+              <Link
+                href="/profile/me"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-dark border-2 border-brand-dark px-7 py-3.5 text-[15px] font-bold text-white transition-all hover:bg-[#5e4535] hover:border-[#5e4535] hover:-translate-y-0.5 hover:shadow-lg"
+              >
+                Go to Profile
+              </Link>
+            </>
+          ) : (
+            <>
+              <h3 className="font-heading text-xl font-semibold text-brand-dark mb-3">
+                Sign in to continue
+              </h3>
+              <p className="text-[15px] leading-[1.7] text-brand-dark/75 mb-6">
+                Sign in with an account that has a verified date of birth to access this 18+ event.
+              </p>
+              <Link
+                href={`/login?next=/event/${eventId}`}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-dark border-2 border-brand-dark px-7 py-3.5 text-[15px] font-bold text-white transition-all hover:bg-[#5e4535] hover:border-[#5e4535] hover:-translate-y-0.5 hover:shadow-lg"
+              >
+                Sign In
+              </Link>
+            </>
+          )}
+        </div>
+
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 text-[15px] font-bold text-brand-mid hover:text-brand-dark transition-colors mt-6"
+        >
+          <ArrowLeft className="size-4" />
+          Back to Discovery
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 // ─── Limited view (guest / private non-host) ──────────────────────────────────
 
 function LimitedView({
   event,
   isGuest,
+  currentUserId,
 }: {
   event: EventDetailLimited;
   isGuest: boolean;
+  currentUserId: string | null;
 }) {
+  const [requestState, setRequestState] = useState<"idle" | "loading" | "error">("idle");
+  const isPendingRequest =
+    !isGuest &&
+    (
+      event.access_request_status === "pending" ||
+      isAccessRequestPending(event.id, currentUserId)
+    );
+  const accessStatus: "idle" | "loading" | "pending" | "error" =
+    requestState === "loading" || requestState === "error"
+      ? requestState
+      : isPendingRequest
+      ? "pending"
+      : "idle";
+
+  useEffect(() => {
+    if (isGuest || !currentUserId) {
+      return;
+    }
+
+    if (event.access_request_status === "pending") {
+      markAccessRequestPending(event.id, currentUserId);
+      return;
+    }
+
+    if (event.access_request_status === "approved") {
+      clearAccessRequestPending(event.id, currentUserId);
+      return;
+    }
+
+    if (event.access_request_status === "rejected") {
+      clearAccessRequestPending(event.id, currentUserId);
+    }
+  }, [currentUserId, event.access_request_status, event.id, isGuest]);
+
+  async function handleRequestAccess() {
+    setRequestState("loading");
+    try {
+      await requestAccess(event.id);
+      markAccessRequestPending(event.id, currentUserId);
+      setRequestState("idle");
+    } catch (err: unknown) {
+      const message = (
+        err && typeof err === "object" && "message" in err
+          ? (err as { message: string }).message
+          : ""
+      ).toLowerCase();
+      if (message.includes("already granted")) {
+        clearAccessRequestPending(event.id, currentUserId);
+        setRequestState("idle");
+        window.location.href = `/event/${event.id}`;
+      } else if (message.includes("already exists")) {
+        markAccessRequestPending(event.id, currentUserId);
+        setRequestState("idle");
+      } else {
+        setRequestState("error");
+      }
+    }
+  }
+
   return (
     <div className="max-w-screen-xl mx-auto px-10 py-16 flex flex-col items-center gap-6 text-center">
-      <div className="flex size-16 items-center justify-center rounded-full bg-brand-mid-alpha">
+      {/* Faint background code */}
+      <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 font-heading text-[200px] font-bold text-brand-dark/[0.06] select-none pointer-events-none leading-none z-0 max-sm:text-[120px]">
+        403
+      </span>
+
+      <div className="relative z-[1] flex size-16 items-center justify-center rounded-full bg-brand-mid-alpha">
         {isGuest ? (
           <Users className="size-8 text-brand-mid" />
         ) : (
@@ -106,7 +330,7 @@ function LimitedView({
         )}
       </div>
 
-      <div>
+      <div className="relative z-[1]">
         <div className="flex flex-wrap gap-2 justify-center mb-3">
           {event.categories.map((cat) => (
             <span
@@ -123,7 +347,7 @@ function LimitedView({
         </p>
       </div>
 
-      <div className="bg-brand-surface rounded-xl border border-brand-mid-alpha px-6 py-8 w-full max-w-lg">
+      <div className="relative z-[1] bg-brand-surface rounded-xl border border-brand-mid-alpha px-6 py-8 w-full max-w-lg">
         {isGuest ? (
           <>
             <p className="text-brand-dark font-semibold mb-1">Sign in for the full experience</p>
@@ -157,12 +381,44 @@ function LimitedView({
           <>
             <Lock className="size-6 text-brand-mid mx-auto mb-3 opacity-50" />
             <p className="text-brand-dark font-semibold mb-1">This is a private event</p>
-            <p className="text-brand-mid text-sm">
-              Event details are only visible to the host and invited attendees.
+            <p className="text-brand-mid text-sm mb-5">
+              Only the host and invited attendees can view the full details.
             </p>
+
+            {accessStatus === "pending" ? (
+              <div className="flex items-center justify-center gap-2 rounded-lg bg-brand-dark/10 px-5 py-3 text-sm font-bold text-brand-dark">
+                <Clock className="size-4" />
+                Access Requested — Pending
+              </div>
+            ) : (
+              <button
+                onClick={() => { void handleRequestAccess(); }}
+                disabled={accessStatus === "loading"}
+                className="w-full flex items-center justify-center gap-2 rounded-lg bg-brand-dark px-5 py-3 text-sm font-bold text-white transition-all hover:bg-brand-dark/85 hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {accessStatus === "loading" ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Lock className="size-4" />
+                )}
+                {accessStatus === "loading" ? "Sending Request…" : "Request Access"}
+              </button>
+            )}
+            {accessStatus === "error" && (
+              <p className="text-red-500 text-xs mt-2">Failed to send request. Please try again.</p>
+            )}
           </>
         )}
       </div>
+
+      {/* Back to discovery */}
+      <Link
+        href="/"
+        className="relative z-[1] inline-flex items-center gap-1.5 text-[15px] font-bold text-brand-mid hover:text-brand-dark transition-colors mt-2"
+      >
+        <ArrowLeft className="size-4" />
+        Back to Discovery
+      </Link>
     </div>
   );
 }
@@ -199,6 +455,16 @@ function FullView({
   const [showMapModal, setShowMapModal] = useState(false);
   const [goingPressed, setGoingPressed] = useState(false);
   const [bookmarkPressed, setBookmarkPressed] = useState(false);
+
+  // Invite & access request state (host only)
+  const [invites, setInvites] = useState<Invite[]>([]);
+  const [accessRequests, setAccessRequests] = useState<AccessRequest[]>([]);
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [inviteNotice, setInviteNotice] = useState<string | null>(null);
+  const [manualInviteUrl, setManualInviteUrl] = useState<string | null>(null);
+  const [copiedToken, setCopiedToken] = useState<string | null>(null);
+  const [requestActionLoading, setRequestActionLoading] = useState<string | null>(null);
 
   const commentScrollRef = useRef<HTMLDivElement>(null);
   const leftColRef = useRef<HTMLDivElement>(null);
@@ -253,6 +519,13 @@ function FullView({
     ? (event.locations.find((l) => l.is_primary) ?? event.locations[0])
     : null;
 
+  // Fetch invites & access requests for host on private events
+  useEffect(() => {
+    if (!isHost || event.visibility !== "private") return;
+    void fetchInvites(event.id).then(setInvites).catch(() => {});
+    void fetchAccessRequests(event.id).then(setAccessRequests).catch(() => {});
+  }, [isHost, event.id, event.visibility]);
+
   async function handleCancel() {
     setCancelLoading(true);
     try {
@@ -261,6 +534,57 @@ function FullView({
     } finally {
       setCancelLoading(false);
       setShowCancelDialog(false);
+    }
+  }
+
+  async function handleCreateInvite() {
+    setInviteLoading(true);
+    setInviteError(null);
+    setInviteNotice(null);
+    setManualInviteUrl(null);
+    try {
+      const invite = await createInvite(event.id);
+      setInvites((prev) => [invite, ...prev]);
+      const copied = await copyTextWithFallback(invite.invite_url);
+      if (copied) {
+        setCopiedToken(invite.token);
+        setTimeout(() => setCopiedToken(null), 2000);
+      } else {
+        setInviteNotice("Invite created, but automatic copy was blocked. Copy the link manually below.");
+        setManualInviteUrl(invite.invite_url);
+      }
+    } catch (err: unknown) {
+      const message = err && typeof err === "object" && "message" in err
+        ? (err as { message: string }).message
+        : "Failed to generate invite link. Please try again.";
+      setInviteError(message);
+    } finally {
+      setInviteLoading(false);
+    }
+  }
+
+  async function handleCopyInviteLink(invite: Invite) {
+    setInviteError(null);
+    const copied = await copyTextWithFallback(invite.invite_url);
+    if (copied) {
+      setInviteNotice(null);
+      setManualInviteUrl(null);
+      setCopiedToken(invite.token);
+      setTimeout(() => setCopiedToken(null), 2000);
+      return;
+    }
+
+    setInviteNotice("Copy is blocked in this browser context. Copy the link manually below.");
+    setManualInviteUrl(invite.invite_url);
+  }
+
+  async function handleAccessRequestAction(requestId: string, action: "approved" | "rejected") {
+    setRequestActionLoading(requestId);
+    try {
+      await updateAccessRequest(event.id, requestId, action);
+      setAccessRequests((prev) => prev.filter((r) => r.id !== requestId));
+    } finally {
+      setRequestActionLoading(null);
     }
   }
 
@@ -636,6 +960,127 @@ function FullView({
             )}
           </div>
 
+          {/* Invite management — host only, private events */}
+          {isHost && event.visibility === "private" && (
+            <div className="bg-white rounded-xl border border-brand-mid-alpha p-5 space-y-4">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-brand-mid">
+                Manage Invites
+              </p>
+
+              {/* Generate invite link */}
+              <button
+                onClick={() => { void handleCreateInvite(); }}
+                disabled={inviteLoading || !isActive}
+                className="w-full flex items-center justify-center gap-2 rounded-[10px] border-2 border-brand-dark py-3 text-[15px] font-bold text-brand-dark transition-colors hover:bg-brand-dark/10 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {inviteLoading ? (
+                  <Loader2 className="size-[18px] animate-spin" />
+                ) : (
+                  <Link2 className="size-[18px]" />
+                )}
+                {inviteLoading ? "Generating…" : "Generate Invite Link"}
+              </button>
+              {inviteError && (
+                <p className="text-[12px] text-red-500">{inviteError}</p>
+              )}
+              {inviteNotice && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                  <p className="text-[12px] font-medium text-amber-700">{inviteNotice}</p>
+                </div>
+              )}
+              {manualInviteUrl && (
+                <div className="space-y-2 rounded-lg bg-brand-bg px-3 py-3">
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-brand-mid">
+                    Manual Copy
+                  </p>
+                  <input
+                    readOnly
+                    value={manualInviteUrl}
+                    onFocus={(e) => e.currentTarget.select()}
+                    className="w-full rounded-lg border border-brand-mid-alpha bg-white px-3 py-2 text-[12px] text-brand-dark outline-none"
+                  />
+                </div>
+              )}
+
+              {/* Invite list */}
+              {invites.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[12px] font-bold text-brand-mid">
+                    {invites.length} invite{invites.length !== 1 ? "s" : ""} created
+                  </p>
+                  {invites.slice(0, 5).map((inv) => (
+                    <div
+                      key={inv.id}
+                      className="flex items-center justify-between gap-2 rounded-lg bg-brand-bg px-3 py-2"
+                    >
+                      <span className="text-[13px] text-brand-dark font-mono truncate flex-1">
+                        …{inv.token.slice(-8)}
+                      </span>
+                      <span className={cn(
+                        "text-[11px] font-bold",
+                        inv.max_uses !== null && inv.use_count >= inv.max_uses
+                          ? "text-brand-mid"
+                          : "text-green-600",
+                      )}>
+                        {inv.max_uses !== null && inv.use_count >= inv.max_uses
+                          ? `Used (${inv.use_count})`
+                          : inv.max_uses !== null
+                          ? `Active (${inv.use_count}/${inv.max_uses})`
+                          : `Active (${inv.use_count})`}
+                      </span>
+                      <button
+                        onClick={() => { void handleCopyInviteLink(inv); }}
+                        className="p-1 rounded hover:bg-brand-mid-alpha transition-colors"
+                        title="Copy invite link"
+                      >
+                        {copiedToken === inv.token ? (
+                          <CheckCircle className="size-4 text-green-600" />
+                        ) : (
+                          <Copy className="size-4 text-brand-mid" />
+                        )}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Pending access requests */}
+              {accessRequests.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[12px] font-bold text-brand-dark">
+                    Pending Requests ({accessRequests.length})
+                  </p>
+                  {accessRequests.map((req) => (
+                    <div
+                      key={req.id}
+                      className="flex items-center justify-between gap-2 rounded-lg bg-brand-bg px-3 py-2"
+                    >
+                      <span className="text-[13px] font-bold text-brand-dark truncate flex-1">
+                        {req.username}
+                      </span>
+                      <div className="flex gap-1.5">
+                        <button
+                          onClick={() => { void handleAccessRequestAction(req.id, "approved"); }}
+                          disabled={requestActionLoading === req.id}
+                          className="rounded-md bg-green-600 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-green-700 disabled:opacity-50 transition-colors"
+                        >
+                          {requestActionLoading === req.id ? "…" : "Approve"}
+                        </button>
+                        <button
+                          onClick={() => { void handleAccessRequestAction(req.id, "rejected"); }}
+                          disabled={requestActionLoading === req.id}
+                          className="rounded-md bg-red-500 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-red-600 disabled:opacity-50 transition-colors"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Host card — surface background */}
           {host ? (
             <div className="bg-brand-surface rounded-xl border border-brand-mid-alpha p-5">
@@ -849,10 +1294,22 @@ export default function EventDetailPage() {
 
   const loading = !id || !isInitialized || (!notFound && event?.id !== id);
 
+  useEffect(() => {
+    if (event?._type === "full" && user?.id) {
+      clearAccessRequestPending(event.id, user.id);
+    }
+  }, [event, user?.id]);
+
   const isHost =
     event?._type === "full" && !!user && !!event.host_id && event.host_id === user.id;
 
   const isGuest = !isAuthenticated;
+  const isAgeBlocked =
+    Boolean(
+      event?.is_age_restricted &&
+      !isHost &&
+      (!isAuthenticated || !user?.date_of_birth || !isAtLeast18(user.date_of_birth)),
+    );
 
   return (
     <div className="bg-brand-bg min-h-screen">
@@ -878,8 +1335,14 @@ export default function EventDetailPage() {
             Back to Discovery
           </Link>
         </div>
+      ) : isAgeBlocked ? (
+        <AgeGate
+          eventId={id}
+          isAuthenticated={isAuthenticated}
+          userDob={user?.date_of_birth ?? null}
+        />
       ) : event._type === "limited" ? (
-        <LimitedView event={event} isGuest={isGuest} />
+        <LimitedView event={event} isGuest={isGuest} currentUserId={user?.id ?? null} />
       ) : (
         <FullView
           event={event}

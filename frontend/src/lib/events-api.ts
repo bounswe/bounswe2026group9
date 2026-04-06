@@ -32,6 +32,8 @@ export interface EventListItem {
   status: string;
   is_bookmarked: boolean | null;
   attendance_status: string | null;
+  access_request_status: "pending" | "approved" | "rejected" | null;
+  has_access: boolean | null;
   going_count: number;
   bookmark_count: number;
   is_full: boolean | null;
@@ -141,6 +143,7 @@ export interface EventDetail {
   updated_at: string;
   is_bookmarked: boolean | null;
   attendance_status: string | null;
+  access_request_status: "pending" | "approved" | "rejected" | null;
   going_count: number;
   bookmark_count: number;
   is_full: boolean | null;
@@ -149,7 +152,7 @@ export interface EventDetail {
   images: EventImage[];
   venue_metadata: VenueMetadata | null;
   equipment_requirements: EquipmentRequirement[];
-  attendees?: { id: string; username: string }[];
+  attendees: { id: string; username: string }[];
   /** Discriminant — always present on full response */
   _type: "full";
 }
@@ -164,6 +167,7 @@ export interface EventDetailLimited {
   is_age_restricted: boolean;
   status: "draft" | "published" | "updated" | "cancelled" | "ended";
   is_bookmarked: boolean | null;
+  access_request_status: "pending" | "approved" | "rejected" | null;
   categories: Category[];
   _type: "limited";
 }
@@ -364,4 +368,85 @@ export async function fetchUnreadNotificationCount(): Promise<number> {
   // otherwise count from the items array (works with older backends).
   const res = await fetchNotifications(1, 50);
   return res.unread_count ?? res.items.filter((n) => !n.is_read).length;
+}
+
+// ─── Access Request Types & API ─────────────────────────────────────────────
+
+export interface AccessRequest {
+  id: string;
+  user_id: string;
+  username: string;
+  status: "pending" | "approved" | "rejected";
+  created_at: string;
+}
+
+export interface AccessRequestListResponse {
+  items: AccessRequest[];
+}
+
+export async function requestAccess(eventId: string): Promise<void> {
+  await apiRequest(`/events/${eventId}/access-requests`, {
+    method: "POST",
+    auth: "required",
+  });
+}
+
+export async function fetchAccessRequests(eventId: string): Promise<AccessRequest[]> {
+  const res = await apiRequest<AccessRequestListResponse>(
+    `/events/${eventId}/access-requests`,
+    { auth: "required" },
+  );
+  return res.items ?? res as unknown as AccessRequest[];
+}
+
+export async function updateAccessRequest(
+  eventId: string,
+  requestId: string,
+  action: "approved" | "rejected",
+): Promise<void> {
+  await apiRequest(`/events/${eventId}/access-requests/${requestId}`, {
+    method: "PATCH",
+    auth: "required",
+    body: { status: action },
+  });
+}
+
+// ─── Invite Types & API ─────────────────────────────────────────────────────
+
+export interface Invite {
+  id: string;
+  event_id: string;
+  token: string;
+  invite_url: string;
+  expires_at: string | null;
+  max_uses: number | null;
+  use_count: number;
+  created_at: string;
+}
+
+export interface InviteListResponse {
+  items: Invite[];
+}
+
+export async function createInvite(eventId: string): Promise<Invite> {
+  return apiRequest<Invite>(`/events/${eventId}/invites`, {
+    method: "POST",
+    auth: "required",
+    body: {},
+  });
+}
+
+export async function fetchInvites(eventId: string): Promise<Invite[]> {
+  const res = await apiRequest<InviteListResponse>(
+    `/events/${eventId}/invites`,
+    { auth: "required" },
+  );
+  return res.items ?? res as unknown as Invite[];
+}
+
+export async function acceptInvite(eventId: string, token: string): Promise<void> {
+  await apiRequest(`/events/${eventId}/invites/${token}/accept`, {
+    method: "POST",
+    auth: "required",
+  });
 }

@@ -91,6 +91,41 @@ def get_access_request(db: Client, event_id: str, user_id: str) -> dict | None:
     return result.data[0] if result.data else None
 
 
+def get_access_request_status_for_events(
+    db: Client, user_id: str, event_ids: list[str],
+) -> dict[str, str]:
+    if not event_ids:
+        return {}
+
+    result = (
+        db.table("event_access_requests")
+        .select("event_id,status,updated_at")
+        .eq("user_id", user_id)
+        .in_("event_id", event_ids)
+        .order("updated_at", desc=True)
+        .execute()
+    )
+
+    status_by_event: dict[str, str] = {}
+    for row in result.data or []:
+        status_by_event.setdefault(row["event_id"], row["status"])
+    return status_by_event
+
+
+def get_access_granted_event_ids(db: Client, user_id: str, event_ids: list[str]) -> set[str]:
+    if not event_ids:
+        return set()
+
+    result = (
+        db.table("event_access_grants")
+        .select("event_id")
+        .eq("user_id", user_id)
+        .in_("event_id", event_ids)
+        .execute()
+    )
+    return {row["event_id"] for row in (result.data or [])}
+
+
 def get_pending_requests_by_event(db: Client, event_id: str) -> list[dict]:
     result = (
         db.table("event_access_requests")
