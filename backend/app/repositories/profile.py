@@ -41,9 +41,9 @@ def get_hosted_events(db: Client, user_id: str, include_drafts: bool = False) ->
         .select(_EVENT_COLS)
         .eq("host_id", user_id)
     )
-    
+
     if not include_drafts:
         query = query.neq("status", "draft")
-        
+
     result = query.order("start_datetime", desc=False).execute()
     return result.data or []
