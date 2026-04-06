@@ -319,7 +319,7 @@ export function HostProfilePage() {
                 <div className="rounded-[20px] border border-brand-mid/12 bg-white/85 px-5 py-4">
                   <p className="text-2xl font-bold text-brand-dark">{visibleHostedEvents.length}</p>
                   <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-brand-mid">
-                    Events Hosted
+                    Events
                   </p>
                 </div>
                 <div className="rounded-[20px] border border-brand-mid/12 bg-white/85 px-5 py-4">
@@ -527,32 +527,6 @@ export function HostProfilePage() {
                 )}
               </div>
 
-              <div className="rounded-[28px] border border-brand-mid/12 bg-white p-6 shadow-[0_22px_60px_-42px_rgba(73,54,40,0.45)]">
-                <h2 className="font-heading text-2xl font-semibold text-brand-dark">Quick Stats</h2>
-                <div className="mt-5 space-y-4">
-                  <div className="rounded-[20px] bg-brand-bg/75 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-mid">
-                      Upcoming Events
-                    </p>
-                    <p className="mt-2 text-2xl font-bold text-brand-dark">{upcomingEvents.length}</p>
-                  </div>
-                  <div className="rounded-[20px] bg-brand-bg/75 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-mid">
-                      Past Events
-                    </p>
-                    <p className="mt-2 text-2xl font-bold text-brand-dark">{pastEvents.length}</p>
-                  </div>
-                  <div className="rounded-[20px] bg-brand-bg/75 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-mid">
-                      Public Profile Access
-                    </p>
-                    <p className="mt-2 text-sm leading-6 text-brand-dark">
-                      Anyone can browse this page and open listed events. Rating requires a signed-in
-                      user who is not the host.
-                    </p>
-                  </div>
-                </div>
-              </div>
             </aside>
           </section>
         </>
