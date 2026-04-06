@@ -49,13 +49,11 @@ fun EventMapView(
                 MapView(context).apply {
                     getMapAsync { map ->
                         map.setStyle(MAP_STYLE) { _ ->
-                            // Set camera
                             map.cameraPosition = CameraPosition.Builder()
                                 .target(LatLng(DEFAULT_LAT, DEFAULT_LNG))
                                 .zoom(DEFAULT_ZOOM)
                                 .build()
 
-                            // Add markers for events with location
                             val icon = IconFactory.getInstance(context)
                                 .fromBitmap(createMarkerBitmap())
 
@@ -74,7 +72,6 @@ fun EventMapView(
                                 true
                             }
 
-                            // Click on map dismisses popup
                             map.addOnMapClickListener {
                                 selectedEvent = null
                                 true

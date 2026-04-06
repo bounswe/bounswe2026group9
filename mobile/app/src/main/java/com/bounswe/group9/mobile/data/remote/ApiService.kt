@@ -1,14 +1,17 @@
 package com.bounswe.group9.mobile.data.remote
 
 import com.google.gson.JsonObject
+import okhttp3.MultipartBody
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Header
+import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.PUT
+import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -238,7 +241,51 @@ data class AccessRequestListResponseDto(
 
 data class AccessRequestDecisionDto(val status: String) // "approved" | "rejected"
 
-// ── API Interface ─────────────────────────────────────────────────────────────
+// ── Event Create / Edit DTOs ──────────────────────────────────────────────────
+
+data class LocationRequest(
+    val name: String,
+    val latitude: Double,
+    val longitude: Double,
+    val is_primary: Boolean = true,
+    val order_index: Int = 0
+)
+
+data class EventCreateRequest(
+    val title: String,
+    val description: String,
+    val start_datetime: String,        // ISO-8601
+    val end_datetime: String,          // ISO-8601
+    val visibility: String = "public", // "public" | "private"
+    val is_age_restricted: Boolean = false,
+    val attendee_limit: Int? = null,
+    val status: String = "draft",      // "draft" | "published"
+    val category_ids: List<String>,
+    val locations: List<LocationRequest>
+)
+
+data class EventUpdateRequest(
+    val title: String? = null,
+    val description: String? = null,
+    val start_datetime: String? = null,
+    val end_datetime: String? = null,
+    val visibility: String? = null,
+    val is_age_restricted: Boolean? = null,
+    val attendee_limit: Int? = null,
+    val clear_attendee_limit: Boolean = false,
+    val category_ids: List<String>? = null,
+    val locations: List<LocationRequest>? = null
+)
+
+data class EventStatusRequest(val status: String) // "published" | "cancelled" | "ended"
+
+data class EventImageDto2(
+    val id: String,
+    val image_url: String,
+    val upload_date: String
+)
+
+
 
 data class RefreshTokenRequest(val refresh_token: String?)
 
@@ -268,7 +315,45 @@ interface ApiService {
         @Header("Authorization") token: String? = null
     ): Response<JsonObject>
 
-    // ── Bookmark ──
+    // ── Event CRUD ──
+
+    @POST("events")
+    suspend fun createEvent(
+        @Header("Authorization") token: String,
+        @Body body: EventCreateRequest
+    ): Response<JsonObject>
+
+    @PUT("events/{event_id}")
+    suspend fun updateEvent(
+        @Path("event_id") eventId: String,
+        @Header("Authorization") token: String,
+        @Body body: EventUpdateRequest
+    ): Response<JsonObject>
+
+    @PATCH("events/{event_id}/status")
+    suspend fun changeEventStatus(
+        @Path("event_id") eventId: String,
+        @Header("Authorization") token: String,
+        @Body body: EventStatusRequest
+    ): Response<JsonObject>
+
+    @DELETE("events/{event_id}")
+    suspend fun deleteEvent(
+        @Path("event_id") eventId: String,
+        @Header("Authorization") token: String
+    ): Response<JsonObject>
+
+    // ── Image Upload ──
+
+    @Multipart
+    @POST("events/{event_id}/images")
+    suspend fun uploadEventImage(
+        @Path("event_id") eventId: String,
+        @Header("Authorization") token: String,
+        @Part file: MultipartBody.Part
+    ): Response<JsonObject>
+
+
 
     @POST("events/{event_id}/bookmark")
     suspend fun createBookmark(

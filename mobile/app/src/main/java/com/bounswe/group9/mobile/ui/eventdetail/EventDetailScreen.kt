@@ -27,7 +27,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,7 +60,9 @@ fun EventDetailScreen(
     token: String?,
     currentUserId: String? = null,
     onBack: () -> Unit,
-    onNavigateToHost: (String) -> Unit = {}
+    onNavigateToHost: (String) -> Unit = {},
+    onNavigateToEdit: (EventDetailDto) -> Unit = {},
+    onDeleteSuccess: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -73,6 +77,43 @@ fun EventDetailScreen(
             snackbarHostState.showSnackbar(it)
             viewModel.clearActionError()
         }
+    }
+
+    // Confirmation dialog state
+    var showCancelDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    if (showCancelDialog) {
+        ConfirmDialog(
+            title = "Cancel Event",
+            message = "Are you sure you want to cancel this event? This cannot be undone.",
+            confirmLabel = "Cancel Event",
+            confirmColor = MaterialTheme.colorScheme.error,
+            isLoading = uiState.isHostActionLoading,
+            onConfirm = {
+                viewModel.cancelEvent {
+                    showCancelDialog = false
+                }
+            },
+            onDismiss = { showCancelDialog = false }
+        )
+    }
+
+    if (showDeleteDialog) {
+        ConfirmDialog(
+            title = "Delete Event",
+            message = "Are you sure you want to permanently delete this event?",
+            confirmLabel = "Delete",
+            confirmColor = MaterialTheme.colorScheme.error,
+            isLoading = uiState.isHostActionLoading,
+            onConfirm = {
+                viewModel.deleteEvent {
+                    showDeleteDialog = false
+                    onDeleteSuccess()
+                }
+            },
+            onDismiss = { showDeleteDialog = false }
+        )
     }
 
     val isActiveEvent = uiState.fullDetail?.status == "published"
@@ -91,14 +132,25 @@ fun EventDetailScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
-            // Show action buttons only for authenticated non-host users viewing active events
-            if (token != null && uiState.fullDetail != null && isActiveEvent && !isHost) {
-                ActionBottomBar(
-                    event = uiState.fullDetail!!,
-                    onToggleBookmark = { viewModel.toggleBookmark() },
-                    onGoing = { viewModel.setGoing() },
-                    onRemoveAttendance = { viewModel.removeAttendance() }
-                )
+            val detail = uiState.fullDetail
+            if (token != null && detail != null) {
+                if (isHost) {
+                    HostActionBottomBar(
+                        event = detail,
+                        isLoading = uiState.isHostActionLoading,
+                        onEdit = { onNavigateToEdit(detail) },
+                        onPublish = { viewModel.publishEvent {} },
+                        onCancel = { showCancelDialog = true },
+                        onDelete = { showDeleteDialog = true }
+                    )
+                } else if (isActiveEvent) {
+                    ActionBottomBar(
+                        event = detail,
+                        onToggleBookmark = { viewModel.toggleBookmark() },
+                        onGoing = { viewModel.setGoing() },
+                        onRemoveAttendance = { viewModel.removeAttendance() }
+                    )
+                }
             }
         }
     ) { padding ->
@@ -1073,6 +1125,133 @@ private fun ActionBottomBar(
             }
         }
     }
+}
+
+// endregion
+
+// region Host Action Bottom Bar
+
+@Composable
+private fun HostActionBottomBar(
+    event: EventDetailDto,
+    isLoading: Boolean,
+    onEdit: () -> Unit,
+    onPublish: () -> Unit,
+    onCancel: () -> Unit,
+    onDelete: () -> Unit
+) {
+    val status = event.status
+
+    Surface(tonalElevation = 3.dp, shadowElevation = 8.dp) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            if (isLoading) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Edit — available for draft and published events
+                if (status in listOf("draft", "published")) {
+                    OutlinedButton(
+                        onClick = onEdit,
+                        modifier = Modifier.weight(1f),
+                        enabled = !isLoading
+                    ) {
+                        Text("Edit", fontSize = 13.sp)
+                    }
+                }
+
+                // Publish — only for draft events
+                if (status == "draft") {
+                    Button(
+                        onClick = onPublish,
+                        modifier = Modifier.weight(1f),
+                        enabled = !isLoading
+                    ) {
+                        Text("Publish", fontSize = 13.sp)
+                    }
+                }
+
+                // Cancel — only for published (upcoming) events
+                if (status == "published") {
+                    Button(
+                        onClick = onCancel,
+                        modifier = Modifier.weight(1f),
+                        enabled = !isLoading,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Text("Cancel Event", fontSize = 13.sp)
+                    }
+                }
+
+                // Delete — only for cancelled or ended events
+                if (status in listOf("cancelled", "ended")) {
+                    Button(
+                        onClick = onDelete,
+                        modifier = Modifier.weight(1f),
+                        enabled = !isLoading,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Text("Delete", fontSize = 13.sp)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// endregion
+
+// region Confirmation Dialog
+
+@Composable
+private fun ConfirmDialog(
+    title: String,
+    message: String,
+    confirmLabel: String,
+    confirmColor: Color,
+    isLoading: Boolean,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = { if (!isLoading) onDismiss() },
+        title = { Text(title, fontWeight = FontWeight.Bold) },
+        text = { Text(message) },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                enabled = !isLoading,
+                colors = ButtonDefaults.buttonColors(containerColor = confirmColor)
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = Color.White
+                    )
+                } else {
+                    Text(confirmLabel)
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !isLoading) {
+                Text("Cancel")
+            }
+        }
+    )
 }
 
 // endregion

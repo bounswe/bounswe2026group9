@@ -40,6 +40,8 @@ data class EventDetailUiState(
     // Access request (non-host)
     val accessRequestStatus: String? = null,  // null | "pending" | "approved" | "rejected"
     val isRequestingAccess: Boolean = false,
+    // Host action loading (cancel / delete / publish)
+    val isHostActionLoading: Boolean = false,
     // Invite & access request management (host)
     val invites: List<InviteResponseDto> = emptyList(),
     val accessRequests: List<AccessRequestResponseDto> = emptyList(),
@@ -406,6 +408,74 @@ class EventDetailViewModel(
                             )
                         }
                     }
+                }
+            )
+        }
+    }
+
+    // ── Host Actions ──────────────────────────────────────────────────────────
+
+    fun publishEvent(onSuccess: () -> Unit) {
+        val token = currentToken ?: return
+        val eventId = currentEventId ?: return
+        _uiState.value = _uiState.value.copy(isHostActionLoading = true, actionError = null)
+        viewModelScope.launch {
+            repository.changeEventStatus(token, eventId, "published").fold(
+                onSuccess = { updated ->
+                    _uiState.value = _uiState.value.copy(
+                        fullDetail = updated,
+                        isHostActionLoading = false
+                    )
+                    onSuccess()
+                },
+                onFailure = { e ->
+                    _uiState.value = _uiState.value.copy(
+                        isHostActionLoading = false,
+                        actionError = e.message
+                    )
+                }
+            )
+        }
+    }
+
+    fun cancelEvent(onSuccess: () -> Unit) {
+        val token = currentToken ?: return
+        val eventId = currentEventId ?: return
+        _uiState.value = _uiState.value.copy(isHostActionLoading = true, actionError = null)
+        viewModelScope.launch {
+            repository.changeEventStatus(token, eventId, "cancelled").fold(
+                onSuccess = { updated ->
+                    _uiState.value = _uiState.value.copy(
+                        fullDetail = updated,
+                        isHostActionLoading = false
+                    )
+                    onSuccess()
+                },
+                onFailure = { e ->
+                    _uiState.value = _uiState.value.copy(
+                        isHostActionLoading = false,
+                        actionError = e.message
+                    )
+                }
+            )
+        }
+    }
+
+    fun deleteEvent(onSuccess: () -> Unit) {
+        val token = currentToken ?: return
+        val eventId = currentEventId ?: return
+        _uiState.value = _uiState.value.copy(isHostActionLoading = true, actionError = null)
+        viewModelScope.launch {
+            repository.deleteEvent(token, eventId).fold(
+                onSuccess = {
+                    _uiState.value = _uiState.value.copy(isHostActionLoading = false)
+                    onSuccess()
+                },
+                onFailure = { e ->
+                    _uiState.value = _uiState.value.copy(
+                        isHostActionLoading = false,
+                        actionError = e.message
+                    )
                 }
             )
         }

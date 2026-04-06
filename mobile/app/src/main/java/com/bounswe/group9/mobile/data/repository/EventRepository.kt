@@ -193,7 +193,102 @@ class EventRepository {
         }
     }
 
-    // ── Categories ──
+    // ── Event CRUD ──
+
+    suspend fun createEvent(token: String, request: com.bounswe.group9.mobile.data.remote.EventCreateRequest): Result<EventDetailDto> {
+        return try {
+            val response = RetrofitProvider.apiService.createEvent("Bearer $token", request)
+            if (!response.isSuccessful) {
+                val body = response.errorBody()?.string() ?: "Unknown error"
+                return Result.failure(Exception(parseErrorMessage(body, response.code())))
+            }
+            val json = response.body() ?: return Result.failure(Exception("Empty response"))
+            Result.success(Gson().fromJson(json, EventDetailDto::class.java))
+        } catch (e: retrofit2.HttpException) {
+            val body = e.response()?.errorBody()?.string() ?: "Unknown error"
+            Result.failure(Exception(parseErrorMessage(body, e.code())))
+        } catch (e: Exception) {
+            Log.e("EventRepository", "createEvent failed: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateEvent(token: String, eventId: String, request: com.bounswe.group9.mobile.data.remote.EventUpdateRequest): Result<EventDetailDto> {
+        return try {
+            val response = RetrofitProvider.apiService.updateEvent(eventId, "Bearer $token", request)
+            if (!response.isSuccessful) {
+                val body = response.errorBody()?.string() ?: "Unknown error"
+                return Result.failure(Exception(parseErrorMessage(body, response.code())))
+            }
+            val json = response.body() ?: return Result.failure(Exception("Empty response"))
+            Result.success(Gson().fromJson(json, EventDetailDto::class.java))
+        } catch (e: retrofit2.HttpException) {
+            val body = e.response()?.errorBody()?.string() ?: "Unknown error"
+            Result.failure(Exception(parseErrorMessage(body, e.code())))
+        } catch (e: Exception) {
+            Log.e("EventRepository", "updateEvent failed: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun changeEventStatus(token: String, eventId: String, status: String): Result<EventDetailDto> {
+        return try {
+            val response = RetrofitProvider.apiService.changeEventStatus(
+                eventId, "Bearer $token",
+                com.bounswe.group9.mobile.data.remote.EventStatusRequest(status)
+            )
+            if (!response.isSuccessful) {
+                val body = response.errorBody()?.string() ?: "Unknown error"
+                return Result.failure(Exception(parseErrorMessage(body, response.code())))
+            }
+            val json = response.body() ?: return Result.failure(Exception("Empty response"))
+            Result.success(Gson().fromJson(json, EventDetailDto::class.java))
+        } catch (e: retrofit2.HttpException) {
+            val body = e.response()?.errorBody()?.string() ?: "Unknown error"
+            Result.failure(Exception(parseErrorMessage(body, e.code())))
+        } catch (e: Exception) {
+            Log.e("EventRepository", "changeEventStatus failed: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteEvent(token: String, eventId: String): Result<Unit> {
+        return try {
+            val response = RetrofitProvider.apiService.deleteEvent(eventId, "Bearer $token")
+            if (!response.isSuccessful) {
+                val body = response.errorBody()?.string() ?: "Unknown error"
+                return Result.failure(Exception(parseErrorMessage(body, response.code())))
+            }
+            Result.success(Unit)
+        } catch (e: retrofit2.HttpException) {
+            val body = e.response()?.errorBody()?.string() ?: "Unknown error"
+            Result.failure(Exception(parseErrorMessage(body, e.code())))
+        } catch (e: Exception) {
+            Log.e("EventRepository", "deleteEvent failed: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun uploadEventImage(token: String, eventId: String, part: okhttp3.MultipartBody.Part): Result<com.bounswe.group9.mobile.data.remote.EventImageDto> {
+        return try {
+            val response = RetrofitProvider.apiService.uploadEventImage(eventId, "Bearer $token", part)
+            if (!response.isSuccessful) {
+                val body = response.errorBody()?.string() ?: "Unknown error"
+                return Result.failure(Exception(parseErrorMessage(body, response.code())))
+            }
+            val json = response.body() ?: return Result.failure(Exception("Empty response"))
+            val gson = Gson()
+            Result.success(gson.fromJson(json, com.bounswe.group9.mobile.data.remote.EventImageDto::class.java))
+        } catch (e: retrofit2.HttpException) {
+            val body = e.response()?.errorBody()?.string() ?: "Unknown error"
+            Result.failure(Exception(parseErrorMessage(body, e.code())))
+        } catch (e: Exception) {
+            Log.e("EventRepository", "uploadEventImage failed: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+
 
     suspend fun getCategories(): Result<List<CategoryDto>> {
         return try {

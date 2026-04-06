@@ -1,12 +1,17 @@
 package com.bounswe.group9.mobile.ui.navigation
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import kotlinx.coroutines.delay
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -17,6 +22,8 @@ import androidx.navigation.navDeepLink
 import com.bounswe.group9.mobile.data.local.SessionManager
 import com.bounswe.group9.mobile.ui.auth.AuthViewModel
 import com.bounswe.group9.mobile.ui.auth.LoginScreen
+import com.bounswe.group9.mobile.ui.createevent.CreateEventScreen
+import com.bounswe.group9.mobile.ui.createevent.CreateEventViewModel
 import com.bounswe.group9.mobile.ui.discovery.DiscoveryScreen
 import com.bounswe.group9.mobile.ui.discovery.DiscoveryViewModel
 import com.bounswe.group9.mobile.ui.eventdetail.EventDetailScreen
@@ -38,9 +45,12 @@ object Routes {
     const val EVENT_DETAIL = "eventDetail/{eventId}"
     const val HOST_PROFILE = "hostProfile/{userId}"
     const val INVITE_ACCEPT = "inviteAccept/{eventId}/{inviteToken}"
+    const val CREATE_EVENT = "createEvent"
+    const val EDIT_EVENT = "editEvent/{eventId}"
     fun eventDetail(eventId: String) = "eventDetail/$eventId"
     fun hostProfile(userId: String) = "hostProfile/$userId"
     fun inviteAccept(eventId: String, inviteToken: String) = "inviteAccept/$eventId/$inviteToken"
+    fun editEvent(eventId: String) = "editEvent/$eventId"
 }
 
 @Composable
@@ -105,6 +115,9 @@ fun AppNavGraph(
                 },
                 onProfileClick = {
                     navController.navigate(Routes.PROFILE)
+                },
+                onCreateEvent = {
+                    navController.navigate(Routes.CREATE_EVENT)
                 }
             )
         }
@@ -146,6 +159,15 @@ fun AppNavGraph(
                 },
                 onNavigateToHost = { hostId ->
                     navController.navigate(Routes.hostProfile(hostId))
+                },
+                onNavigateToEdit = { event ->
+                    navController.navigate(Routes.editEvent(event.id))
+                },
+                onDeleteSuccess = {
+                    navController.navigate(Routes.DISCOVERY) {
+                        popUpTo(Routes.DISCOVERY) { inclusive = true }
+                    }
+                    discoveryViewModel.refresh()
                 }
             )
         }
@@ -173,6 +195,55 @@ fun AppNavGraph(
                     navController.popBackStack() // back to discovery
                 }
             )
+        }
+        composable(Routes.CREATE_EVENT) {
+            val createViewModel = remember { CreateEventViewModel() }
+            CreateEventScreen(
+                token = token,
+                editEvent = null,
+                onBack = { navController.popBackStack() },
+                onEventSaved = { eventId ->
+                    navController.navigate(Routes.eventDetail(eventId)) {
+                        popUpTo(Routes.CREATE_EVENT) { inclusive = true }
+                    }
+                    discoveryViewModel.refresh()
+                },
+                viewModel = createViewModel
+            )
+        }
+        composable(
+            route = Routes.EDIT_EVENT,
+            arguments = listOf(navArgument("eventId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val editEventId = backStackEntry.arguments?.getString("eventId") ?: return@composable
+            val detailVm = remember(editEventId) { EventDetailViewModel() }
+            val detailState by detailVm.uiState.collectAsState()
+            LaunchedEffect(editEventId, token) {
+                detailVm.loadEvent(editEventId, token)
+            }
+            val eventToEdit = detailState.fullDetail
+            if (eventToEdit != null) {
+                val editVm = remember(editEventId) { CreateEventViewModel() }
+                CreateEventScreen(
+                    token = token,
+                    editEvent = eventToEdit,
+                    onBack = { navController.popBackStack() },
+                    onEventSaved = { savedId ->
+                        navController.navigate(Routes.eventDetail(savedId)) {
+                            popUpTo(Routes.EDIT_EVENT) { inclusive = true }
+                        }
+                        discoveryViewModel.refresh()
+                    },
+                    viewModel = editVm
+                )
+            } else {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = androidx.compose.ui.Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
         }
         composable(
             route = Routes.INVITE_ACCEPT,
