@@ -15,6 +15,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,7 +25,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.AddPhotoAlternate
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Language
@@ -49,6 +53,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import java.util.Date
+import java.util.Locale
 import com.bounswe.group9.mobile.data.remote.EventDetailDto
 import com.bounswe.group9.mobile.ui.theme.BrandDark
 import com.bounswe.group9.mobile.ui.theme.BrandMid
@@ -538,6 +544,7 @@ private fun FeedbackBanner(message: String, tone: FeedbackTone) {
 
 // ── Step 0: Basics ────────────────────────────────────────────────────────────
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun BasicsStep(uiState: CreateEventUiState, viewModel: CreateEventViewModel) {
     Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
@@ -589,25 +596,25 @@ private fun BasicsStep(uiState: CreateEventUiState, viewModel: CreateEventViewMo
             if (uiState.categoriesLoading) {
                 CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp, color = BrandMid)
             } else {
-                val rows = uiState.availableCategories.chunked(3)
-                rows.forEach { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 8.dp)) {
-                        row.forEach { cat ->
-                            val selected = cat.id in uiState.selectedCategoryIds
-                            Surface(
-                                shape = RoundedCornerShape(50),
-                                color = if (selected) BrandDark else MaterialTheme.colorScheme.surface,
-                                border = BorderStroke(1.dp, if (selected) BrandDark else Color(0xFFD1C9C3)),
-                                modifier = Modifier.clickable { viewModel.toggleCategory(cat.id) }
-                            ) {
-                                Text(
-                                    cat.name,
-                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
-                                    color = if (selected) Color.White else MaterialTheme.colorScheme.onSurface,
-                                    fontSize = 13.sp,
-                                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
-                                )
-                            }
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    uiState.availableCategories.forEach { cat ->
+                        val selected = cat.id in uiState.selectedCategoryIds
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = if (selected) BrandDark else MaterialTheme.colorScheme.surface,
+                            border = BorderStroke(1.dp, if (selected) BrandDark else Color(0xFF1C1917)),
+                            modifier = Modifier.clickable { viewModel.toggleCategory(cat.id) }
+                        ) {
+                            Text(
+                                cat.name,
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                                color = if (selected) Color.White else MaterialTheme.colorScheme.onSurface,
+                                fontSize = 13.sp,
+                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+                            )
                         }
                     }
                 }
@@ -619,20 +626,84 @@ private fun BasicsStep(uiState: CreateEventUiState, viewModel: CreateEventViewMo
 
 // ── Step 1: Schedule ──────────────────────────────────────────────────────────
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ScheduleStep(uiState: CreateEventUiState, viewModel: CreateEventViewModel) {
+    val readOnly = uiState.eventAlreadyStarted
+    val dateFmt: java.text.SimpleDateFormat = remember { java.text.SimpleDateFormat("yyyy-MM-dd", Locale.US) }
+    fun parseMs(d: String): Long? = try { dateFmt.parse(d)?.time } catch (_: Exception) { null }
+    fun parseHour(t: String) = t.split(":").getOrNull(0)?.toIntOrNull() ?: 9
+    fun parseMin(t: String) = t.split(":").getOrNull(1)?.toIntOrNull() ?: 0
+
+    var showStartDate by remember { mutableStateOf(false) }
+    var showStartTime by remember { mutableStateOf(false) }
+    var showEndDate   by remember { mutableStateOf(false) }
+    var showEndTime   by remember { mutableStateOf(false) }
+
+    if (showStartDate) {
+        val state = rememberDatePickerState(initialSelectedDateMillis = parseMs(uiState.startDate))
+        DatePickerDialog(
+            onDismissRequest = { showStartDate = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    state.selectedDateMillis?.let { viewModel.onStartDateChange(dateFmt.format(Date(it))) }
+                    showStartDate = false
+                }) { Text("OK") }
+            },
+            dismissButton = { TextButton(onClick = { showStartDate = false }) { Text("Cancel") } }
+        ) { DatePicker(state = state) }
+    }
+
+    if (showStartTime) {
+        val state = rememberTimePickerState(initialHour = parseHour(uiState.startTime), initialMinute = parseMin(uiState.startTime))
+        AlertDialog(
+            onDismissRequest = { showStartTime = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.onStartTimeChange(String.format("%02d:%02d", state.hour, state.minute))
+                    showStartTime = false
+                }) { Text("OK") }
+            },
+            dismissButton = { TextButton(onClick = { showStartTime = false }) { Text("Cancel") } },
+            text = { TimePicker(state = state) }
+        )
+    }
+
+    if (showEndDate) {
+        val state = rememberDatePickerState(initialSelectedDateMillis = parseMs(uiState.endDate))
+        DatePickerDialog(
+            onDismissRequest = { showEndDate = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    state.selectedDateMillis?.let { viewModel.onEndDateChange(dateFmt.format(Date(it))) }
+                    showEndDate = false
+                }) { Text("OK") }
+            },
+            dismissButton = { TextButton(onClick = { showEndDate = false }) { Text("Cancel") } }
+        ) { DatePicker(state = state) }
+    }
+
+    if (showEndTime) {
+        val state = rememberTimePickerState(initialHour = parseHour(uiState.endTime), initialMinute = parseMin(uiState.endTime))
+        AlertDialog(
+            onDismissRequest = { showEndTime = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.onEndTimeChange(String.format("%02d:%02d", state.hour, state.minute))
+                    showEndTime = false
+                }) { Text("OK") }
+            },
+            dismissButton = { TextButton(onClick = { showEndTime = false }) { Text("Cancel") } },
+            text = { TimePicker(state = state) }
+        )
+    }
+
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        // Warning if event already started
         if (uiState.eventAlreadyStarted) {
-            FeedbackBanner(
-                "This event has already started — schedule cannot be changed.",
-                FeedbackTone.Error
-            )
+            FeedbackBanner("This event has already started — schedule cannot be changed.", FeedbackTone.Error)
         } else if (!uiState.isEditMode && !uiState.scheduleConfirmed) {
             FeedbackBanner("Suggested times are prefilled for convenience. Review them and press Next to confirm.", FeedbackTone.Info)
         }
-
-        val readOnly = uiState.eventAlreadyStarted
 
         StepCard {
             FieldLabel("Start")
@@ -647,7 +718,12 @@ private fun ScheduleStep(uiState: CreateEventUiState, viewModel: CreateEventView
                     singleLine = true,
                     isError = uiState.startError != null,
                     enabled = !readOnly,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    trailingIcon = {
+                        if (!readOnly) IconButton(onClick = { showStartDate = true }) {
+                            Icon(Icons.Default.DateRange, contentDescription = null, tint = BrandMid)
+                        }
+                    }
                 )
                 OutlinedTextField(
                     value = uiState.startTime,
@@ -658,7 +734,12 @@ private fun ScheduleStep(uiState: CreateEventUiState, viewModel: CreateEventView
                     singleLine = true,
                     isError = uiState.startError != null,
                     enabled = !readOnly,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    trailingIcon = {
+                        if (!readOnly) IconButton(onClick = { showStartTime = true }) {
+                            Icon(Icons.Default.AccessTime, contentDescription = null, tint = BrandMid)
+                        }
+                    }
                 )
             }
             uiState.startError?.let { Spacer(Modifier.height(4.dp)); Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
@@ -677,7 +758,12 @@ private fun ScheduleStep(uiState: CreateEventUiState, viewModel: CreateEventView
                     singleLine = true,
                     isError = uiState.endError != null,
                     enabled = !readOnly,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    trailingIcon = {
+                        if (!readOnly) IconButton(onClick = { showEndDate = true }) {
+                            Icon(Icons.Default.DateRange, contentDescription = null, tint = BrandMid)
+                        }
+                    }
                 )
                 OutlinedTextField(
                     value = uiState.endTime,
@@ -688,7 +774,12 @@ private fun ScheduleStep(uiState: CreateEventUiState, viewModel: CreateEventView
                     singleLine = true,
                     isError = uiState.endError != null,
                     enabled = !readOnly,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    trailingIcon = {
+                        if (!readOnly) IconButton(onClick = { showEndTime = true }) {
+                            Icon(Icons.Default.AccessTime, contentDescription = null, tint = BrandMid)
+                        }
+                    }
                 )
             }
             uiState.endError?.let { Spacer(Modifier.height(4.dp)); Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
