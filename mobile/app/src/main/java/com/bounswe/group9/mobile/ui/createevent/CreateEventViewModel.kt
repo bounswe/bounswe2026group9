@@ -10,6 +10,7 @@ import com.bounswe.group9.mobile.data.remote.EventDetailDto
 import com.bounswe.group9.mobile.data.remote.EventUpdateRequest
 import com.bounswe.group9.mobile.data.remote.EventImageDto
 import com.bounswe.group9.mobile.data.remote.LocationRequest
+import com.bounswe.group9.mobile.data.remote.VenueMetadataRequest
 import com.bounswe.group9.mobile.data.repository.EventRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -223,6 +224,14 @@ class CreateEventViewModel(
         1 -> { val s = _uiState.value; var ok = true
             if (s.startDate.isBlank() || s.startTime.isBlank()) { update { copy(startError = "Start date and time required") }; ok = false }
             if (s.endDate.isBlank() || s.endTime.isBlank()) { update { copy(endError = "End date and time required") }; ok = false }
+            if (ok && !s.eventAlreadyStarted) {
+                val fmt = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+                val start = try { fmt.parse("${s.startDate} ${s.startTime}") } catch (_: Exception) { null }
+                val end = try { fmt.parse("${s.endDate} ${s.endTime}") } catch (_: Exception) { null }
+                if (start != null && end != null && !end.after(start)) {
+                    update { copy(endError = "End time must be after start time") }; ok = false
+                }
+            }
             ok }
         2 -> { val s = _uiState.value; var ok = true
             if (s.locationName.isBlank()) { update { copy(locationError = "Location name required") }; ok = false }
@@ -349,7 +358,26 @@ class CreateEventViewModel(
         }
     }
 
-    private fun buildIso(date: String, time: String) = "${date}T${time}:00+00:00"
+    private fun buildIso(date: String, time: String): String {
+        return try {
+            val parser = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US)
+            val parsed = parser.parse("$date $time") ?: return "${date}T${time}:00+00:00"
+            val formatter = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US)
+            formatter.format(parsed)
+        } catch (_: Exception) {
+            "${date}T${time}:00+00:00"
+        }
+    }
+
+    private fun buildVenueMetadata(s: CreateEventUiState) = VenueMetadataRequest(
+        health_requirements = s.healthRequirements.ifBlank { null },
+        wheelchair_access = s.wheelchairAccess,
+        accessible_restroom = s.accessibleRestroom,
+        elevator_available = s.elevatorAvailable,
+        seating_available = s.seatingAvailable,
+        captions_support = s.captionsSupport,
+        quiet_friendly = s.quietFriendly
+    )
 
     private fun buildCreateRequest(s: CreateEventUiState, status: String) = EventCreateRequest(
         title = s.title, description = s.description,
@@ -357,7 +385,8 @@ class CreateEventViewModel(
         visibility = s.visibility, is_age_restricted = s.isAgeRestricted,
         attendee_limit = if (s.attendeeLimitEnabled) s.attendeeLimit.toIntOrNull() else null,
         status = status, category_ids = s.selectedCategoryIds.toList(),
-        locations = listOf(LocationRequest(s.locationName, s.locationLat.toDoubleOrNull() ?: 0.0, s.locationLng.toDoubleOrNull() ?: 0.0))
+        locations = listOf(LocationRequest(s.locationName, s.locationLat.toDoubleOrNull() ?: 0.0, s.locationLng.toDoubleOrNull() ?: 0.0)),
+        venue_metadata = buildVenueMetadata(s)
     )
 
     private fun buildUpdateRequest(s: CreateEventUiState) = EventUpdateRequest(
@@ -366,7 +395,8 @@ class CreateEventViewModel(
         visibility = s.visibility, is_age_restricted = s.isAgeRestricted,
         attendee_limit = if (s.attendeeLimitEnabled) s.attendeeLimit.toIntOrNull() else null,
         clear_attendee_limit = !s.attendeeLimitEnabled, category_ids = s.selectedCategoryIds.toList(),
-        locations = listOf(LocationRequest(s.locationName, s.locationLat.toDoubleOrNull() ?: 0.0, s.locationLng.toDoubleOrNull() ?: 0.0))
+        locations = listOf(LocationRequest(s.locationName, s.locationLat.toDoubleOrNull() ?: 0.0, s.locationLng.toDoubleOrNull() ?: 0.0)),
+        venue_metadata = buildVenueMetadata(s)
     )
 
     private fun update(block: CreateEventUiState.() -> CreateEventUiState) { _uiState.value = _uiState.value.block() }

@@ -251,6 +251,16 @@ data class LocationRequest(
     val order_index: Int = 0
 )
 
+data class VenueMetadataRequest(
+    val health_requirements: String? = null,
+    val wheelchair_access: Boolean = false,
+    val accessible_restroom: Boolean = false,
+    val elevator_available: Boolean = false,
+    val seating_available: Boolean = false,
+    val captions_support: Boolean = false,
+    val quiet_friendly: Boolean = false
+)
+
 data class EventCreateRequest(
     val title: String,
     val description: String,
@@ -261,7 +271,8 @@ data class EventCreateRequest(
     val attendee_limit: Int? = null,
     val status: String = "draft",      // "draft" | "published"
     val category_ids: List<String>,
-    val locations: List<LocationRequest>
+    val locations: List<LocationRequest>,
+    val venue_metadata: VenueMetadataRequest? = null
 )
 
 data class EventUpdateRequest(
@@ -274,18 +285,11 @@ data class EventUpdateRequest(
     val attendee_limit: Int? = null,
     val clear_attendee_limit: Boolean = false,
     val category_ids: List<String>? = null,
-    val locations: List<LocationRequest>? = null
+    val locations: List<LocationRequest>? = null,
+    val venue_metadata: VenueMetadataRequest? = null
 )
 
 data class EventStatusRequest(val status: String) // "published" | "cancelled" | "ended"
-
-data class EventImageDto2(
-    val id: String,
-    val image_url: String,
-    val upload_date: String
-)
-
-
 
 data class RefreshTokenRequest(val refresh_token: String?)
 
