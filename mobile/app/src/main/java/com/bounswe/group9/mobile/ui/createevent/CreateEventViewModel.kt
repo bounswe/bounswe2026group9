@@ -81,6 +81,10 @@ data class CreateEventUiState(
     val successEventId: String? = null,
     val isEditMode: Boolean = false,
     val editEventId: String? = null,
+    // Whether event has already started (edit mode) — restricts schedule/location edits
+    val eventAlreadyStarted: Boolean = false,
+    // Steps that are incomplete (used in Review step UI)
+    val missingSteps: List<Int> = emptyList(),
     // Field errors
     val titleError: String? = null,
     val descriptionError: String? = null,
@@ -116,6 +120,11 @@ class CreateEventViewModel(
 
     fun init(token: String?, editEvent: EventDetailDto? = null) {
         currentToken = token
+        // Guard: unauthenticated users cannot access create/edit
+        if (token == null) {
+            update { copy(submitError = "You must be signed in to create or edit events.") }
+            return
+        }
         loadCategories()
         if (editEvent != null) prefillForEdit(editEvent)
         else update { copy(feedbackMessage = "You can save progress anytime while building the event.", feedbackTone = FeedbackTone.Info) }
@@ -129,6 +138,8 @@ class CreateEventViewModel(
         val startD = parse(event.start_datetime)
         val endD = parse(event.end_datetime)
         val loc = event.locations.firstOrNull { it.is_primary } ?: event.locations.firstOrNull()
+        // Check if event has already started — restricts schedule & location edits
+        val alreadyStarted = startD != null && startD <= Date()
         update {
             copy(
                 isEditMode = true, editEventId = event.id, persistedEventId = event.id,
@@ -142,7 +153,12 @@ class CreateEventViewModel(
                 attendeeLimitEnabled = event.attendee_limit != null, attendeeLimit = event.attendee_limit?.toString() ?: "",
                 selectedCategoryIds = event.categories.map { it.id }.toSet(),
                 uploadedImages = event.images,
-                scheduleConfirmed = true, settingsConfirmed = true
+                scheduleConfirmed = true, settingsConfirmed = true,
+                eventAlreadyStarted = alreadyStarted,
+                feedbackMessage = if (alreadyStarted)
+                    "This event has already started — schedule and location cannot be changed."
+                else null,
+                feedbackTone = FeedbackTone.Info
             )
         }
     }
@@ -245,7 +261,22 @@ class CreateEventViewModel(
     fun publish() {
         val token = currentToken ?: return
         val s = _uiState.value
-        update { copy(isPublishing = true) }
+
+        // Pre-publish validation: find incomplete required steps (0,1,2,5)
+        val missing = listOf(0, 1, 2, 5).filter { !s.stepCompleted(it) }
+        if (missing.isNotEmpty()) {
+            update {
+                copy(
+                    currentStep = 6, // go to Review to show what's missing
+                    missingSteps = missing,
+                    feedbackMessage = "Complete all required steps before publishing.",
+                    feedbackTone = FeedbackTone.Error
+                )
+            }
+            return
+        }
+
+        update { copy(isPublishing = true, missingSteps = emptyList()) }
         viewModelScope.launch {
             val saveResult = if (s.persistedEventId != null) repository.updateEvent(token, s.persistedEventId, buildUpdateRequest(s))
             else repository.createEvent(token, buildCreateRequest(s, "draft"))
@@ -255,7 +286,6 @@ class CreateEventViewModel(
                         onSuccess = { pub -> update { copy(isPublishing = false, persistedEventId = pub.id, successEventId = pub.id, feedbackMessage = "Event published!", feedbackTone = FeedbackTone.Success) } },
                         onFailure = { e ->
                             val msg = e.message ?: "Failed to publish"
-                            // Navigate to media step if image is the issue
                             val goToMedia = msg.contains("image", ignoreCase = true)
                             update {
                                 copy(

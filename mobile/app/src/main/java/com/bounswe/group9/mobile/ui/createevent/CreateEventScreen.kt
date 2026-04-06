@@ -88,6 +88,25 @@ fun CreateEventScreen(
         uiState.submitError?.let { snackbar.showSnackbar(it); viewModel.clearFeedback() }
     }
 
+    // Guard: unauthenticated
+    if (token == null) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.padding(32.dp)
+            ) {
+                Icon(Icons.Default.Lock, null, modifier = Modifier.size(48.dp), tint = BrandMid)
+                Text("Sign in required", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = BrandDark)
+                Text("You must be signed in to create or edit events.", style = MaterialTheme.typography.bodyMedium, color = Color(0xFF78716C))
+                Button(onClick = onBack, colors = ButtonDefaults.buttonColors(containerColor = BrandDark)) {
+                    Text("Go back")
+                }
+            }
+        }
+        return
+    }
+
     val imagePickerLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetMultipleContents()
     ) { uris: List<Uri> -> uris.forEach { viewModel.addImageUri(it) } }
@@ -603,9 +622,17 @@ private fun BasicsStep(uiState: CreateEventUiState, viewModel: CreateEventViewMo
 @Composable
 private fun ScheduleStep(uiState: CreateEventUiState, viewModel: CreateEventViewModel) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        if (!uiState.isEditMode && !uiState.scheduleConfirmed) {
+        // Warning if event already started
+        if (uiState.eventAlreadyStarted) {
+            FeedbackBanner(
+                "This event has already started — schedule cannot be changed.",
+                FeedbackTone.Error
+            )
+        } else if (!uiState.isEditMode && !uiState.scheduleConfirmed) {
             FeedbackBanner("Suggested times are prefilled for convenience. Review them and press Next to confirm.", FeedbackTone.Info)
         }
+
+        val readOnly = uiState.eventAlreadyStarted
 
         StepCard {
             FieldLabel("Start")
@@ -613,22 +640,24 @@ private fun ScheduleStep(uiState: CreateEventUiState, viewModel: CreateEventView
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = uiState.startDate,
-                    onValueChange = viewModel::onStartDateChange,
+                    onValueChange = { if (!readOnly) viewModel.onStartDateChange(it) },
                     modifier = Modifier.weight(1f),
                     label = { Text("Date") },
                     placeholder = { Text("YYYY-MM-DD") },
                     singleLine = true,
                     isError = uiState.startError != null,
+                    enabled = !readOnly,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
                 OutlinedTextField(
                     value = uiState.startTime,
-                    onValueChange = viewModel::onStartTimeChange,
+                    onValueChange = { if (!readOnly) viewModel.onStartTimeChange(it) },
                     modifier = Modifier.weight(1f),
                     label = { Text("Time") },
                     placeholder = { Text("HH:MM") },
                     singleLine = true,
                     isError = uiState.startError != null,
+                    enabled = !readOnly,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
             }
@@ -641,22 +670,24 @@ private fun ScheduleStep(uiState: CreateEventUiState, viewModel: CreateEventView
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = uiState.endDate,
-                    onValueChange = viewModel::onEndDateChange,
+                    onValueChange = { if (!readOnly) viewModel.onEndDateChange(it) },
                     modifier = Modifier.weight(1f),
                     label = { Text("Date") },
                     placeholder = { Text("YYYY-MM-DD") },
                     singleLine = true,
                     isError = uiState.endError != null,
+                    enabled = !readOnly,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
                 OutlinedTextField(
                     value = uiState.endTime,
-                    onValueChange = viewModel::onEndTimeChange,
+                    onValueChange = { if (!readOnly) viewModel.onEndTimeChange(it) },
                     modifier = Modifier.weight(1f),
                     label = { Text("Time") },
                     placeholder = { Text("HH:MM") },
                     singleLine = true,
                     isError = uiState.endError != null,
+                    enabled = !readOnly,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
             }
@@ -669,53 +700,67 @@ private fun ScheduleStep(uiState: CreateEventUiState, viewModel: CreateEventView
 
 @Composable
 private fun LocationStep(uiState: CreateEventUiState, viewModel: CreateEventViewModel) {
-    StepCard {
-        FieldLabel("Primary venue", helper = "Enter the location name and its coordinates. Tip: find coords on maps.google.com.")
-        Spacer(Modifier.height(12.dp))
-        OutlinedTextField(
-            value = uiState.locationName,
-            onValueChange = viewModel::onLocationNameChange,
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Place name") },
-            placeholder = { Text("e.g. Grand Arena, Istanbul") },
-            singleLine = true,
-            isError = uiState.locationError != null
-        )
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(
-                value = uiState.locationLat,
-                onValueChange = viewModel::onLocationLatChange,
-                modifier = Modifier.weight(1f),
-                label = { Text("Latitude") },
-                placeholder = { Text("41.0082") },
-                singleLine = true,
-                isError = uiState.locationError != null,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
-            )
-            OutlinedTextField(
-                value = uiState.locationLng,
-                onValueChange = viewModel::onLocationLngChange,
-                modifier = Modifier.weight(1f),
-                label = { Text("Longitude") },
-                placeholder = { Text("28.9784") },
-                singleLine = true,
-                isError = uiState.locationError != null,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        if (uiState.eventAlreadyStarted) {
+            FeedbackBanner(
+                "This event has already started — location cannot be changed.",
+                FeedbackTone.Error
             )
         }
-        uiState.locationError?.let { Spacer(Modifier.height(4.dp)); Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
 
-        if (uiState.locationLat.isNotBlank() && uiState.locationLng.isNotBlank()) {
-            Spacer(Modifier.height(10.dp))
-            Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFF0EDE9)) {
-                Text(
-                    "📍 ${uiState.locationName.ifBlank { "Location" }} — ${uiState.locationLat}, ${uiState.locationLng}",
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = BrandDark,
-                    fontWeight = FontWeight.Medium
+        val readOnly = uiState.eventAlreadyStarted
+
+        StepCard {
+            FieldLabel("Primary venue", helper = "Enter the location name and its coordinates. Tip: find coords on maps.google.com.")
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(
+                value = uiState.locationName,
+                onValueChange = { if (!readOnly) viewModel.onLocationNameChange(it) },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Place name") },
+                placeholder = { Text("e.g. Grand Arena, Istanbul") },
+                singleLine = true,
+                enabled = !readOnly,
+                isError = uiState.locationError != null
+            )
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = uiState.locationLat,
+                    onValueChange = { if (!readOnly) viewModel.onLocationLatChange(it) },
+                    modifier = Modifier.weight(1f),
+                    label = { Text("Latitude") },
+                    placeholder = { Text("41.0082") },
+                    singleLine = true,
+                    enabled = !readOnly,
+                    isError = uiState.locationError != null,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                 )
+                OutlinedTextField(
+                    value = uiState.locationLng,
+                    onValueChange = { if (!readOnly) viewModel.onLocationLngChange(it) },
+                    modifier = Modifier.weight(1f),
+                    label = { Text("Longitude") },
+                    placeholder = { Text("28.9784") },
+                    singleLine = true,
+                    enabled = !readOnly,
+                    isError = uiState.locationError != null,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                )
+            }
+            uiState.locationError?.let { Spacer(Modifier.height(4.dp)); Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+
+            if (uiState.locationLat.isNotBlank() && uiState.locationLng.isNotBlank()) {
+                Spacer(Modifier.height(10.dp))
+                Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFF0EDE9)) {
+                    Text(
+                        "📍 ${uiState.locationName.ifBlank { "Location" }} — ${uiState.locationLat}, ${uiState.locationLng}",
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = BrandDark,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
         }
     }
@@ -970,14 +1015,61 @@ private fun SettingsStep(uiState: CreateEventUiState, viewModel: CreateEventView
 @Composable
 private fun ReviewStep(uiState: CreateEventUiState, viewModel: CreateEventViewModel) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        ReviewCard(title = "Basics", onEdit = { viewModel.goToStep(0) }) {
+
+        // Missing steps banner — shown when publish was attempted with incomplete steps
+        if (uiState.missingSteps.isNotEmpty()) {
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = FeedbackErrorBg,
+                border = BorderStroke(1.dp, FeedbackErrorFg.copy(alpha = 0.25f))
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Complete the following steps before publishing:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = FeedbackErrorFg
+                    )
+                    uiState.missingSteps.forEach { stepIndex ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { viewModel.goToStep(stepIndex) }
+                                .padding(vertical = 6.dp, horizontal = 4.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clip(CircleShape)
+                                    .background(FeedbackErrorFg),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("${stepIndex + 1}", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+                            Text(
+                                EVENT_EDITOR_STEPS[stepIndex],
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = FeedbackErrorFg,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Spacer(Modifier.weight(1f))
+                            Text("Fix →", style = MaterialTheme.typography.bodySmall, color = FeedbackErrorFg)
+                        }
+                    }
+                }
+            }
+        }
+
+        ReviewCard(title = "Basics", onEdit = { viewModel.goToStep(0) },
+            isComplete = uiState.stepCompleted(0)) {
             Text(uiState.title.ifBlank { "Untitled event" }, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
             Spacer(Modifier.height(8.dp))
             Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 val cats = uiState.availableCategories.filter { it.id in uiState.selectedCategoryIds }
-                if (cats.isEmpty()) {
-                    Chip("No categories")
-                } else cats.forEach { Chip(it.name) }
+                if (cats.isEmpty()) Chip("No categories") else cats.forEach { Chip(it.name) }
             }
             if (uiState.description.isNotBlank()) {
                 Spacer(Modifier.height(8.dp))
@@ -985,21 +1077,25 @@ private fun ReviewStep(uiState: CreateEventUiState, viewModel: CreateEventViewMo
             }
         }
 
-        ReviewCard(title = "Schedule", onEdit = { viewModel.goToStep(1) }) {
+        ReviewCard(title = "Schedule", onEdit = { viewModel.goToStep(1) },
+            isComplete = uiState.stepCompleted(1)) {
             Text("${uiState.startDate} ${uiState.startTime} → ${uiState.endDate} ${uiState.endTime}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
         }
 
-        ReviewCard(title = "Location", onEdit = { viewModel.goToStep(2) }) {
+        ReviewCard(title = "Location", onEdit = { viewModel.goToStep(2) },
+            isComplete = uiState.stepCompleted(2)) {
             Text(uiState.locationName.ifBlank { "No location" }, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
             if (uiState.locationLat.isNotBlank()) Text("${uiState.locationLat}, ${uiState.locationLng}", style = MaterialTheme.typography.bodySmall, color = Color(0xFF78716C))
         }
 
-        ReviewCard(title = "Media", onEdit = { viewModel.goToStep(3) }) {
+        ReviewCard(title = "Media", onEdit = { viewModel.goToStep(3) },
+            isComplete = uiState.uploadedImages.isNotEmpty()) {
             val count = uiState.uploadedImages.size
-            Text(if (count > 0) "$count image${if (count == 1) "" else "s"} uploaded" else "No images uploaded", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+            Text(if (count > 0) "$count image${if (count == 1) "" else "s"} uploaded" else "No images uploaded (optional)", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
         }
 
-        ReviewCard(title = "Settings", onEdit = { viewModel.goToStep(5) }) {
+        ReviewCard(title = "Settings", onEdit = { viewModel.goToStep(5) },
+            isComplete = uiState.stepCompleted(5)) {
             Text(
                 buildString {
                     append(uiState.visibility.replaceFirstChar { it.uppercase() })
@@ -1009,23 +1105,41 @@ private fun ReviewStep(uiState: CreateEventUiState, viewModel: CreateEventViewMo
                 style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium
             )
         }
-
-        if (!uiState.stepCompleted(6)) {
-            FeedbackBanner("Complete all required steps before publishing.", FeedbackTone.Error)
-        }
     }
 }
 
 @Composable
-private fun ReviewCard(title: String, onEdit: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+private fun ReviewCard(
+    title: String,
+    onEdit: () -> Unit,
+    isComplete: Boolean = true,
+    content: @Composable ColumnScope.() -> Unit
+) {
     Card(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = BorderStroke(1.dp, if (isComplete) Color(0xFFE8E3DF) else FeedbackErrorFg.copy(alpha = 0.4f))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = BrandDark)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Completion indicator
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clip(CircleShape)
+                            .background(if (isComplete) StepDone else FeedbackErrorFg),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isComplete) {
+                            Icon(Icons.Default.Check, null, tint = Color.White, modifier = Modifier.size(12.dp))
+                        } else {
+                            Text("!", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                    Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = BrandDark)
+                }
                 TextButton(onClick = onEdit, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
                     Text("Edit", fontSize = 13.sp, color = BrandMid)
                 }
