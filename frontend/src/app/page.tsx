@@ -161,6 +161,17 @@ function applyPersonalFilter(
   return events;
 }
 
+function applyAgeRestrictionFilter(
+  events: EventListItem[],
+  hideAgeRestricted: boolean,
+): EventListItem[] {
+  if (!hideAgeRestricted) {
+    return events;
+  }
+
+  return events.filter((event) => !event.is_age_restricted);
+}
+
 function isUnder18(dateOfBirth: string): boolean {
   const dob = new Date(dateOfBirth);
   const today = new Date();
@@ -183,9 +194,13 @@ async function fetchUnionEvents(
   query: DiscoveryParams,
   temporal: TemporalFilter | null,
   personal: PersonalFilter | null,
+  hideAgeRestricted: boolean,
 ): Promise<EventListItem[]> {
-  const applyFilters = async (items: EventListItem[]) =>
-    applyPersonalFilter(applyTemporalFilter(items, temporal), personal);
+  const applyFilters = (items: EventListItem[]) =>
+    applyPersonalFilter(
+      applyTemporalFilter(applyAgeRestrictionFilter(items, hideAgeRestricted), temporal),
+      personal,
+    );
 
   if (categoryIds.length === 0) {
     return applyFilters(await fetchAllEvents(query));
@@ -264,7 +279,12 @@ function DiscoveryPage() {
 
   const params = readParams(searchParams);
   const activePersonalFilter = isAuthenticated ? params.personal : null;
-  const discoveryUserKey = isAuthenticated ? user?.id ?? "authenticated" : "guest";
+  const isUnderageUser = Boolean(
+    isAuthenticated && user?.date_of_birth && isUnder18(user.date_of_birth),
+  );
+  const discoveryUserKey = isAuthenticated
+    ? `${user?.id ?? "authenticated"}:${isUnderageUser ? "under18" : "adult"}`
+    : "guest";
   const categoryIdsKey = params.categoryIds.join(",");
 
   const [categories, setCategories] = useState<Category[]>([]);
@@ -347,6 +367,7 @@ function DiscoveryPage() {
       categoryIds: string[],
       temporal: TemporalFilter | null,
       personal: PersonalFilter | null,
+      hideAgeRestricted: boolean,
     ) => {
       const cachedItems = fullResultsCacheRef.current.get(cacheKey);
       if (cachedItems) {
@@ -358,7 +379,13 @@ function DiscoveryPage() {
         return pendingRequest;
       }
 
-      const request = fetchUnionEvents(categoryIds, query, temporal, personal)
+      const request = fetchUnionEvents(
+        categoryIds,
+        query,
+        temporal,
+        personal,
+        hideAgeRestricted,
+      )
         .then((items) => {
           fullResultsCacheRef.current.set(cacheKey, items);
           return items;
@@ -380,7 +407,10 @@ function DiscoveryPage() {
     const resultCacheKey = buildDiscoveryCacheKey(params, activePersonalFilter, discoveryUserKey);
     const pageCacheKey = `${resultCacheKey}|page:${params.page}`;
     const canUseSimpleListFetch =
-      !activePersonalFilter && params.temporal !== "weekend" && params.categoryIds.length <= 1;
+      !activePersonalFilter &&
+      !isUnderageUser &&
+      params.temporal !== "weekend" &&
+      params.categoryIds.length <= 1;
 
     async function loadEvents() {
       setLoading(true);
@@ -395,6 +425,7 @@ function DiscoveryPage() {
             params.categoryIds,
             params.temporal,
             activePersonalFilter,
+            isUnderageUser,
           );
 
           nextResult = {
@@ -431,6 +462,7 @@ function DiscoveryPage() {
                 params.categoryIds,
                 params.temporal,
                 activePersonalFilter,
+                isUnderageUser,
               ).catch(() => undefined);
             } else {
               const items = await getFullDiscoveryEvents(
@@ -439,6 +471,7 @@ function DiscoveryPage() {
                 params.categoryIds,
                 params.temporal,
                 activePersonalFilter,
+                isUnderageUser,
               );
               nextResult = paginateDiscoveryEvents(items, params.page);
             }
@@ -446,6 +479,17 @@ function DiscoveryPage() {
         }
 
         if (cancelled) return;
+
+        const safePage = Math.max(1, nextResult.totalPages);
+        if (params.view === "list" && nextResult.totalPages !== 0 && params.page > safePage) {
+          replaceParams({ page: safePage });
+          return;
+        }
+        if (params.view === "list" && nextResult.totalPages === 0 && params.page > 1) {
+          replaceParams({ page: 1 });
+          return;
+        }
+
         setEvents(nextResult.items);
         setTotal(nextResult.total);
         setTotalPages(nextResult.totalPages);
@@ -471,6 +515,7 @@ function DiscoveryPage() {
   }, [
     discoveryUserKey,
     getFullDiscoveryEvents,
+    replaceParams,
     params.search,
     params.temporal,
     activePersonalFilter,
@@ -491,11 +536,11 @@ function DiscoveryPage() {
           ? params.temporal
           : undefined,
     })
-      .then(async (items) => {
+      .then((items) => {
         if (cancelled) return;
         const counts: Record<string, number> = {};
-        const filteredItems = await applyPersonalFilter(
-          applyTemporalFilter(items, params.temporal),
+        const filteredItems = applyPersonalFilter(
+          applyTemporalFilter(applyAgeRestrictionFilter(items, isUnderageUser), params.temporal),
           activePersonalFilter,
         );
         if (cancelled) return;
@@ -509,7 +554,7 @@ function DiscoveryPage() {
       .catch(() => { if (!cancelled) setCategoryCounts({}); });
 
     return () => { cancelled = true; };
-  }, [params.search, params.temporal, activePersonalFilter, refreshTick]);
+  }, [params.search, params.temporal, activePersonalFilter, isUnderageUser, refreshTick]);
 
   useEffect(() => {
     const onVisible = () => {
@@ -602,33 +647,25 @@ function DiscoveryPage() {
                 loading && "pointer-events-none select-none blur-[3px]",
               )}
             >
-              {(() => {
-                // Hide 18+ events from confirmed underage users
-                const visibleEvents =
-                  isAuthenticated && user?.date_of_birth && isUnder18(user.date_of_birth)
-                    ? events.filter((e) => !e.is_age_restricted)
-                    : events;
-
-                return params.view === "map" ? (
-                  <div className="flex min-h-[22rem] flex-1 sm:min-h-[28rem] lg:min-h-0">
-                    <MapView
-                      currentUserId={user?.id ?? null}
-                      events={visibleEvents}
-                      isAuthenticated={isAuthenticated}
-                    />
-                  </div>
-                ) : (
-                  <ListView
+              {params.view === "map" ? (
+                <div className="flex min-h-[22rem] flex-1 sm:min-h-[28rem] lg:min-h-0">
+                  <MapView
                     currentUserId={user?.id ?? null}
-                    events={visibleEvents}
+                    events={events}
                     isAuthenticated={isAuthenticated}
-                    total={total}
-                    page={params.page}
-                    totalPages={totalPages}
-                    onPageChange={handlePageChange}
                   />
-                );
-              })()}
+                </div>
+              ) : (
+                <ListView
+                  currentUserId={user?.id ?? null}
+                  events={events}
+                  isAuthenticated={isAuthenticated}
+                  total={total}
+                  page={params.page}
+                  totalPages={totalPages}
+                  onPageChange={handlePageChange}
+                />
+              )}
             </div>
 
             {loading && <DiscoveryLoadingOverlay />}

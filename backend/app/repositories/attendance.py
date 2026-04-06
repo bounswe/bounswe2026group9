@@ -35,6 +35,18 @@ def delete_attendance(db: Client, user_id: str, event_id: str) -> None:
 
 
 
+def get_going_user_ids_for_event(db: Client, event_id: str) -> list[str]:
+    result = (
+        db.table("attendances")
+        .select("user_id")
+        .eq("event_id", event_id)
+        .eq("status", "going")
+        .order("marked_at")
+        .execute()
+    )
+    return [row["user_id"] for row in (result.data or [])]
+
+
 def get_attendance_status_for_events(db: Client, user_id: str, event_ids: list[str]) -> dict[str, str]:
     if not event_ids:
         return {}

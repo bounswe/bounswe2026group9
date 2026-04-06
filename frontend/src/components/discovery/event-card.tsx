@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Users, Bookmark, BookmarkCheck, Check, Clock, Lock, Pencil } from "lucide-react";
@@ -8,6 +8,7 @@ import { Users, Bookmark, BookmarkCheck, Check, Clock, Lock, Pencil } from "luci
 import type { EventListItem } from "@/lib/events-api";
 import { requestAccess } from "@/lib/events-api";
 import {
+  clearAccessRequestPending,
   isAccessRequestPending,
   markAccessRequestPending,
 } from "@/lib/access-request-store";
@@ -33,6 +34,7 @@ export function EventCard({ currentUserId, event, isAuthenticated }: EventCardPr
   const router = useRouter();
   const isOwner = currentUserId === event.host_id;
   const isPrivate = event.visibility === "private";
+  const hasPrivateAccess = event.has_access === true || event.attendance_status === "going";
   const visibleCategories = event.categories.slice(0, 3);
   const hiddenCategoryCount = Math.max(event.categories.length - visibleCategories.length, 0);
 
@@ -45,11 +47,48 @@ export function EventCard({ currentUserId, event, isAuthenticated }: EventCardPr
       initialGoingCount: event.going_count ?? 0,
     });
 
-  // Access request state for private events — initialised from localStorage
-  const [accessStatus, setAccessStatus] = useState<"idle" | "loading" | "pending" | "error">(() =>
-    isPrivate && !event.attendance_status && isAccessRequestPending(event.id) ? "pending" : "idle",
-  );
+  // Access request state for private events — initialised from backend status or user-scoped localStorage
+  const [requestState, setRequestState] = useState<"idle" | "loading" | "error">("idle");
   const [accessError, setAccessError] = useState<string | null>(null);
+  const isPendingRequest =
+    isPrivate &&
+    !hasPrivateAccess &&
+    (
+      event.access_request_status === "pending" ||
+      isAccessRequestPending(event.id, currentUserId)
+    );
+  const accessStatus: "idle" | "loading" | "pending" | "error" =
+    requestState === "loading" || requestState === "error"
+      ? requestState
+      : isPendingRequest
+      ? "pending"
+      : "idle";
+
+  useEffect(() => {
+    if (!isPrivate || !currentUserId) {
+      return;
+    }
+
+    if (hasPrivateAccess || event.access_request_status === "approved") {
+      clearAccessRequestPending(event.id, currentUserId);
+      return;
+    }
+
+    if (event.access_request_status === "pending") {
+      markAccessRequestPending(event.id, currentUserId);
+      return;
+    }
+
+    if (event.access_request_status === "rejected") {
+      clearAccessRequestPending(event.id, currentUserId);
+    }
+  }, [
+    currentUserId,
+    event.access_request_status,
+    event.id,
+    hasPrivateAccess,
+    isPrivate,
+  ]);
 
   const full =
     event.is_full === true ||
@@ -58,12 +97,12 @@ export function EventCard({ currentUserId, event, isAuthenticated }: EventCardPr
   async function handleRequestAccess(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    setAccessStatus("loading");
+    setRequestState("loading");
     setAccessError(null);
     try {
       await requestAccess(event.id);
-      markAccessRequestPending(event.id);
-      setAccessStatus("pending");
+      markAccessRequestPending(event.id, currentUserId);
+      setRequestState("idle");
     } catch (err: unknown) {
       const message = (
         err && typeof err === "object" && "message" in err
@@ -72,14 +111,16 @@ export function EventCard({ currentUserId, event, isAuthenticated }: EventCardPr
       ).toLowerCase();
 
       if (message.includes("already granted")) {
+        clearAccessRequestPending(event.id, currentUserId);
+        setRequestState("idle");
         // User already has access — go to event detail
         router.push(`/event/${event.id}`);
       } else if (message.includes("already exists")) {
         // Request already sent — persist and show pending
-        markAccessRequestPending(event.id);
-        setAccessStatus("pending");
+        markAccessRequestPending(event.id, currentUserId);
+        setRequestState("idle");
       } else {
-        setAccessStatus("error");
+        setRequestState("error");
         setAccessError("Could not send request.");
       }
     }
@@ -172,7 +213,7 @@ export function EventCard({ currentUserId, event, isAuthenticated }: EventCardPr
                 </button>
 
                 {/* Private event without access → Request Access */}
-                {isPrivate && !going ? (
+                {isPrivate && !going && !hasPrivateAccess ? (
                   accessStatus === "pending" ? (
                     <div className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-brand-mid-alpha px-3 py-1.5 text-xs font-bold text-brand-dark/60 cursor-default">
                       <Clock className="size-3.5" />

@@ -39,6 +39,7 @@ import { AttendeeAvatarStack } from "@/components/event/attendee-avatar-stack";
 import { LocationMapModal } from "@/components/event/location-map-modal";
 import { cn } from "@/lib/utils";
 import {
+  clearAccessRequestPending,
   isAccessRequestPending,
   markAccessRequestPending,
 } from "@/lib/access-request-store";
@@ -236,31 +237,67 @@ function AgeGate({
 function LimitedView({
   event,
   isGuest,
+  currentUserId,
 }: {
   event: EventDetailLimited;
   isGuest: boolean;
+  currentUserId: string | null;
 }) {
-  const [accessStatus, setAccessStatus] = useState<"idle" | "loading" | "pending" | "error">(() =>
-    !isGuest && isAccessRequestPending(event.id) ? "pending" : "idle",
-  );
+  const [requestState, setRequestState] = useState<"idle" | "loading" | "error">("idle");
+  const isPendingRequest =
+    !isGuest &&
+    (
+      event.access_request_status === "pending" ||
+      isAccessRequestPending(event.id, currentUserId)
+    );
+  const accessStatus: "idle" | "loading" | "pending" | "error" =
+    requestState === "loading" || requestState === "error"
+      ? requestState
+      : isPendingRequest
+      ? "pending"
+      : "idle";
+
+  useEffect(() => {
+    if (isGuest || !currentUserId) {
+      return;
+    }
+
+    if (event.access_request_status === "pending") {
+      markAccessRequestPending(event.id, currentUserId);
+      return;
+    }
+
+    if (event.access_request_status === "approved") {
+      clearAccessRequestPending(event.id, currentUserId);
+      return;
+    }
+
+    if (event.access_request_status === "rejected") {
+      clearAccessRequestPending(event.id, currentUserId);
+    }
+  }, [currentUserId, event.access_request_status, event.id, isGuest]);
 
   async function handleRequestAccess() {
-    setAccessStatus("loading");
+    setRequestState("loading");
     try {
       await requestAccess(event.id);
-      markAccessRequestPending(event.id);
-      setAccessStatus("pending");
+      markAccessRequestPending(event.id, currentUserId);
+      setRequestState("idle");
     } catch (err: unknown) {
       const message = (
         err && typeof err === "object" && "message" in err
           ? (err as { message: string }).message
           : ""
       ).toLowerCase();
-      if (message.includes("already exists")) {
-        markAccessRequestPending(event.id);
-        setAccessStatus("pending");
+      if (message.includes("already granted")) {
+        clearAccessRequestPending(event.id, currentUserId);
+        setRequestState("idle");
+        window.location.href = `/event/${event.id}`;
+      } else if (message.includes("already exists")) {
+        markAccessRequestPending(event.id, currentUserId);
+        setRequestState("idle");
       } else {
-        setAccessStatus("error");
+        setRequestState("error");
       }
     }
   }
@@ -491,8 +528,7 @@ function FullView({
     try {
       const invite = await createInvite(event.id);
       setInvites((prev) => [invite, ...prev]);
-      const link = `${window.location.origin}/event/${event.id}/invite/${invite.token}`;
-      await navigator.clipboard.writeText(link);
+      await navigator.clipboard.writeText(invite.invite_url);
       setCopiedToken(invite.token);
       setTimeout(() => setCopiedToken(null), 2000);
     } catch (err: unknown) {
@@ -505,10 +541,9 @@ function FullView({
     }
   }
 
-  async function handleCopyInviteLink(token: string) {
-    const link = `${window.location.origin}/event/${event.id}/invite/${token}`;
-    await navigator.clipboard.writeText(link);
-    setCopiedToken(token);
+  async function handleCopyInviteLink(invite: Invite) {
+    await navigator.clipboard.writeText(invite.invite_url);
+    setCopiedToken(invite.token);
     setTimeout(() => setCopiedToken(null), 2000);
   }
 
@@ -934,12 +969,18 @@ function FullView({
                       </span>
                       <span className={cn(
                         "text-[11px] font-bold",
-                        inv.use_count > 0 ? "text-brand-mid" : "text-green-600",
+                        inv.max_uses !== null && inv.use_count >= inv.max_uses
+                          ? "text-brand-mid"
+                          : "text-green-600",
                       )}>
-                        {inv.use_count > 0 ? `Used (${inv.use_count})` : "Active"}
+                        {inv.max_uses !== null && inv.use_count >= inv.max_uses
+                          ? `Used (${inv.use_count})`
+                          : inv.max_uses !== null
+                          ? `Active (${inv.use_count}/${inv.max_uses})`
+                          : `Active (${inv.use_count})`}
                       </span>
                       <button
-                        onClick={() => { void handleCopyInviteLink(inv.token); }}
+                        onClick={() => { void handleCopyInviteLink(inv); }}
                         className="p-1 rounded hover:bg-brand-mid-alpha transition-colors"
                         title="Copy invite link"
                       >
@@ -1153,29 +1194,64 @@ export default function EventDetailPage() {
 
   const [event, setEvent] = useState<AnyEventDetail | null>(null);
   const [host, setHost] = useState<HostProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loadedEventId, setLoadedEventId] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [ageVerified, setAgeVerified] = useState(false);
+  const loading = !id || !isInitialized || loadedEventId !== id;
 
   useEffect(() => {
     // Wait for session to initialize so the token is available before fetching.
     // Without this, the request races with refreshSession and may send no token,
     // causing the backend to return a limited/guest response even for logged-in users.
     if (!id || !isInitialized) return;
-    setLoading(true);
-    setNotFound(false);
-    fetchEventDetail(id)
-      .then((ev) => {
+    let cancelled = false;
+
+    async function loadEvent() {
+      try {
+        const ev = await fetchEventDetail(id);
+        if (cancelled) return;
+
         setEvent(ev);
+        setNotFound(false);
+
         if (ev._type === "full") {
-          void fetchHostProfile(ev.host_id)
-            .then(setHost)
-            .catch(() => setHost(null));
+          try {
+            const nextHost = await fetchHostProfile(ev.host_id);
+            if (!cancelled) {
+              setHost(nextHost);
+            }
+          } catch {
+            if (!cancelled) {
+              setHost(null);
+            }
+          }
+        } else {
+          setHost(null);
         }
-      })
-      .catch(() => setNotFound(true))
-      .finally(() => setLoading(false));
+      } catch {
+        if (cancelled) return;
+        setEvent(null);
+        setHost(null);
+        setNotFound(true);
+      } finally {
+        if (!cancelled) {
+          setLoadedEventId(id);
+        }
+      }
+    }
+
+    void loadEvent();
+
+    return () => {
+      cancelled = true;
+    };
   }, [id, isInitialized]);
+
+  useEffect(() => {
+    if (event?._type === "full" && user?.id) {
+      clearAccessRequestPending(event.id, user.id);
+    }
+  }, [event, user?.id]);
 
   const isHost =
     event?._type === "full" && !!user && !!event.host_id && event.host_id === user.id;
@@ -1207,7 +1283,7 @@ export default function EventDetailPage() {
           </Link>
         </div>
       ) : event._type === "limited" ? (
-        <LimitedView event={event} isGuest={isGuest} />
+        <LimitedView event={event} isGuest={isGuest} currentUserId={user?.id ?? null} />
       ) : event.is_age_restricted && !isHost && !ageVerified ? (
         <AgeGate userDob={user?.date_of_birth ?? null} onVerified={() => setAgeVerified(true)} />
       ) : (

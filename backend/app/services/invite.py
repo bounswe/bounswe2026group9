@@ -19,8 +19,8 @@ from app.repositories import event as event_repo
 from app.repositories import invite as invite_repo
 
 
-def _build_invite_url(token: str) -> str:
-    return f"{settings.FRONTEND_URL}/events/invite/{token}"
+def _build_invite_url(event_id: str, token: str) -> str:
+    return f"{settings.FRONTEND_URL}/event/{event_id}/invite/{token}"
 
 
 def _invite_to_response(invite: dict) -> InviteResponse:
@@ -28,7 +28,7 @@ def _invite_to_response(invite: dict) -> InviteResponse:
         id=invite["id"],
         event_id=invite["event_id"],
         token=invite["token"],
-        invite_url=_build_invite_url(invite["token"]),
+        invite_url=_build_invite_url(invite["event_id"], invite["token"]),
         expires_at=invite.get("expires_at"),
         max_uses=invite.get("max_uses"),
         use_count=invite["use_count"],

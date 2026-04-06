@@ -4,38 +4,55 @@
  * the private event detail page.
  */
 
-const KEY = "pending_access_requests";
+const KEY = "pending_access_requests_by_user";
 
-function getSet(): Set<string> {
-  if (typeof window === "undefined") return new Set();
+function getStore(): Record<string, string[]> {
+  if (typeof window === "undefined") return {};
   try {
     const raw = localStorage.getItem(KEY);
-    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
+    return raw ? (JSON.parse(raw) as Record<string, string[]>) : {};
   } catch {
-    return new Set();
+    return {};
   }
 }
 
-function saveSet(s: Set<string>) {
+function saveStore(store: Record<string, string[]>) {
   try {
-    localStorage.setItem(KEY, JSON.stringify([...s]));
+    localStorage.setItem(KEY, JSON.stringify(store));
   } catch {
     // ignore quota errors
   }
 }
 
-export function markAccessRequestPending(eventId: string) {
-  const s = getSet();
-  s.add(eventId);
-  saveSet(s);
+function getSetForUser(userId: string | null): Set<string> {
+  if (!userId) return new Set();
+  return new Set(getStore()[userId] ?? []);
 }
 
-export function isAccessRequestPending(eventId: string): boolean {
-  return getSet().has(eventId);
+function saveSetForUser(userId: string | null, set: Set<string>) {
+  if (!userId) return;
+
+  const store = getStore();
+  if (set.size === 0) {
+    delete store[userId];
+  } else {
+    store[userId] = [...set];
+  }
+  saveStore(store);
 }
 
-export function clearAccessRequestPending(eventId: string) {
-  const s = getSet();
-  s.delete(eventId);
-  saveSet(s);
+export function markAccessRequestPending(eventId: string, userId: string | null) {
+  const set = getSetForUser(userId);
+  set.add(eventId);
+  saveSetForUser(userId, set);
+}
+
+export function isAccessRequestPending(eventId: string, userId: string | null): boolean {
+  return getSetForUser(userId).has(eventId);
+}
+
+export function clearAccessRequestPending(eventId: string, userId: string | null) {
+  const set = getSetForUser(userId);
+  set.delete(eventId);
+  saveSetForUser(userId, set);
 }

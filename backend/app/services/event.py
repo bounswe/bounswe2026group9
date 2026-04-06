@@ -17,6 +17,7 @@ from app.repositories import attendance as attendance_repo
 from app.repositories import bookmark as bookmark_repo
 from app.repositories import event as event_repo
 from app.repositories import image as image_repo
+from app.repositories import invite as invite_repo
 from app.repositories import user as user_repo
 from app.services.rate_limit import is_rate_limit_exempt_email
 
@@ -201,6 +202,8 @@ def _build_detail_response(
     attendance_status: str | None = None,
     going_count: int | None = None,
     bookmark_count: int = 0,
+    access_request_status: str | None = None,
+    attendees: list[dict] | None = None,
 ) -> EventDetailResponse:
     actual_going = going_count if going_count is not None else event["attendee_count"]
     is_full = None
@@ -226,16 +229,21 @@ def _build_detail_response(
         going_count=actual_going,
         bookmark_count=bookmark_count,
         is_full=is_full,
+        access_request_status=access_request_status,
         locations=locations,
         categories=categories,
         images=images,
         venue_metadata=venue_metadata,
         equipment_requirements=equipment,
+        attendees=attendees or [],
     )
 
 
 def _build_limited_response(
-    event: dict, categories: list[dict], is_bookmarked: bool | None = None
+    event: dict,
+    categories: list[dict],
+    is_bookmarked: bool | None = None,
+    access_request_status: str | None = None,
 ) -> EventLimitedResponse:
     return EventLimitedResponse(
         id=event["id"],
@@ -246,6 +254,7 @@ def _build_limited_response(
         is_age_restricted=event["is_age_restricted"],
         status=event["status"],
         is_bookmarked=is_bookmarked,
+        access_request_status=access_request_status,
         categories=categories,
     )
 
@@ -268,6 +277,8 @@ def get_event_detail(
 
     is_bookmarked = None
     attendance_status = None
+    access_request_status = None
+    has_access_grant = False
     if user_id:
         bookmark = bookmark_repo.get_bookmark(db, user_id, event_id)
         if bookmark:
@@ -279,12 +290,23 @@ def get_event_detail(
         if attendance:
             attendance_status = attendance["status"]
 
+        access_request = invite_repo.get_access_request(db, event_id, user_id)
+        if access_request:
+            access_request_status = access_request["status"]
+        if event["visibility"] == "private" and event["host_id"] != user_id:
+            has_access_grant = invite_repo.get_access_grant(db, event_id, user_id) is not None
+
     bookmark_count = bookmark_repo.get_bookmark_count_for_event(db, event_id)
 
     # Cancelled events show limited info with cancellation label
     if event["status"] == "cancelled" and (not user_id or event["host_id"] != user_id):
         categories = event_repo.get_event_categories(db, event_id)
-        return _build_limited_response(event, categories, is_bookmarked)
+        return _build_limited_response(
+            event,
+            categories,
+            is_bookmarked,
+            access_request_status=access_request_status,
+        )
 
     categories = event_repo.get_event_categories(db, event_id)
 
@@ -294,10 +316,13 @@ def get_event_detail(
 
     # Private event → host and granted users see full detail
     if event["visibility"] == "private" and event["host_id"] != user_id:
-        from app.repositories import invite as invite_repo
-        grant = invite_repo.get_access_grant(db, event_id, user_id)
-        if not grant:
-            return _build_limited_response(event, categories, is_bookmarked)
+        if not has_access_grant:
+            return _build_limited_response(
+                event,
+                categories,
+                is_bookmarked,
+                access_request_status=access_request_status,
+            )
 
     # Age restriction check (host is always exempt)
     if event["is_age_restricted"] and user_id and event["host_id"] != user_id:
@@ -321,13 +346,25 @@ def get_event_detail(
     images = event_repo.get_event_images(db, event_id)
     venue_metadata = event_repo.get_venue_metadata(db, event_id)
     equipment = event_repo.get_equipment(db, event_id)
+    attendee_ids = attendance_repo.get_going_user_ids_for_event(db, event_id)
+    attendee_users = user_repo.get_users_by_ids(db, attendee_ids)
+    attendee_usernames = {
+        attendee["id"]: attendee.get("username", "unknown")
+        for attendee in attendee_users
+    }
+    attendees = [
+        {"id": attendee_id, "username": attendee_usernames.get(attendee_id, "unknown")}
+        for attendee_id in attendee_ids
+    ]
 
     return _build_detail_response(
         event, locations, categories, images, venue_metadata, equipment,
         is_bookmarked=is_bookmarked,
         attendance_status=attendance_status,
         going_count=event["attendee_count"],
-        bookmark_count=bookmark_count
+        bookmark_count=bookmark_count,
+        access_request_status=access_request_status,
+        attendees=attendees,
     )
 
 
@@ -561,9 +598,21 @@ def list_events(
 
     is_bookmarked_map: set[str] = set()
     attendance_status_map: dict[str, str] = {}
+    access_request_status_map: dict[str, str] = {}
+    access_granted_event_ids: set[str] = set()
     if user_id:
         is_bookmarked_map = bookmark_repo.get_bookmark_status_for_events(db, user_id, event_ids)
         attendance_status_map = attendance_repo.get_attendance_status_for_events(db, user_id, event_ids)
+        access_request_status_map = invite_repo.get_access_request_status_for_events(
+            db,
+            user_id,
+            event_ids,
+        )
+        access_granted_event_ids = invite_repo.get_access_granted_event_ids(
+            db,
+            user_id,
+            event_ids,
+        )
 
     bookmark_counts = bookmark_repo.get_bookmark_counts_for_events(db, event_ids)
 
@@ -586,6 +635,12 @@ def list_events(
             status=event["status"],
             is_bookmarked=(event["id"] in is_bookmarked_map) if user_id else None,
             attendance_status=attendance_status_map.get(event["id"]) if user_id else None,
+            access_request_status=access_request_status_map.get(event["id"]) if user_id else None,
+            has_access=(
+                True
+                if user_id and event["host_id"] == user_id
+                else event["id"] in access_granted_event_ids
+            ) if user_id else None,
             going_count=event["attendee_count"],
             bookmark_count=bookmark_counts.get(event["id"], 0),
             is_full=(event["attendee_count"] >= event["attendee_limit"]) if event["attendee_limit"] is not None else None,

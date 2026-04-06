@@ -32,6 +32,8 @@ export interface EventListItem {
   status: string;
   is_bookmarked: boolean | null;
   attendance_status: string | null;
+  access_request_status: "pending" | "approved" | "rejected" | null;
+  has_access: boolean | null;
   going_count: number;
   bookmark_count: number;
   is_full: boolean | null;
@@ -141,6 +143,7 @@ export interface EventDetail {
   updated_at: string;
   is_bookmarked: boolean | null;
   attendance_status: string | null;
+  access_request_status: "pending" | "approved" | "rejected" | null;
   going_count: number;
   bookmark_count: number;
   is_full: boolean | null;
@@ -149,7 +152,7 @@ export interface EventDetail {
   images: EventImage[];
   venue_metadata: VenueMetadata | null;
   equipment_requirements: EquipmentRequirement[];
-  attendees?: { id: string; username: string }[];
+  attendees: { id: string; username: string }[];
   /** Discriminant — always present on full response */
   _type: "full";
 }
@@ -164,6 +167,7 @@ export interface EventDetailLimited {
   is_age_restricted: boolean;
   status: "draft" | "published" | "updated" | "cancelled" | "ended";
   is_bookmarked: boolean | null;
+  access_request_status: "pending" | "approved" | "rejected" | null;
   categories: Category[];
   _type: "limited";
 }

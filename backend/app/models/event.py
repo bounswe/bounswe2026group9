@@ -75,6 +75,11 @@ class EventImageResponse(BaseModel):
     upload_date: datetime
 
 
+class AttendeeSummaryResponse(BaseModel):
+    id: UUID
+    username: str
+
+
 # --- Event Request Schemas ---
 
 class EventCreateRequest(BaseModel):
@@ -128,11 +133,13 @@ class EventDetailResponse(BaseModel):
     going_count: int = 0
     bookmark_count: int = 0
     is_full: bool | None = None
+    access_request_status: str | None = None
     locations: list[LocationResponse] = []
     categories: list[CategoryResponse] = []
     images: list[EventImageResponse] = []
     venue_metadata: VenueMetadataResponse | None = None
     equipment_requirements: list[EquipmentResponse] = []
+    attendees: list[AttendeeSummaryResponse] = []
 
 
 class StatusChangeRequest(BaseModel):
@@ -149,6 +156,7 @@ class EventLimitedResponse(BaseModel):
     is_age_restricted: bool
     status: str
     is_bookmarked: bool | None = None
+    access_request_status: str | None = None
     categories: list[CategoryResponse] = []
 
 
@@ -173,6 +181,8 @@ class EventListItemResponse(BaseModel):
     status: str
     is_bookmarked: bool | None = None
     attendance_status: str | None = None
+    access_request_status: str | None = None
+    has_access: bool | None = None
     going_count: int = 0
     bookmark_count: int = 0
     is_full: bool | None = None
@@ -188,4 +198,3 @@ class EventListResponse(BaseModel):
     page: int
     page_size: int
     total_pages: int
-

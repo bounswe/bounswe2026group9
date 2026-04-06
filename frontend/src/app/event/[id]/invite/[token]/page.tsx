@@ -16,25 +16,39 @@ export default function InviteAcceptPage() {
   const { isAuthenticated, isInitialized } = useAuth();
   const router = useRouter();
 
-  const [status, setStatus] = useState<InviteStatus>("loading");
+  const [requestStatus, setRequestStatus] = useState<"loading" | "success" | "error">("loading");
   const [errorMessage, setErrorMessage] = useState("Something went wrong. The invite may be invalid or expired.");
+  const status: InviteStatus =
+    !isInitialized || requestStatus === "loading"
+      ? "loading"
+      : !isAuthenticated
+      ? "login-required"
+      : requestStatus;
 
   useEffect(() => {
-    if (!isInitialized || !id || !token) return;
-
-    if (!isAuthenticated) {
-      setStatus("login-required");
+    if (!isInitialized || !id || !token || !isAuthenticated) {
       return;
     }
 
+    let cancelled = false;
+
     acceptInvite(id, token)
-      .then(() => setStatus("success"))
+      .then(() => {
+        if (!cancelled) {
+          setRequestStatus("success");
+        }
+      })
       .catch((err: unknown) => {
+        if (cancelled) return;
         if (err && typeof err === "object" && "message" in err) {
           setErrorMessage((err as { message: string }).message);
         }
-        setStatus("error");
+        setRequestStatus("error");
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, [id, token, isAuthenticated, isInitialized]);
 
   return (
