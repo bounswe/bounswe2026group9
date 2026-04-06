@@ -355,3 +355,84 @@ export async function fetchUnreadNotificationCount(): Promise<number> {
   const res = await fetchNotifications(1, 50);
   return res.unread_count ?? res.items.filter((n) => !n.is_read).length;
 }
+
+// ─── Access Request Types & API ─────────────────────────────────────────────
+
+export interface AccessRequest {
+  id: string;
+  user_id: string;
+  username: string;
+  status: "pending" | "approved" | "rejected";
+  created_at: string;
+}
+
+export interface AccessRequestListResponse {
+  items: AccessRequest[];
+}
+
+export async function requestAccess(eventId: string): Promise<void> {
+  await apiRequest(`/events/${eventId}/access-requests`, {
+    method: "POST",
+    auth: "required",
+  });
+}
+
+export async function fetchAccessRequests(eventId: string): Promise<AccessRequest[]> {
+  const res = await apiRequest<AccessRequestListResponse>(
+    `/events/${eventId}/access-requests`,
+    { auth: "required" },
+  );
+  return res.items ?? res as unknown as AccessRequest[];
+}
+
+export async function updateAccessRequest(
+  eventId: string,
+  requestId: string,
+  action: "approved" | "rejected",
+): Promise<void> {
+  await apiRequest(`/events/${eventId}/access-requests/${requestId}`, {
+    method: "PATCH",
+    auth: "required",
+    body: { status: action },
+  });
+}
+
+// ─── Invite Types & API ─────────────────────────────────────────────────────
+
+export interface Invite {
+  id: string;
+  event_id: string;
+  token: string;
+  invite_url: string;
+  expires_at: string | null;
+  max_uses: number | null;
+  use_count: number;
+  created_at: string;
+}
+
+export interface InviteListResponse {
+  items: Invite[];
+}
+
+export async function createInvite(eventId: string): Promise<Invite> {
+  return apiRequest<Invite>(`/events/${eventId}/invites`, {
+    method: "POST",
+    auth: "required",
+    body: {},
+  });
+}
+
+export async function fetchInvites(eventId: string): Promise<Invite[]> {
+  const res = await apiRequest<InviteListResponse>(
+    `/events/${eventId}/invites`,
+    { auth: "required" },
+  );
+  return res.items ?? res as unknown as Invite[];
+}
+
+export async function acceptInvite(eventId: string, token: string): Promise<void> {
+  await apiRequest(`/events/${eventId}/invites/${token}/accept`, {
+    method: "POST",
+    auth: "required",
+  });
+}

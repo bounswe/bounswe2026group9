@@ -637,11 +637,33 @@ export function EventEditor({ eventId, mode }: EventEditorProps) {
   }
 
   function patchFormValues(patch: Partial<EventFormValues>) {
-    clearValidationFeedback();
-    setFormValues((currentValues) => ({
-      ...currentValues,
-      ...patch,
-    }));
+    setFormValues((currentValues) => {
+      const next = { ...currentValues, ...patch };
+
+      // Re-validate date/time inline whenever a datetime field changes
+      const isDateTimePatch =
+        "startDate" in patch ||
+        "startTime" in patch ||
+        "endDate" in patch ||
+        "endTime" in patch;
+
+      if (isDateTimePatch) {
+        const dateErrors = validateStep(1, next, 0);
+        setFieldErrors((prev) => ({
+          ...prev,
+          startDateTime: dateErrors.startDateTime,
+          endDateTime: dateErrors.endDateTime,
+        }));
+        // Clear any non-date feedback banner
+        if (!dateErrors.startDateTime && !dateErrors.endDateTime) {
+          setFeedback(null);
+        }
+      } else {
+        clearValidationFeedback();
+      }
+
+      return next;
+    });
   }
 
   function patchLocation(locationId: string, patch: Partial<EventFormValues["locations"][number]>) {
@@ -1247,6 +1269,7 @@ export function EventEditor({ eventId, mode }: EventEditorProps) {
                           <Input
                             onChange={(event) => patchFormValues({ endDate: event.target.value })}
                             type="date"
+                            min={formValues.startDate || undefined}
                             value={formValues.endDate}
                           />
                         </div>
@@ -1255,6 +1278,7 @@ export function EventEditor({ eventId, mode }: EventEditorProps) {
                           <Input
                             onChange={(event) => patchFormValues({ endTime: event.target.value })}
                             type="time"
+                            min={formValues.endDate === formValues.startDate ? formValues.startTime || undefined : undefined}
                             value={formValues.endTime}
                           />
                         </div>
@@ -1714,6 +1738,23 @@ export function EventEditor({ eventId, mode }: EventEditorProps) {
                               <FieldError message={fieldErrors.attendeeLimit} />
                             </div>
                           ) : null}
+                        </div>
+                      </div>
+
+                      <div className="border-border/80 bg-background/70 rounded-lg border p-5">
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            checked={formValues.isAgeRestricted}
+                            onCheckedChange={(checked) =>
+                              patchFormValues({ isAgeRestricted: toBoolean(checked) })
+                            }
+                          />
+                          <div>
+                            <p className="text-base font-semibold">18+ event</p>
+                            <p className="text-muted-foreground text-sm leading-6">
+                              Only adults aged 18 and over can view and attend this event.
+                            </p>
+                          </div>
                         </div>
                       </div>
 

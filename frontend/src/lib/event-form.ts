@@ -35,6 +35,7 @@ export interface EventFormValues {
   endTime: string;
   hasAttendeeLimit: boolean;
   healthRequirements: string;
+  isAgeRestricted: boolean;
   language: string;
   locations: EventLocationFormValue[];
   price: string;
@@ -176,6 +177,7 @@ export function createDefaultEventFormValues(): EventFormValues {
     endTime: formatTimeInput(end),
     hasAttendeeLimit: false,
     healthRequirements: "",
+    isAgeRestricted: false,
     language: "",
     locations: [createEmptyLocation({ isPrimary: true })],
     price: "",
@@ -217,6 +219,7 @@ export function mapEventToFormValues(event: EventDetailResponse): EventFormValue
             }),
           )
         : [createEmptyLocation({ isPrimary: true })],
+    isAgeRestricted: event.is_age_restricted ?? false,
     price: event.venue_metadata?.price ?? "",
     quietFriendly: event.venue_metadata?.quiet_friendly ?? false,
     seatingAvailable: event.venue_metadata?.seating_available ?? false,
@@ -240,6 +243,7 @@ export function buildEventCreatePayload(values: EventFormValues): EventCreatePay
     category_ids: values.categoryIds,
     description: values.description.trim(),
     end_datetime: buildIsoDateTime(values.endDate, values.endTime),
+    is_age_restricted: values.isAgeRestricted,
     locations: buildLocations(values),
     start_datetime: buildIsoDateTime(values.startDate, values.startTime),
     status: "draft",
@@ -301,6 +305,7 @@ export function buildEventUpdatePayload(values: EventFormValues): EventUpdatePay
     clear_attendee_limit: !values.hasAttendeeLimit,
     description: values.description.trim(),
     end_datetime: buildIsoDateTime(values.endDate, values.endTime),
+    is_age_restricted: values.isAgeRestricted,
     locations: buildLocations(values),
     start_datetime: buildIsoDateTime(values.startDate, values.startTime),
     title: values.title.trim(),
@@ -314,6 +319,7 @@ export function buildBestEffortEventUpdatePayload(
   imageCount: number,
 ): EventUpdatePayload {
   const payload: EventUpdatePayload = {
+    is_age_restricted: values.isAgeRestricted,
     visibility: values.visibility,
   };
 

@@ -161,6 +161,15 @@ function applyPersonalFilter(
   return events;
 }
 
+function isUnder18(dateOfBirth: string): boolean {
+  const dob = new Date(dateOfBirth);
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const m = today.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+  return age < 18;
+}
+
 function sortDiscoveryEvents(a: EventListItem, b: EventListItem): number {
   const startDifference = Date.parse(a.start_datetime) - Date.parse(b.start_datetime);
   if (startDifference !== 0) {
@@ -593,25 +602,33 @@ function DiscoveryPage() {
                 loading && "pointer-events-none select-none blur-[3px]",
               )}
             >
-              {params.view === "map" ? (
-                <div className="flex min-h-[22rem] flex-1 sm:min-h-[28rem] lg:min-h-0">
-                  <MapView
+              {(() => {
+                // Hide 18+ events from confirmed underage users
+                const visibleEvents =
+                  isAuthenticated && user?.date_of_birth && isUnder18(user.date_of_birth)
+                    ? events.filter((e) => !e.is_age_restricted)
+                    : events;
+
+                return params.view === "map" ? (
+                  <div className="flex min-h-[22rem] flex-1 sm:min-h-[28rem] lg:min-h-0">
+                    <MapView
+                      currentUserId={user?.id ?? null}
+                      events={visibleEvents}
+                      isAuthenticated={isAuthenticated}
+                    />
+                  </div>
+                ) : (
+                  <ListView
                     currentUserId={user?.id ?? null}
-                    events={events}
+                    events={visibleEvents}
                     isAuthenticated={isAuthenticated}
+                    total={total}
+                    page={params.page}
+                    totalPages={totalPages}
+                    onPageChange={handlePageChange}
                   />
-                </div>
-              ) : (
-                <ListView
-                  currentUserId={user?.id ?? null}
-                  events={events}
-                  isAuthenticated={isAuthenticated}
-                  total={total}
-                  page={params.page}
-                  totalPages={totalPages}
-                  onPageChange={handlePageChange}
-                />
-              )}
+                );
+              })()}
             </div>
 
             {loading && <DiscoveryLoadingOverlay />}

@@ -237,14 +237,31 @@ def decide_access_request(
         "resolved_at": now,
     })
 
+    from app.repositories import notification as notification_repo
+    from app.repositories import user as user_repo
+
     if body.status == "approved":
         invite_repo.insert_access_grant(db, {
             "event_id": event_id,
             "user_id": request["user_id"],
             "granted_via": "request",
         })
+        notification_repo.insert_notification(db, {
+            "user_id": request["user_id"],
+            "event_id": event_id,
+            "type": "access_approved",
+            "message": f"Your access request for '{event['title']}' has been approved. You can now view and attend this event.",
+            "is_read": False,
+        })
+    else:
+        notification_repo.insert_notification(db, {
+            "user_id": request["user_id"],
+            "event_id": event_id,
+            "type": "access_rejected",
+            "message": f"Your access request for '{event['title']}' has been declined.",
+            "is_read": False,
+        })
 
-    from app.repositories import user as user_repo
     user = user_repo.get_user_by_id(db, request["user_id"])
 
     return AccessRequestResponse(
