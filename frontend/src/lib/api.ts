@@ -46,6 +46,8 @@ export interface CategoryOption {
   name: string;
 }
 
+export type ProfileVisibility = "private" | "public";
+
 export interface EventLocationPayload {
   is_primary: boolean;
   latitude: number;
@@ -75,6 +77,71 @@ export interface EventImage {
   id: string;
   image_url: string;
   upload_date: string;
+}
+
+export interface BookmarkEventLocation {
+  id: string;
+  is_primary: boolean;
+  latitude: number;
+  longitude: number;
+  name: string;
+  order_index: number;
+}
+
+export interface BookmarkedEventSummary {
+  id: string;
+  title: string;
+  start_datetime: string;
+  end_datetime: string;
+  visibility: "public" | "private";
+  is_age_restricted: boolean;
+  status: "cancelled" | "draft" | "ended" | "published" | "updated";
+  categories: CategoryOption[];
+  primary_location: BookmarkEventLocation | null;
+  primary_image_url: string | null;
+  bookmarked_at: string;
+}
+
+export interface BookmarkListResponse {
+  items: BookmarkedEventSummary[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface HostedEventSummary {
+  id: string;
+  host_id: string;
+  title: string;
+  description: string | null;
+  start_datetime: string;
+  end_datetime: string;
+  visibility: "public" | "private";
+  is_age_restricted: boolean;
+  attendee_limit: number | null;
+  attendee_count: number;
+  status: "cancelled" | "draft" | "ended" | "published" | "updated";
+  categories: CategoryOption[];
+  primary_location: BookmarkEventLocation | null;
+  primary_image_url: string | null;
+}
+
+export interface HostProfileSummaryResponse {
+  id: string;
+  username: string;
+  email: string | null;
+  phone_number: string | null;
+  average_rating: number | null;
+  hosted_events_count: number;
+  hosted_events: HostedEventSummary[];
+}
+
+export interface ProfileUpdatePayload {
+  date_of_birth?: string;
+  email_visibility?: ProfileVisibility;
+  phone_number?: string;
+  phone_visibility?: ProfileVisibility;
 }
 
 export interface EventCreatePayload {
@@ -463,6 +530,37 @@ export async function getBackendHealth() {
 
 export async function getCurrentUser() {
   return apiRequest<AuthUser>("/auth/me", {
+    auth: "required",
+  });
+}
+
+export async function updateMyProfile(payload: ProfileUpdatePayload) {
+  return apiRequest<AuthUser>("/users/me", {
+    auth: "required",
+    body: payload,
+    method: "PUT",
+  });
+}
+
+export async function getHostProfileSummary(userId: string) {
+  return apiRequest<HostProfileSummaryResponse>(`/users/${userId}/profile`, {
+    auth: "required",
+  });
+}
+
+export async function getMyBookmarks({
+  page = 1,
+  pageSize = 6,
+}: {
+  page?: number;
+  pageSize?: number;
+} = {}) {
+  const query = new URLSearchParams({
+    page: String(page),
+    page_size: String(pageSize),
+  });
+
+  return apiRequest<BookmarkListResponse>(`/users/me/bookmarks?${query.toString()}`, {
     auth: "required",
   });
 }

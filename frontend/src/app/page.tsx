@@ -19,6 +19,7 @@ import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { useAuth } from "@/hooks/use-auth";
+import { getCurrentUser } from "@/lib/api";
 import { Navbar, ActionBar } from "@/components/layout/navbar";
 import { FilterSidebar, type FilterState } from "@/components/discovery/filter-sidebar";
 import { ListView } from "@/components/discovery/list-view";
@@ -276,15 +277,22 @@ function DiscoveryPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated, user } = useAuth();
+  const [resolvedDateOfBirth, setResolvedDateOfBirth] = useState<string | null | undefined>(
+    isAuthenticated ? user?.date_of_birth : null,
+  );
 
   const params = readParams(searchParams);
   const activePersonalFilter = isAuthenticated ? params.personal : null;
-  const isUnderageUser = Boolean(
-    isAuthenticated && user?.date_of_birth && isUnder18(user.date_of_birth),
+  const isAgeFilterPending = isAuthenticated && resolvedDateOfBirth === undefined;
+  const canViewAgeRestrictedEvents = Boolean(
+    isAuthenticated &&
+      resolvedDateOfBirth &&
+      !isUnder18(resolvedDateOfBirth),
   );
+  const hideAgeRestrictedEvents = !canViewAgeRestrictedEvents;
   const discoveryUserKey = isAuthenticated
-    ? `${user?.id ?? "authenticated"}:${isUnderageUser ? "under18" : "adult"}`
-    : "guest";
+    ? `${user?.id ?? "authenticated"}:${hideAgeRestrictedEvents ? "age-hidden" : "age-visible"}`
+    : "guest:age-hidden";
   const categoryIdsKey = params.categoryIds.join(",");
 
   const [categories, setCategories] = useState<Category[]>([]);
@@ -357,6 +365,41 @@ function DiscoveryPage() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+
+    if (!isAuthenticated) {
+      setResolvedDateOfBirth(null);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    if (user?.date_of_birth) {
+      setResolvedDateOfBirth(user.date_of_birth);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setResolvedDateOfBirth(undefined);
+    void getCurrentUser()
+      .then((currentUser) => {
+        if (!cancelled) {
+          setResolvedDateOfBirth(currentUser.date_of_birth ?? null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setResolvedDateOfBirth(user?.date_of_birth ?? null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, user?.date_of_birth]);
+
+  useEffect(() => {
     void import("@/components/discovery/map-view");
   }, []);
 
@@ -403,12 +446,20 @@ function DiscoveryPage() {
   // ── Fetch events (on params change) ───────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
+
+    if (isAgeFilterPending) {
+      setLoading(true);
+      return () => {
+        cancelled = true;
+      };
+    }
+
     const query = buildDiscoveryQuery(params);
     const resultCacheKey = buildDiscoveryCacheKey(params, activePersonalFilter, discoveryUserKey);
     const pageCacheKey = `${resultCacheKey}|page:${params.page}`;
     const canUseSimpleListFetch =
       !activePersonalFilter &&
-      !isUnderageUser &&
+      !hideAgeRestrictedEvents &&
       params.temporal !== "weekend" &&
       params.categoryIds.length <= 1;
 
@@ -425,7 +476,7 @@ function DiscoveryPage() {
             params.categoryIds,
             params.temporal,
             activePersonalFilter,
-            isUnderageUser,
+            hideAgeRestrictedEvents,
           );
 
           nextResult = {
@@ -462,7 +513,7 @@ function DiscoveryPage() {
                 params.categoryIds,
                 params.temporal,
                 activePersonalFilter,
-                isUnderageUser,
+                hideAgeRestrictedEvents,
               ).catch(() => undefined);
             } else {
               const items = await getFullDiscoveryEvents(
@@ -471,7 +522,7 @@ function DiscoveryPage() {
                 params.categoryIds,
                 params.temporal,
                 activePersonalFilter,
-                isUnderageUser,
+                hideAgeRestrictedEvents,
               );
               nextResult = paginateDiscoveryEvents(items, params.page);
             }
@@ -522,12 +573,19 @@ function DiscoveryPage() {
     params.page,
     params.view,
     categoryIdsKey,
+    isAgeFilterPending,
     refreshTick,
   ]);
 
   // ── Fetch counts WITHOUT category filter (stable across category selection) ────
   useEffect(() => {
     let cancelled = false;
+
+    if (isAgeFilterPending) {
+      return () => {
+        cancelled = true;
+      };
+    }
 
     fetchAllEvents({
       search: params.search || undefined,
@@ -540,7 +598,10 @@ function DiscoveryPage() {
         if (cancelled) return;
         const counts: Record<string, number> = {};
         const filteredItems = applyPersonalFilter(
-          applyTemporalFilter(applyAgeRestrictionFilter(items, isUnderageUser), params.temporal),
+          applyTemporalFilter(
+            applyAgeRestrictionFilter(items, hideAgeRestrictedEvents),
+            params.temporal,
+          ),
           activePersonalFilter,
         );
         if (cancelled) return;
@@ -554,7 +615,14 @@ function DiscoveryPage() {
       .catch(() => { if (!cancelled) setCategoryCounts({}); });
 
     return () => { cancelled = true; };
-  }, [params.search, params.temporal, activePersonalFilter, isUnderageUser, refreshTick]);
+  }, [
+    params.search,
+    params.temporal,
+    activePersonalFilter,
+    hideAgeRestrictedEvents,
+    isAgeFilterPending,
+    refreshTick,
+  ]);
 
   useEffect(() => {
     const onVisible = () => {

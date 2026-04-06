@@ -135,46 +135,24 @@ async function copyTextWithFallback(value: string): Promise<boolean> {
 
 // ─── Age gate (18+ events) ────────────────────────────────────────────────────
 
+function isAtLeast18(dob: string): boolean {
+  const birth = new Date(dob);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  return age >= 18;
+}
+
 function AgeGate({
+  eventId,
+  isAuthenticated,
   userDob,
-  onVerified,
 }: {
+  eventId: string;
+  isAuthenticated: boolean;
   userDob: string | null;
-  onVerified: () => void;
 }) {
-  const [dobInput, setDobInput] = useState("");
-  const [error, setError] = useState<string | null>(null);
-
-  // If user already has a date_of_birth, check immediately
-  useEffect(() => {
-    if (userDob) {
-      if (isAtLeast18(userDob)) {
-        onVerified();
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userDob]);
-
-  function isAtLeast18(dob: string): boolean {
-    const birth = new Date(dob);
-    const today = new Date();
-    let age = today.getFullYear() - birth.getFullYear();
-    const m = today.getMonth() - birth.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-    return age >= 18;
-  }
-
-  function handleVerify() {
-    if (!dobInput) {
-      setError("Please enter your date of birth.");
-      return;
-    }
-    if (isAtLeast18(dobInput)) {
-      onVerified();
-    } else {
-      setError("Sorry, you must be at least 18 years old to view this event.");
-    }
-  }
 
   // If user has dob and is underage — show block screen
   if (userDob && !isAtLeast18(userDob)) {
@@ -206,7 +184,7 @@ function AgeGate({
     );
   }
 
-  // No dob — show verification form
+  // Guests and users without a stored DOB cannot access 18+ events by default.
   return (
     <div className="min-h-[80vh] relative overflow-hidden flex flex-col items-center justify-center px-6 py-20 text-center">
       <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 font-heading text-[200px] font-bold text-brand-dark/[0.06] select-none pointer-events-none leading-none max-sm:text-[120px]">
@@ -221,32 +199,38 @@ function AgeGate({
           This event is restricted to attendees aged 18 and above.
         </p>
 
-        {/* Age verification card */}
-        <div className="bg-brand-surface rounded-xl p-8 max-w-[400px] w-full mt-8 text-left">
-          <h3 className="font-heading text-xl font-semibold text-brand-dark mb-5">
-            Please confirm your age
-          </h3>
-          <label className="block text-[13px] font-bold uppercase tracking-wider text-brand-mid mb-2">
-            Date of Birth
-          </label>
-          <input
-            type="date"
-            value={dobInput}
-            onChange={(e) => { setDobInput(e.target.value); setError(null); }}
-            className="w-full px-4 py-3.5 border-2 border-brand-mid-alpha rounded-lg bg-brand-bg text-brand-dark text-[15px] outline-none transition-colors focus:border-brand-dark mb-5"
-          />
-          <button
-            onClick={handleVerify}
-            className="w-full flex items-center justify-center gap-2 rounded-xl bg-brand-dark border-2 border-brand-dark px-7 py-4 text-[15px] font-bold text-white transition-all hover:bg-[#5e4535] hover:border-[#5e4535] hover:-translate-y-0.5 hover:shadow-lg"
-          >
-            Verify Age
-          </button>
-          {error && (
-            <p className="text-red-500 text-sm mt-3 text-center">{error}</p>
+        <div className="bg-brand-surface rounded-xl p-8 max-w-[420px] w-full mt-8 text-center">
+          {isAuthenticated ? (
+            <>
+              <h3 className="font-heading text-xl font-semibold text-brand-dark mb-3">
+                Date of birth required
+              </h3>
+              <p className="text-[15px] leading-[1.7] text-brand-dark/75 mb-6">
+                Add your date of birth in your profile settings to access 18+ events.
+              </p>
+              <Link
+                href="/profile/me"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-dark border-2 border-brand-dark px-7 py-3.5 text-[15px] font-bold text-white transition-all hover:bg-[#5e4535] hover:border-[#5e4535] hover:-translate-y-0.5 hover:shadow-lg"
+              >
+                Go to Profile
+              </Link>
+            </>
+          ) : (
+            <>
+              <h3 className="font-heading text-xl font-semibold text-brand-dark mb-3">
+                Sign in to continue
+              </h3>
+              <p className="text-[15px] leading-[1.7] text-brand-dark/75 mb-6">
+                Sign in with an account that has a verified date of birth to access this 18+ event.
+              </p>
+              <Link
+                href={`/login?next=/event/${eventId}`}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-dark border-2 border-brand-dark px-7 py-3.5 text-[15px] font-bold text-white transition-all hover:bg-[#5e4535] hover:border-[#5e4535] hover:-translate-y-0.5 hover:shadow-lg"
+              >
+                Sign In
+              </Link>
+            </>
           )}
-          <p className="text-[12px] text-brand-mid leading-[1.6] mt-4 text-center">
-            Your date of birth is only used for age verification and will not be stored or shared with third parties.
-          </p>
         </div>
 
         <Link
@@ -1120,7 +1104,7 @@ function FullView({
                 </div>
               )}
               <p className="text-[13px] text-brand-mid mb-3">
-                {host.events_hosted} events hosted
+                {host.hosted_events_count} events hosted
               </p>
               {event.host_id && (
                 <Link
@@ -1259,58 +1243,56 @@ export default function EventDetailPage() {
 
   const [event, setEvent] = useState<AnyEventDetail | null>(null);
   const [host, setHost] = useState<HostProfile | null>(null);
-  const [loadedEventId, setLoadedEventId] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
-  const [ageVerified, setAgeVerified] = useState(false);
-  const loading = !id || !isInitialized || loadedEventId !== id;
 
   useEffect(() => {
     // Wait for session to initialize so the token is available before fetching.
     // Without this, the request races with refreshSession and may send no token,
     // causing the backend to return a limited/guest response even for logged-in users.
     if (!id || !isInitialized) return;
-    let cancelled = false;
 
-    async function loadEvent() {
-      try {
-        const ev = await fetchEventDetail(id);
-        if (cancelled) return;
+    let active = true;
+
+    fetchEventDetail(id)
+      .then((ev) => {
+        if (!active) {
+          return;
+        }
 
         setEvent(ev);
         setNotFound(false);
+        setHost(null);
 
         if (ev._type === "full") {
-          try {
-            const nextHost = await fetchHostProfile(ev.host_id);
-            if (!cancelled) {
-              setHost(nextHost);
-            }
-          } catch {
-            if (!cancelled) {
-              setHost(null);
-            }
-          }
-        } else {
-          setHost(null);
+          void fetchHostProfile(ev.host_id)
+            .then((profile) => {
+              if (active) {
+                setHost(profile);
+              }
+            })
+            .catch(() => {
+              if (active) {
+                setHost(null);
+              }
+            });
         }
-      } catch {
-        if (cancelled) return;
+      })
+      .catch(() => {
+        if (!active) {
+          return;
+        }
+
         setEvent(null);
         setHost(null);
         setNotFound(true);
-      } finally {
-        if (!cancelled) {
-          setLoadedEventId(id);
-        }
-      }
-    }
-
-    void loadEvent();
+      });
 
     return () => {
-      cancelled = true;
+      active = false;
     };
   }, [id, isInitialized]);
+
+  const loading = !id || !isInitialized || (!notFound && event?.id !== id);
 
   useEffect(() => {
     if (event?._type === "full" && user?.id) {
@@ -1322,6 +1304,12 @@ export default function EventDetailPage() {
     event?._type === "full" && !!user && !!event.host_id && event.host_id === user.id;
 
   const isGuest = !isAuthenticated;
+  const isAgeBlocked =
+    Boolean(
+      event?.is_age_restricted &&
+      !isHost &&
+      (!isAuthenticated || !user?.date_of_birth || !isAtLeast18(user.date_of_birth)),
+    );
 
   return (
     <div className="bg-brand-bg min-h-screen">
@@ -1347,10 +1335,14 @@ export default function EventDetailPage() {
             Back to Discovery
           </Link>
         </div>
+      ) : isAgeBlocked ? (
+        <AgeGate
+          eventId={id}
+          isAuthenticated={isAuthenticated}
+          userDob={user?.date_of_birth ?? null}
+        />
       ) : event._type === "limited" ? (
         <LimitedView event={event} isGuest={isGuest} currentUserId={user?.id ?? null} />
-      ) : event.is_age_restricted && !isHost && !ageVerified ? (
-        <AgeGate userDob={user?.date_of_birth ?? null} onVerified={() => setAgeVerified(true)} />
       ) : (
         <FullView
           event={event}

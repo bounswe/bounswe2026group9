@@ -106,14 +106,17 @@ export function Navbar({
             )}
           </Link>
 
-          <div className="flex items-center gap-2">
+          <Link
+            href="/profile/me"
+            className="flex items-center gap-2 rounded-lg px-1 py-1 text-white/85 transition-colors hover:bg-white/8 hover:text-white"
+          >
             <div className="bg-brand-mid flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white">
               {initials}
             </div>
             <span className="hidden text-sm font-semibold text-white/85 lg:block">
               {user?.username}
             </span>
-          </div>
+          </Link>
 
           <Button
             type="button"
@@ -172,9 +175,13 @@ export function Navbar({
               </span>
             )}
           </Link>
-          <div className="bg-brand-mid flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white">
+          <Link
+            href="/profile/me"
+            aria-label="Open my profile settings"
+            className="bg-brand-mid flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white transition-opacity hover:opacity-85"
+          >
             {initials}
-          </div>
+          </Link>
           <Button
             type="button"
             variant="ghost"

@@ -197,10 +197,11 @@ export interface CommentListResponse {
 export interface HostProfile {
   id: string;
   username: string;
-  bio: string | null;
+  email: string | null;
+  phone_number: string | null;
   average_rating: number | null;
-  total_ratings: number;
-  events_hosted: number;
+  hosted_events_count: number;
+  hosted_events: EventListItem[];
 }
 
 // ─── Event Detail API Functions ────────────────────────────────────────────────
@@ -292,7 +293,16 @@ export async function deleteComment(eventId: string, commentId: string): Promise
 }
 
 export async function fetchHostProfile(userId: string): Promise<HostProfile> {
-  return apiRequest<HostProfile>(`/users/${userId}/profile`);
+  return apiRequest<HostProfile>(`/users/${userId}/profile`, { auth: "optional" });
+}
+
+export async function rateHost(userId: string, score: number): Promise<void> {
+  await apiRequest<void>(`/users/${userId}/ratings`, {
+    method: "POST",
+    auth: "required",
+    body: { score },
+    parseAs: "void",
+  });
 }
 
 // ─── Notification Types ──────────────────────────────────────────────────────
