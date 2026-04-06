@@ -104,6 +104,35 @@ function buildGoogleCalendarUrl(event: EventDetail, locationName?: string) {
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
+async function copyTextWithFallback(value: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(value);
+    return true;
+  } catch {
+    if (typeof document === "undefined") {
+      return false;
+    }
+
+    const textarea = document.createElement("textarea");
+    textarea.value = value;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    textarea.style.pointerEvents = "none";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    try {
+      return document.execCommand("copy");
+    } catch {
+      return false;
+    } finally {
+      document.body.removeChild(textarea);
+    }
+  }
+}
+
 // ─── Age gate (18+ events) ────────────────────────────────────────────────────
 
 function AgeGate({
@@ -448,6 +477,8 @@ function FullView({
   const [accessRequests, setAccessRequests] = useState<AccessRequest[]>([]);
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
+  const [inviteNotice, setInviteNotice] = useState<string | null>(null);
+  const [manualInviteUrl, setManualInviteUrl] = useState<string | null>(null);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [requestActionLoading, setRequestActionLoading] = useState<string | null>(null);
 
@@ -525,12 +556,19 @@ function FullView({
   async function handleCreateInvite() {
     setInviteLoading(true);
     setInviteError(null);
+    setInviteNotice(null);
+    setManualInviteUrl(null);
     try {
       const invite = await createInvite(event.id);
       setInvites((prev) => [invite, ...prev]);
-      await navigator.clipboard.writeText(invite.invite_url);
-      setCopiedToken(invite.token);
-      setTimeout(() => setCopiedToken(null), 2000);
+      const copied = await copyTextWithFallback(invite.invite_url);
+      if (copied) {
+        setCopiedToken(invite.token);
+        setTimeout(() => setCopiedToken(null), 2000);
+      } else {
+        setInviteNotice("Invite created, but automatic copy was blocked. Copy the link manually below.");
+        setManualInviteUrl(invite.invite_url);
+      }
     } catch (err: unknown) {
       const message = err && typeof err === "object" && "message" in err
         ? (err as { message: string }).message
@@ -542,9 +580,18 @@ function FullView({
   }
 
   async function handleCopyInviteLink(invite: Invite) {
-    await navigator.clipboard.writeText(invite.invite_url);
-    setCopiedToken(invite.token);
-    setTimeout(() => setCopiedToken(null), 2000);
+    setInviteError(null);
+    const copied = await copyTextWithFallback(invite.invite_url);
+    if (copied) {
+      setInviteNotice(null);
+      setManualInviteUrl(null);
+      setCopiedToken(invite.token);
+      setTimeout(() => setCopiedToken(null), 2000);
+      return;
+    }
+
+    setInviteNotice("Copy is blocked in this browser context. Copy the link manually below.");
+    setManualInviteUrl(invite.invite_url);
   }
 
   async function handleAccessRequestAction(requestId: string, action: "approved" | "rejected") {
@@ -951,6 +998,24 @@ function FullView({
               </button>
               {inviteError && (
                 <p className="text-[12px] text-red-500">{inviteError}</p>
+              )}
+              {inviteNotice && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                  <p className="text-[12px] font-medium text-amber-700">{inviteNotice}</p>
+                </div>
+              )}
+              {manualInviteUrl && (
+                <div className="space-y-2 rounded-lg bg-brand-bg px-3 py-3">
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-brand-mid">
+                    Manual Copy
+                  </p>
+                  <input
+                    readOnly
+                    value={manualInviteUrl}
+                    onFocus={(e) => e.currentTarget.select()}
+                    className="w-full rounded-lg border border-brand-mid-alpha bg-white px-3 py-2 text-[12px] text-brand-dark outline-none"
+                  />
+                </div>
               )}
 
               {/* Invite list */}
