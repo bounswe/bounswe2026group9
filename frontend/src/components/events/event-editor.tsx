@@ -1246,6 +1246,7 @@ export function EventEditor({ eventId, mode }: EventEditorProps) {
                         <div className="space-y-3">
                           <SectionLabel>Start date</SectionLabel>
                           <Input
+                            min={new Date().toISOString().split('T')[0]}
                             onChange={(event) => patchFormValues({ startDate: event.target.value })}
                             type="date"
                             value={formValues.startDate}
