@@ -6,6 +6,9 @@ import android.graphics.Paint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,10 +40,19 @@ private val DEFAULT_ZOOM = 10.0
 @Composable
 fun EventMapView(
     events: List<EventListItemDto>,
-    onEventClick: (String) -> Unit
+    onEventClick: (String) -> Unit,
+    onBookmarkToggle: ((String) -> Unit)? = null,
+    token: String? = null
 ) {
     var selectedEvent by remember { mutableStateOf<EventListItemDto?>(null) }
     val markerToEvent = remember { mutableMapOf<Long, EventListItemDto>() }
+
+    // Keep selectedEvent in sync with events list (reflects optimistic bookmark update)
+    val currentSelectedId = selectedEvent?.id
+    if (currentSelectedId != null) {
+        val updated = events.find { it.id == currentSelectedId }
+        if (updated != null && updated != selectedEvent) selectedEvent = updated
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(
@@ -90,6 +102,9 @@ fun EventMapView(
                 event = event,
                 onDismiss = { selectedEvent = null },
                 onViewDetail = { onEventClick(event.id) },
+                onBookmarkToggle = if (token != null && onBookmarkToggle != null) {
+                    { onBookmarkToggle(event.id) }
+                } else null,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(16.dp)
@@ -103,6 +118,7 @@ private fun EventMapPopup(
     event: EventListItemDto,
     onDismiss: () -> Unit,
     onViewDetail: () -> Unit,
+    onBookmarkToggle: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -156,17 +172,38 @@ private fun EventMapPopup(
                     )
                 }
                 Spacer(Modifier.height(8.dp))
-                TextButton(
-                    onClick = onViewDetail,
-                    contentPadding = PaddingValues(0.dp),
-                    modifier = Modifier.height(24.dp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(
-                        "View Details →",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.tertiary
-                    )
+                    TextButton(
+                        onClick = onViewDetail,
+                        contentPadding = PaddingValues(0.dp),
+                        modifier = Modifier.height(24.dp)
+                    ) {
+                        Text(
+                            "View Details →",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.tertiary
+                        )
+                    }
+                    if (onBookmarkToggle != null) {
+                        val isBookmarked = event.is_bookmarked == true
+                        IconButton(
+                            onClick = onBookmarkToggle,
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (isBookmarked) Icons.Filled.Bookmark
+                                              else Icons.Filled.BookmarkBorder,
+                                contentDescription = if (isBookmarked) "Remove bookmark" else "Bookmark",
+                                tint = if (isBookmarked) MaterialTheme.colorScheme.tertiary
+                                       else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
                 }
             }
 

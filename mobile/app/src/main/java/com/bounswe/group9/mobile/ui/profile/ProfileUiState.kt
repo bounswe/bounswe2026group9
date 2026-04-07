@@ -4,6 +4,10 @@ import com.bounswe.group9.mobile.data.remote.BookmarkedEventDto
 import com.bounswe.group9.mobile.data.remote.EventListItemDto
 
 data class ProfileUiState(
+    // Stats (from host profile endpoint)
+    val averageRating: Double? = null,
+    val hostedEventsCount: Int = 0,
+    val upcomingEventsCount: Int = 0,
     // Edit form drafts
     val editPhoneNumber: String = "",
     val editDateOfBirth: String = "",

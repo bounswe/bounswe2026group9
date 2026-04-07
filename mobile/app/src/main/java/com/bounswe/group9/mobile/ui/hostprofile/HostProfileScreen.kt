@@ -146,7 +146,7 @@ private fun ProfileContent(
                                 Icons.Default.Star,
                                 contentDescription = null,
                                 modifier = Modifier.size(20.dp),
-                                tint = if (i < profile.average_rating.toInt()) Color(0xFFFFC107) else Color(0xFFE0E0E0)
+                                tint = if (i < profile.average_rating.toInt()) Color(0xFFFFC107) else Color(0xFF9E9E9E)
                             )
                         }
                         Spacer(Modifier.width(8.dp))
@@ -170,7 +170,7 @@ private fun ProfileContent(
                                 Icon(
                                     Icons.Default.Star,
                                     contentDescription = "Rate ${i + 1}",
-                                    tint = if (i < uiState.ratingScore.toInt()) Color(0xFFFFC107) else Color(0xFFE0E0E0),
+                                    tint = if (i < uiState.ratingScore.toInt()) Color(0xFFFFC107) else Color(0xFF9E9E9E),
                                     modifier = Modifier.size(24.dp)
                                 )
                             }

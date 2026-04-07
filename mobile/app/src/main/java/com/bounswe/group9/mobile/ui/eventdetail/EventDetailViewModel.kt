@@ -10,6 +10,7 @@ import com.bounswe.group9.mobile.data.remote.InviteResponseDto
 import com.bounswe.group9.mobile.data.repository.EventDetailError
 import com.bounswe.group9.mobile.data.repository.EventDetailResult
 import com.bounswe.group9.mobile.data.repository.EventRepository
+import com.bounswe.group9.mobile.data.repository.ProfileRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,6 +19,7 @@ import kotlinx.coroutines.launch
 data class EventDetailUiState(
     val fullDetail: EventDetailDto? = null,
     val limitedPreview: EventLimitedDto? = null,
+    val hostUsername: String? = null,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val detailError: EventDetailError? = null,
@@ -54,7 +56,8 @@ data class EventDetailUiState(
 }
 
 class EventDetailViewModel(
-    private val repository: EventRepository = EventRepository()
+    private val repository: EventRepository = EventRepository(),
+    private val profileRepository: ProfileRepository = ProfileRepository()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(EventDetailUiState())
@@ -74,29 +77,50 @@ class EventDetailViewModel(
         currentEventId = eventId
         _uiState.value = EventDetailUiState(isLoading = true)
         viewModelScope.launch {
-            repository.getEventDetail(token, eventId).fold(
-                onSuccess = { result ->
-                    _uiState.value = when (result) {
-                        is EventDetailResult.Full -> EventDetailUiState(fullDetail = result.detail)
-                        is EventDetailResult.Limited -> EventDetailUiState(limitedPreview = result.preview)
+            val result = repository.getEventDetail(token, eventId)
+            if (result.isSuccess) {
+                when (val r = result.getOrNull()!!) {
+                    is EventDetailResult.Full -> {
+                        _uiState.value = EventDetailUiState(fullDetail = r.detail)
+                        loadComments(reset = true)
+                        if (token != null) loadInviteSection()
+                        loadHostUsername(r.detail.host_id)
                     }
-                    // Load comments for full detail view
-                    if (result is EventDetailResult.Full) loadComments(reset = true)
-                    // Load invite section for host; check access request status for non-host limited
-                    if (result is EventDetailResult.Full && token != null) {
-                        loadInviteSection()
-                    } else if (result is EventDetailResult.Limited) {
-                        checkAccessRequestStatus()
+                    is EventDetailResult.Limited -> {
+                        // Age-restricted limited preview: check user age before showing
+                        if (r.preview.is_age_restricted && token != null) {
+                            val ageError = checkAgeRestriction(token)
+                            if (ageError != null) {
+                                _uiState.value = EventDetailUiState(
+                                    detailError = ageError,
+                                    errorMessage = ageError.message
+                                )
+                                return@launch
+                            }
+                        }
+                        // Server provides access_request_status authoritatively — seed cache and use directly
+                        val serverStatus = r.preview.access_request_status
+                        if (serverStatus != null) {
+                            accessRequestCache[eventId] = serverStatus
+                        }
+                        _uiState.value = EventDetailUiState(
+                            limitedPreview = r.preview,
+                            accessRequestStatus = serverStatus ?: accessRequestCache[eventId]
+                        )
+                        // If server already says approved, reload for full detail
+                        if (serverStatus == "approved") {
+                            loadEvent(eventId, token)
+                        }
                     }
-                },
-                onFailure = { e ->
-                    val typedError = e as? EventDetailError
-                    _uiState.value = EventDetailUiState(
-                        errorMessage = e.message,
-                        detailError = typedError
-                    )
                 }
-            )
+            } else {
+                val e = result.exceptionOrNull()!!
+                val typedError = e as? EventDetailError
+                _uiState.value = EventDetailUiState(
+                    errorMessage = e.message,
+                    detailError = typedError
+                )
+            }
         }
     }
 
@@ -479,6 +503,46 @@ class EventDetailViewModel(
                 }
             )
         }
+    }
+
+    private fun loadHostUsername(hostId: String) {
+        viewModelScope.launch {
+            profileRepository.getHostProfile(null, hostId).onSuccess { profile ->
+                _uiState.value = _uiState.value.copy(hostUsername = profile.username)
+            }
+        }
+    }
+
+    /**
+     * Returns an [EventDetailError] if [token] user is blocked by age restriction, null if allowed.
+     * Fetches /me to get DOB; if no DOB returns [EventDetailError.DobRequired],
+     * if under 18 returns [EventDetailError.Underage].
+     */
+    private suspend fun checkAgeRestriction(token: String): EventDetailError? {
+        val profile = profileRepository.getMe(token).getOrNull() ?: return null
+        val dob = profile.date_of_birth
+        if (dob.isNullOrBlank()) return EventDetailError.DobRequired()
+        return if (isUnder18(dob)) EventDetailError.Underage() else null
+    }
+
+    private fun isUnder18(dob: String): Boolean {
+        return try {
+            val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+            val dobDate = sdf.parse(dob) ?: return false
+            val cal = java.util.Calendar.getInstance()
+            val today = cal.time
+            cal.time = dobDate
+            val dobYear = cal.get(java.util.Calendar.YEAR)
+            val dobMonth = cal.get(java.util.Calendar.MONTH)
+            val dobDay = cal.get(java.util.Calendar.DAY_OF_MONTH)
+            cal.time = today
+            val todayYear = cal.get(java.util.Calendar.YEAR)
+            val todayMonth = cal.get(java.util.Calendar.MONTH)
+            val todayDay = cal.get(java.util.Calendar.DAY_OF_MONTH)
+            val age = todayYear - dobYear -
+                if (todayMonth < dobMonth || (todayMonth == dobMonth && todayDay < dobDay)) 1 else 0
+            age < 18
+        } catch (_: Exception) { false }
     }
 
     /** On limited view load — only restore status from session cache. No auto-request creation. */

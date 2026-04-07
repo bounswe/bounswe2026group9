@@ -6,6 +6,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,6 +18,10 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 
 @Composable
 fun LoginScreen(viewModel: AuthViewModel, onLoginSuccess: () -> Unit = {}) {
@@ -140,10 +146,9 @@ fun LoginScreen(viewModel: AuthViewModel, onLoginSuccess: () -> Unit = {}) {
 
                     if (!isLoginTab) {
                         Spacer(modifier = Modifier.height(12.dp))
-                        BrandTextField(
+                        DobPickerField(
                             value = uiState.dateOfBirth,
-                            onValueChange = viewModel::onDateOfBirthChange,
-                            label = "Date of Birth (YYYY-MM-DD)"
+                            onValueChange = viewModel::onDateOfBirthChange
                         )
                     }
 
@@ -256,6 +261,68 @@ private fun TabButton(
     ) {
         Text(text = text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DobPickerField(
+    value: String,
+    onValueChange: (String) -> Unit
+) {
+    var showPicker by remember { mutableStateOf(false) }
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = if (value.matches(Regex("""\d{4}-\d{2}-\d{2}"""))) {
+            try {
+                val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
+                    timeZone = TimeZone.getTimeZone("UTC")
+                }
+                sdf.parse(value)?.time
+            } catch (_: Exception) { null }
+        } else null
+    )
+
+    if (showPicker) {
+        DatePickerDialog(
+            onDismissRequest = { showPicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
+                            timeZone = TimeZone.getTimeZone("UTC")
+                        }
+                        onValueChange(sdf.format(Date(millis)))
+                    }
+                    showPicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPicker = false }) { Text("Cancel") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text("Date of Birth") },
+        placeholder = { Text("YYYY-MM-DD") },
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        trailingIcon = {
+            IconButton(onClick = { showPicker = true }) {
+                Icon(Icons.Default.CalendarToday, contentDescription = "Pick date")
+            }
+        },
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = MaterialTheme.colorScheme.tertiary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+            focusedLabelColor = MaterialTheme.colorScheme.tertiary,
+        )
+    )
 }
 
 @Composable

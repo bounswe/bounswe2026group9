@@ -442,6 +442,7 @@ private fun LimitedPreviewContent(
 
 // region Full Detail
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FullDetailContent(
     event: EventDetailDto,
@@ -587,8 +588,19 @@ private fun FullDetailContent(
             // Host link
             Spacer(Modifier.height(16.dp))
             SectionHeader("Host")
-            TextButton(onClick = { onNavigateToHost(event.host_id) }) {
-                Text("View host profile", fontSize = 14.sp)
+            val displayName = uiState.hostUsername?.let { "@$it" } ?: "View host profile"
+            Surface(
+                onClick = { onNavigateToHost(event.host_id) },
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.secondaryContainer
+            ) {
+                Text(
+                    text = displayName,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp
+                )
             }
 
             // Manage Invites (host only)
