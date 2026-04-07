@@ -289,31 +289,22 @@ chmod +x gradlew
 
 ### Build an APK
 
-To build a release APK:
-
-```bash
-cd mobile
-./gradlew assembleRelease
-```
-
-Expected output location:
-
-```text
-mobile/app/build/outputs/apk/release/
-```
-
-To build the same debug APK variant used by the GitHub Actions workflow:
+To build a debug APK (this is what the GitHub Actions workflow also produces):
 
 ```bash
 cd mobile
 ./gradlew assembleDebug
 ```
 
-Expected debug APK output:
+Expected output:
 
 ```text
 mobile/app/build/outputs/apk/debug/app-debug.apk
 ```
+
+This APK can be installed directly on any Android device with "Install from unknown sources" enabled in device settings.
+
+> **Note:** Release builds (`assembleRelease`) require a signing keystore and are not needed for development or milestone evaluation. Use the debug APK above.
 
 ### Mobile Verification
 
