@@ -1,19 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import Map, { Marker, Popup, type MapRef } from "react-map-gl/maplibre";
-import { Bookmark, BookmarkCheck, Check, Clock, Lock, Minus, Pencil, Plus, Users, X } from "lucide-react";
+import { Bookmark, BookmarkCheck, Minus, Pencil, Plus, Users, X } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
-import { requestAccess, type EventListItem } from "@/lib/events-api";
+import { type EventListItem } from "@/lib/events-api";
 import { useEventInteraction } from "@/hooks/use-event-interaction";
 import { getEditEventPagePath } from "@/lib/event-routes";
-import {
-  clearAccessRequestPending,
-  isAccessRequestPending,
-  markAccessRequestPending,
-} from "@/lib/access-request-store";
 import { cn } from "@/lib/utils";
 
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -52,8 +46,7 @@ function PopupBody({
   currentUserId: string | null;
   onClose: () => void;
 }) {
-  const router = useRouter();
-  const { bookmarked, bookmarkCount, going, goingCount, toggleBookmark, toggleGoing } =
+  const { bookmarked, bookmarkCount, goingCount, toggleBookmark } =
     useEventInteraction({
       eventId: event.id,
       initialBookmarked: event.is_bookmarked === true,
@@ -61,78 +54,6 @@ function PopupBody({
       initialGoing: event.attendance_status === "going",
       initialGoingCount: event.going_count ?? 0,
     });
-  const isPrivate = event.visibility === "private";
-  const hasPrivateAccess = event.has_access === true || event.attendance_status === "going";
-  const [requestState, setRequestState] = useState<"idle" | "loading" | "error">("idle");
-  const isPendingRequest =
-    isPrivate &&
-    !hasPrivateAccess &&
-    (
-      event.access_request_status === "pending" ||
-      isAccessRequestPending(event.id, currentUserId)
-    );
-  const accessStatus: "idle" | "loading" | "pending" | "error" =
-    requestState === "loading" || requestState === "error"
-      ? requestState
-      : isPendingRequest
-      ? "pending"
-      : "idle";
-
-  const full =
-    event.is_full === true ||
-    (event.attendee_limit != null && goingCount >= event.attendee_limit);
-
-  useEffect(() => {
-    if (!isPrivate || !currentUserId) {
-      return;
-    }
-
-    if (hasPrivateAccess || event.access_request_status === "approved") {
-      clearAccessRequestPending(event.id, currentUserId);
-      return;
-    }
-
-    if (event.access_request_status === "pending") {
-      markAccessRequestPending(event.id, currentUserId);
-      return;
-    }
-
-    if (event.access_request_status === "rejected") {
-      clearAccessRequestPending(event.id, currentUserId);
-    }
-  }, [
-    currentUserId,
-    event.access_request_status,
-    event.id,
-    hasPrivateAccess,
-    isPrivate,
-  ]);
-
-  async function handleRequestAccess() {
-    setRequestState("loading");
-    try {
-      await requestAccess(event.id);
-      markAccessRequestPending(event.id, currentUserId);
-      setRequestState("idle");
-    } catch (err: unknown) {
-      const message = (
-        err && typeof err === "object" && "message" in err
-          ? (err as { message: string }).message
-          : ""
-      ).toLowerCase();
-
-      if (message.includes("already granted")) {
-        clearAccessRequestPending(event.id, currentUserId);
-        setRequestState("idle");
-        router.push(`/event/${event.id}`);
-      } else if (message.includes("already exists")) {
-        markAccessRequestPending(event.id, currentUserId);
-        setRequestState("idle");
-      } else {
-        setRequestState("error");
-      }
-    }
-  }
 
   return (
     <div
@@ -194,53 +115,18 @@ function PopupBody({
                 <Pencil className="size-3.5" /> Edit
               </Link>
             ) : (
-              <>
-                <button
-                  onClick={() => { void toggleBookmark(); }}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold transition-all duration-150 cursor-pointer active:scale-[0.96]",
-                    bookmarked
-                      ? "bg-brand-dark border-brand-dark text-white hover:bg-brand-dark/80"
-                      : "border-brand-mid text-brand-dark hover:bg-brand-mid-alpha",
-                  )}
-                >
-                  {bookmarked ? <BookmarkCheck className="size-3.5" /> : <Bookmark className="size-3.5" />}
-                  {bookmarked ? "Saved" : "Bookmark"}
-                </button>
-                {isPrivate && !going && !hasPrivateAccess ? (
-                  accessStatus === "pending" ? (
-                    <div className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-brand-mid-alpha px-3 py-1.5 text-xs font-bold text-brand-dark/60">
-                      <Clock className="size-3.5" />
-                      Pending
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => { void handleRequestAccess(); }}
-                      disabled={accessStatus === "loading"}
-                      className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-brand-dark px-3 py-1.5 text-xs font-bold text-white transition-all duration-150 hover:bg-brand-dark/85 hover:shadow-md cursor-pointer active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      <Lock className="size-3.5" />
-                      {accessStatus === "loading" ? "Sending…" : accessStatus === "error" ? "Try Again" : "Request Access"}
-                    </button>
-                  )
-                ) : (
-                  <button
-                    onClick={() => { void toggleGoing(); }}
-                    disabled={full && !going}
-                    className={cn(
-                      "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all duration-150",
-                      full && !going
-                        ? "cursor-not-allowed bg-brand-mid-alpha text-brand-dark/40"
-                        : going
-                        ? "bg-brand-dark text-white hover:bg-brand-dark/80 cursor-pointer active:scale-[0.96]"
-                        : "bg-brand-mid text-white hover:bg-brand-mid/80 cursor-pointer active:scale-[0.96]",
-                    )}
-                  >
-                    <Check className="size-3.5" />
-                    {full && !going ? "Full" : going ? "Attended ✓" : "Going"}
-                  </button>
+              <button
+                onClick={() => { void toggleBookmark(); }}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold transition-all duration-150 cursor-pointer active:scale-[0.96]",
+                  bookmarked
+                    ? "bg-brand-dark border-brand-dark text-white hover:bg-brand-dark/80"
+                    : "border-brand-mid text-brand-dark hover:bg-brand-mid-alpha",
                 )}
-              </>
+              >
+                {bookmarked ? <BookmarkCheck className="size-3.5" /> : <Bookmark className="size-3.5" />}
+                {bookmarked ? "Saved" : "Bookmark"}
+              </button>
             )}
           </div>
         )}
