@@ -120,7 +120,8 @@ data class HostProfileDto(
     val phone_number: String?,
     val average_rating: Double?,
     val hosted_events_count: Int,
-    val hosted_events: List<EventListItemDto>
+    val hosted_events: List<EventListItemDto>,
+    val can_rate: Boolean = false
 )
 
 data class RatingRequest(val score: Double)

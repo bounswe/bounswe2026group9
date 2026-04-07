@@ -202,6 +202,7 @@ export interface HostProfile {
   average_rating: number | null;
   hosted_events_count: number;
   hosted_events: EventListItem[];
+  can_rate: boolean;
 }
 
 // ─── Event Detail API Functions ────────────────────────────────────────────────

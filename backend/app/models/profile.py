@@ -25,3 +25,4 @@ class HostProfileResponse(BaseModel):
     average_rating: float | None = None
     hosted_events_count: int
     hosted_events: list[EventListItemResponse]
+    can_rate: bool = False
