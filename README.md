@@ -8,6 +8,8 @@ Social Event Mapper is a multi-platform event discovery and hosting project buil
 
 This README is the main entry point for setting up the repository locally. It consolidates the essential commands, environment files, and build instructions needed to run the project by hand.
 
+**Live deployment:** https://thesocialeventmapper.social
+
 ## Repository Structure
 
 ```text
