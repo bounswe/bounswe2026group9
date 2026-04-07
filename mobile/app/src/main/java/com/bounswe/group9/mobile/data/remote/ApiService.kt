@@ -98,7 +98,9 @@ data class CommentDto(
     val event_id: String,
     val user: CommentAuthorDto,
     val text: String,
-    val created_at: String
+    val created_at: String,
+    val parent_id: String? = null,
+    val replies: List<CommentDto> = emptyList()
 )
 
 data class CommentListResponseDto(
