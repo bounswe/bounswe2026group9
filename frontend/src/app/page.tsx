@@ -19,7 +19,6 @@ import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { useAuth } from "@/hooks/use-auth";
-import { getCurrentUser } from "@/lib/api";
 import { Navbar, ActionBar } from "@/components/layout/navbar";
 import { FilterSidebar, type FilterState } from "@/components/discovery/filter-sidebar";
 import { ListView } from "@/components/discovery/list-view";
@@ -162,26 +161,6 @@ function applyPersonalFilter(
   return events;
 }
 
-function applyAgeRestrictionFilter(
-  events: EventListItem[],
-  hideAgeRestricted: boolean,
-): EventListItem[] {
-  if (!hideAgeRestricted) {
-    return events;
-  }
-
-  return events.filter((event) => !event.is_age_restricted);
-}
-
-function isUnder18(dateOfBirth: string): boolean {
-  const dob = new Date(dateOfBirth);
-  const today = new Date();
-  let age = today.getFullYear() - dob.getFullYear();
-  const m = today.getMonth() - dob.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
-  return age < 18;
-}
-
 function sortDiscoveryEvents(a: EventListItem, b: EventListItem): number {
   const startDifference = Date.parse(a.start_datetime) - Date.parse(b.start_datetime);
   if (startDifference !== 0) {
@@ -195,11 +174,10 @@ async function fetchUnionEvents(
   query: DiscoveryParams,
   temporal: TemporalFilter | null,
   personal: PersonalFilter | null,
-  hideAgeRestricted: boolean,
 ): Promise<EventListItem[]> {
   const applyFilters = (items: EventListItem[]) =>
     applyPersonalFilter(
-      applyTemporalFilter(applyAgeRestrictionFilter(items, hideAgeRestricted), temporal),
+      applyTemporalFilter(items, temporal),
       personal,
     );
 
@@ -277,22 +255,9 @@ function DiscoveryPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated, user } = useAuth();
-  const [resolvedDateOfBirth, setResolvedDateOfBirth] = useState<string | null | undefined>(
-    isAuthenticated ? user?.date_of_birth : null,
-  );
-
   const params = readParams(searchParams);
   const activePersonalFilter = isAuthenticated ? params.personal : null;
-  const isAgeFilterPending = isAuthenticated && resolvedDateOfBirth === undefined;
-  const canViewAgeRestrictedEvents = Boolean(
-    isAuthenticated &&
-      resolvedDateOfBirth &&
-      !isUnder18(resolvedDateOfBirth),
-  );
-  const hideAgeRestrictedEvents = !canViewAgeRestrictedEvents;
-  const discoveryUserKey = isAuthenticated
-    ? `${user?.id ?? "authenticated"}:${hideAgeRestrictedEvents ? "age-hidden" : "age-visible"}`
-    : "guest:age-hidden";
+  const discoveryUserKey = isAuthenticated ? (user?.id ?? "authenticated") : "guest";
   const categoryIdsKey = params.categoryIds.join(",");
 
   const [categories, setCategories] = useState<Category[]>([]);
@@ -365,41 +330,6 @@ function DiscoveryPage() {
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-
-    if (!isAuthenticated) {
-      setResolvedDateOfBirth(null);
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    if (user?.date_of_birth) {
-      setResolvedDateOfBirth(user.date_of_birth);
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    setResolvedDateOfBirth(undefined);
-    void getCurrentUser()
-      .then((currentUser) => {
-        if (!cancelled) {
-          setResolvedDateOfBirth(currentUser.date_of_birth ?? null);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setResolvedDateOfBirth(user?.date_of_birth ?? null);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isAuthenticated, user?.date_of_birth]);
-
-  useEffect(() => {
     void import("@/components/discovery/map-view");
   }, []);
 
@@ -410,7 +340,6 @@ function DiscoveryPage() {
       categoryIds: string[],
       temporal: TemporalFilter | null,
       personal: PersonalFilter | null,
-      hideAgeRestricted: boolean,
     ) => {
       const cachedItems = fullResultsCacheRef.current.get(cacheKey);
       if (cachedItems) {
@@ -427,7 +356,6 @@ function DiscoveryPage() {
         query,
         temporal,
         personal,
-        hideAgeRestricted,
       )
         .then((items) => {
           fullResultsCacheRef.current.set(cacheKey, items);
@@ -447,19 +375,11 @@ function DiscoveryPage() {
   useEffect(() => {
     let cancelled = false;
 
-    if (isAgeFilterPending) {
-      setLoading(true);
-      return () => {
-        cancelled = true;
-      };
-    }
-
     const query = buildDiscoveryQuery(params);
     const resultCacheKey = buildDiscoveryCacheKey(params, activePersonalFilter, discoveryUserKey);
     const pageCacheKey = `${resultCacheKey}|page:${params.page}`;
     const canUseSimpleListFetch =
       !activePersonalFilter &&
-      !hideAgeRestrictedEvents &&
       params.temporal !== "weekend" &&
       params.categoryIds.length <= 1;
 
@@ -476,7 +396,6 @@ function DiscoveryPage() {
             params.categoryIds,
             params.temporal,
             activePersonalFilter,
-            hideAgeRestrictedEvents,
           );
 
           nextResult = {
@@ -513,7 +432,6 @@ function DiscoveryPage() {
                 params.categoryIds,
                 params.temporal,
                 activePersonalFilter,
-                hideAgeRestrictedEvents,
               ).catch(() => undefined);
             } else {
               const items = await getFullDiscoveryEvents(
@@ -522,7 +440,6 @@ function DiscoveryPage() {
                 params.categoryIds,
                 params.temporal,
                 activePersonalFilter,
-                hideAgeRestrictedEvents,
               );
               nextResult = paginateDiscoveryEvents(items, params.page);
             }
@@ -573,19 +490,12 @@ function DiscoveryPage() {
     params.page,
     params.view,
     categoryIdsKey,
-    isAgeFilterPending,
     refreshTick,
   ]);
 
   // ── Fetch counts WITHOUT category filter (stable across category selection) ────
   useEffect(() => {
     let cancelled = false;
-
-    if (isAgeFilterPending) {
-      return () => {
-        cancelled = true;
-      };
-    }
 
     fetchAllEvents({
       search: params.search || undefined,
@@ -598,10 +508,7 @@ function DiscoveryPage() {
         if (cancelled) return;
         const counts: Record<string, number> = {};
         const filteredItems = applyPersonalFilter(
-          applyTemporalFilter(
-            applyAgeRestrictionFilter(items, hideAgeRestrictedEvents),
-            params.temporal,
-          ),
+          applyTemporalFilter(items, params.temporal),
           activePersonalFilter,
         );
         if (cancelled) return;
@@ -619,8 +526,6 @@ function DiscoveryPage() {
     params.search,
     params.temporal,
     activePersonalFilter,
-    hideAgeRestrictedEvents,
-    isAgeFilterPending,
     refreshTick,
   ]);
 
