@@ -1742,22 +1742,42 @@ export function EventEditor({ eventId, mode }: EventEditorProps) {
                       </div>
 
                       <div className="border-border/80 bg-background/70 rounded-lg border p-5">
-                        <div className="flex items-center gap-3">
-                          <Checkbox
-                            checked={formValues.isAgeRestricted}
-                            onCheckedChange={(checked) =>
-                              patchFormValues({ isAgeRestricted: toBoolean(checked) })
-                            }
-                          />
-                          <div>
-                            <p className="text-base font-semibold">18+ event</p>
-                            <p className="text-muted-foreground text-sm leading-6">
-                              Only adults aged 18 and over can view and attend this event.
-                            </p>
-                          </div>
+                          {(() => {
+                            const dob = user?.date_of_birth;
+                            const age = dob
+                              ? Math.floor(
+                                  (Date.now() - new Date(dob).getTime()) /
+                                    (1000 * 60 * 60 * 24 * 365.25),
+                                )
+                              : null;
+                            const canToggle = age !== null && age >= 18;
+                            const hint = !dob
+                              ? "Set your date of birth in profile settings to enable this option"
+                              : "You must be 18 or older to create an age-restricted event";
+                        
+                            return (
+                              <div className="flex items-center gap-3">
+                                <Checkbox
+                                  checked={formValues.isAgeRestricted}
+                                  disabled={!canToggle}
+                                  onCheckedChange={(checked) => {
+                                    if (canToggle) {
+                                      patchFormValues({ isAgeRestricted: toBoolean(checked) });
+                                    }
+                                  }}
+                                />
+                                <div>
+                                  <p className="text-base font-semibold">18+ event</p>
+                                  <p className="text-muted-foreground text-sm leading-6">
+                                    {canToggle
+                                      ? "Only adults aged 18 and over can view and attend this event."
+                                      : hint}
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
-                      </div>
-
                       <div className="border-border/80 bg-background/70 rounded-lg border p-5">
                         <p className="text-muted-foreground text-sm leading-6">
                           Private events can still appear in discovery previews, but only the host
