@@ -129,7 +129,7 @@ export function EventCard({ currentUserId, event, isAuthenticated }: EventCardPr
   return (
     <Link
       href={`/event/${event.id}`}
-      className="bg-brand-surface border-brand-mid-alpha group flex flex-col overflow-hidden rounded-xl border transition-all hover:-translate-y-0.5 hover:shadow-brand-card"
+      className="bg-brand-surface border-brand-mid-alpha group flex h-full flex-col overflow-hidden rounded-xl border transition-all hover:-translate-y-0.5 hover:shadow-brand-card"
     >
       {/* Image */}
       <div className="bg-brand-mid relative aspect-[16/10] w-full">
@@ -158,7 +158,7 @@ export function EventCard({ currentUserId, event, isAuthenticated }: EventCardPr
 
       {/* Body */}
       <div className="flex flex-1 flex-col p-4">
-        <h3 className="font-heading text-brand-dark mb-1 truncate text-[15px] font-bold">{event.title}</h3>
+        <h3 className="font-heading text-brand-dark mb-1 line-clamp-2 text-[15px] font-bold">{event.title}</h3>
         <p className="text-brand-mid mb-2 text-xs font-semibold">
           {formatDateShort(event.start_datetime)} · {formatTime(event.start_datetime)}
         </p>

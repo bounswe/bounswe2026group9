@@ -85,6 +85,7 @@ function CommentNode({
   const [replyText, setReplyText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [localReplies, setLocalReplies] = useState<Comment[]>(comment.replies ?? []);
+  const replyInputRef = useRef<HTMLDivElement>(null);
 
   const canReply = isAuthenticated && !disabled && depth < MAX_DEPTH;
 
@@ -137,7 +138,15 @@ function CommentNode({
             </p>
             {canReply && (
               <button
-                onClick={() => setShowReplyInput(!showReplyInput)}
+                onClick={() => {
+                  const next = !showReplyInput;
+                  setShowReplyInput(next);
+                  if (next) {
+                    setTimeout(() => {
+                      replyInputRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                    }, 50);
+                  }
+                }}
                 className="mt-1 text-[12px] font-bold text-brand-mid hover:text-brand-dark transition-colors flex items-center gap-1"
               >
                 <CornerDownRight className="size-3" />
@@ -149,7 +158,7 @@ function CommentNode({
 
         {/* Reply input */}
         {showReplyInput && (
-          <div className="flex gap-2 items-start mt-2 ml-11">
+          <div ref={replyInputRef} className="flex gap-2 items-start mt-2 ml-11">
             <textarea
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
@@ -258,7 +267,7 @@ export function CommentSection({
   }
 
   return (
-    <div ref={scrollRef} className="flex flex-col gap-4">
+    <div ref={scrollRef} className="flex flex-col gap-4 pb-24">
       <h3 className="font-heading text-brand-dark text-lg font-semibold">
         Comments{!loading && <span className="text-brand-mid text-sm font-normal ml-1">({totalCount})</span>}
       </h3>

@@ -433,6 +433,15 @@ function SummaryCard({
   );
 }
 
+function isAtLeast18(dob: string): boolean {
+  const birth = new Date(dob);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  return age >= 18;
+}
+
 export function EventEditor({ eventId, mode }: EventEditorProps) {
   const router = useRouter();
   const { user } = useAuth();
@@ -1742,22 +1751,36 @@ export function EventEditor({ eventId, mode }: EventEditorProps) {
                         </div>
                       </div>
 
-                      <div className="border-border/80 bg-background/70 rounded-lg border p-5">
-                        <div className="flex items-center gap-3">
-                          <Checkbox
-                            checked={formValues.isAgeRestricted}
-                            onCheckedChange={(checked) =>
-                              patchFormValues({ isAgeRestricted: toBoolean(checked) })
-                            }
-                          />
-                          <div>
-                            <p className="text-base font-semibold">18+ event</p>
-                            <p className="text-muted-foreground text-sm leading-6">
-                              Only adults aged 18 and over can view and attend this event.
-                            </p>
+                      {(() => {
+                        const hasDob = Boolean(user?.date_of_birth);
+                        const canCreate18Plus = hasDob && isAtLeast18(user!.date_of_birth!);
+                        const ageGuardMsg = !hasDob
+                          ? "Set your date of birth in profile settings to enable this option."
+                          : "You must be 18 or older to create an age-restricted event.";
+                        return (
+                          <div className="border-border/80 bg-background/70 rounded-lg border p-5">
+                            <div className="flex items-center gap-3">
+                              <Checkbox
+                                checked={formValues.isAgeRestricted}
+                                disabled={!canCreate18Plus}
+                                onCheckedChange={(checked) =>
+                                  patchFormValues({ isAgeRestricted: toBoolean(checked) })
+                                }
+                              />
+                              <div>
+                                <p className="text-base font-semibold">18+ event</p>
+                                {canCreate18Plus ? (
+                                  <p className="text-muted-foreground text-sm leading-6">
+                                    Only adults aged 18 and over can view and attend this event.
+                                  </p>
+                                ) : (
+                                  <p className="text-sm leading-6 text-amber-600">{ageGuardMsg}</p>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
+                        );
+                      })()}
 
                       <div className="border-border/80 bg-background/70 rounded-lg border p-5">
                         <p className="text-muted-foreground text-sm leading-6">
