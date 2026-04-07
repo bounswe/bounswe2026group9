@@ -394,7 +394,7 @@ function LimitedView({
               <button
                 onClick={() => { void handleRequestAccess(); }}
                 disabled={accessStatus === "loading"}
-                className="w-full flex items-center justify-center gap-2 rounded-lg bg-brand-dark px-5 py-3 text-sm font-bold text-white transition-all hover:bg-brand-dark/85 hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center gap-2 rounded-lg bg-brand-dark px-5 py-3 text-sm font-bold text-white transition-all hover:bg-brand-dark/85 hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed cursor pointer"
               >
                 {accessStatus === "loading" ? (
                   <Loader2 className="size-4 animate-spin" />
@@ -875,7 +875,7 @@ function FullView({
                 {isActive && (
                   <button
                     onClick={() => setShowCancelDialog(true)}
-                    className="w-full flex items-center justify-center gap-2 rounded-[10px] border-2 border-danger py-3 text-[15px] font-bold text-danger transition-colors hover:bg-danger/8"
+                    className="w-full flex items-center justify-center gap-2 rounded-[10px] border-2 border-danger py-3 text-[15px] font-bold text-danger transition-colors hover:bg-danger/8 cursor pointer"
                   >
                     <XCircle className="size-[18px]" />
                     Cancel Event
