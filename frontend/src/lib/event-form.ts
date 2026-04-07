@@ -34,6 +34,7 @@ export interface EventFormValues {
   endDate: string;
   endTime: string;
   hasAttendeeLimit: boolean;
+  isAgeRestricted: boolean;
   healthRequirements: string;
   isAgeRestricted: boolean;
   language: string;
@@ -176,6 +177,7 @@ export function createDefaultEventFormValues(): EventFormValues {
     endDate: formatDateInput(end),
     endTime: formatTimeInput(end),
     hasAttendeeLimit: false,
+    isAgeRestricted: false,
     healthRequirements: "",
     isAgeRestricted: false,
     language: "",
@@ -205,6 +207,7 @@ export function mapEventToFormValues(event: EventDetailResponse): EventFormValue
     endDate: formatDateInput(end),
     endTime: formatTimeInput(end),
     hasAttendeeLimit: event.attendee_limit != null,
+    isAgeRestricted: event.is_age_restricted ?? false,
     healthRequirements: event.venue_metadata?.health_requirements ?? "",
     language: event.venue_metadata?.language ?? "",
     locations:
