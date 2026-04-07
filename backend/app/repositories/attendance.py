@@ -60,3 +60,18 @@ def get_attendance_status_for_events(db: Client, user_id: str, event_ids: list[s
     )
 
     return {row["event_id"]: row["status"] for row in (result.data or [])}
+
+
+def has_attended_ended_event_by_host(db: Client, user_id: str, host_id: str) -> bool:
+    """Returns True if user_id has a 'going' attendance on at least one ended event hosted by host_id."""
+    result = (
+        db.table("attendances")
+        .select("event_id, events!inner(host_id, status)")
+        .eq("user_id", user_id)
+        .eq("status", "going")
+        .eq("events.host_id", host_id)
+        .eq("events.status", "ended")
+        .limit(1)
+        .execute()
+    )
+    return bool(result.data)

@@ -6,6 +6,7 @@ from fastapi import HTTPException, status
 from supabase import Client
 
 from app.models.rating import RatingResponse
+from app.repositories import attendance as attendance_repo
 from app.repositories import profile as profile_repo
 from app.repositories import rating as rating_repo
 from app.repositories import user as user_repo
@@ -28,6 +29,13 @@ def rate_host(db: Client, rater_id: str, host_id: str, score: Decimal) -> Rating
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Target user has never hosted an event. Only hosts can be rated"
+        )
+
+    # Only allow rating if the rater attended at least one ended event by this host
+    if not attendance_repo.has_attended_ended_event_by_host(db, rater_id, host_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only rate a host after attending one of their ended events"
         )
 
     # Upsert the rating

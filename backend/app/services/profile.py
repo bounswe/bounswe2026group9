@@ -5,6 +5,7 @@ from supabase import Client
 
 from app.models.profile import HostProfileResponse, ProfileUpdateRequest
 from app.models.user import UserResponse
+from app.repositories import attendance as attendance_repo
 from app.repositories import event as event_repo
 from app.repositories import profile as profile_repo
 from app.repositories import rating as rating_repo
@@ -62,6 +63,12 @@ def get_host_profile(db: Client, target_user_id: str, current_user_id: str | Non
     if user.get("phone_visibility") is True:
         phone_number = user.get("phone_number")
 
+    can_rate = (
+        current_user_id is not None
+        and not is_owner
+        and attendance_repo.has_attended_ended_event_by_host(db, current_user_id, target_user_id)
+    )
+
     return HostProfileResponse(
         id=user["id"],
         username=user["username"],
@@ -70,6 +77,7 @@ def get_host_profile(db: Client, target_user_id: str, current_user_id: str | Non
         average_rating=rating_stats["average"],
         hosted_events_count=len(items),
         hosted_events=items,
+        can_rate=can_rate,
     )
 
 

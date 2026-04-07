@@ -156,36 +156,44 @@ private fun ProfileContent(
                     Text("No ratings yet", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
 
-                // Rate this host (auth only, not own profile)
+                // Rate this host (auth only, not own profile, only after attending an ended event)
                 if (isAuthenticated && !isOwnProfile) {
                     Spacer(Modifier.height(12.dp))
-                    Text("Rate this host", fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                    Spacer(Modifier.height(4.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        repeat(5) { i ->
-                            IconButton(
-                                onClick = { onRatingChange((i + 1).toDouble()) },
-                                modifier = Modifier.size(36.dp)
+                    if (profile.can_rate) {
+                        Text("Rate this host", fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                        Spacer(Modifier.height(4.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            repeat(5) { i ->
+                                IconButton(
+                                    onClick = { onRatingChange((i + 1).toDouble()) },
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Star,
+                                        contentDescription = "Rate ${i + 1}",
+                                        tint = if (i < uiState.ratingScore.toInt()) Color(0xFFFFC107) else Color(0xFF9E9E9E),
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Button(
+                                onClick = onSubmitRating,
+                                enabled = !uiState.ratingSubmitting
                             ) {
-                                Icon(
-                                    Icons.Default.Star,
-                                    contentDescription = "Rate ${i + 1}",
-                                    tint = if (i < uiState.ratingScore.toInt()) Color(0xFFFFC107) else Color(0xFF9E9E9E),
-                                    modifier = Modifier.size(24.dp)
-                                )
+                                if (uiState.ratingSubmitting) {
+                                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                } else {
+                                    Text(if (uiState.ratingSuccess) "Updated" else "Submit", fontSize = 13.sp)
+                                }
                             }
                         }
-                        Spacer(Modifier.width(8.dp))
-                        Button(
-                            onClick = onSubmitRating,
-                            enabled = !uiState.ratingSubmitting
-                        ) {
-                            if (uiState.ratingSubmitting) {
-                                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                            } else {
-                                Text(if (uiState.ratingSuccess) "Updated" else "Submit", fontSize = 13.sp)
-                            }
-                        }
+                    } else {
+                        Text(
+                            "Attend and complete an event by this host to rate them.",
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }

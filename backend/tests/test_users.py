@@ -31,20 +31,43 @@ def test_user_profiles_and_ratings(client, db):
     assert res.status_code == 400
     assert "never hosted" in res.json()["detail"].lower()
 
-    # Make host an actual host so they can be rated
-    db.table("events").insert({
+    # Make host an actual host by inserting an ended event
+    event_res = db.table("events").insert({
         "host_id": host_id,
         "title": "Test host event",
         "description": "desc",
-        "start_datetime": "2026-05-01T10:00:00Z",
-        "end_datetime": "2026-05-01T12:00:00Z",
+        "start_datetime": "2025-01-01T10:00:00Z",
+        "end_datetime": "2025-01-01T12:00:00Z",
         "visibility": "public",
-        "status": "published",
+        "status": "ended",
     }).execute()
+    event_id = event_res.data[0]["id"]
 
     # Host rating fails (self)
     res = client.post(f"/users/{host_id}/ratings", headers={"Authorization": f"Bearer {host_token}"}, json={"score": 5.0})
     assert res.status_code == 400
+
+    # Rating fails when rater has not attended any ended event by this host
+    res = client.post(f"/users/{host_id}/ratings", headers={"Authorization": f"Bearer {r_token}"}, json={"score": 4.0})
+    assert res.status_code == 403
+    assert "attend" in res.json()["detail"].lower()
+
+    # Also: can_rate should be False before attending
+    res = client.get(f"/users/{host_id}/profile", headers={"Authorization": f"Bearer {r_token}"})
+    assert res.status_code == 200
+    assert res.json()["can_rate"] is False
+
+    # Rater attends the ended event
+    db.table("attendances").insert({
+        "user_id": rater_id,
+        "event_id": event_id,
+        "status": "going",
+    }).execute()
+
+    # Now can_rate should be True
+    res = client.get(f"/users/{host_id}/profile", headers={"Authorization": f"Bearer {r_token}"})
+    assert res.status_code == 200
+    assert res.json()["can_rate"] is True
 
     # User rates 4.0
     res = client.post(f"/users/{host_id}/ratings", headers={"Authorization": f"Bearer {r_token}"}, json={"score": 4.0})
@@ -56,7 +79,7 @@ def test_user_profiles_and_ratings(client, db):
     assert res.status_code == 200
     assert float(res.json()["score"]) == 5.0
 
-    # Check Host profile
+    # Check Host profile average
     res = client.get(f"/users/{host_id}/profile")
     assert res.status_code == 200
     assert res.json()["average_rating"] == 5.0

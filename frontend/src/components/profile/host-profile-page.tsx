@@ -463,10 +463,10 @@ export function HostProfilePage() {
                     This is how your public host profile appears to other users. People can browse
                     your hosted events and rate their hosting experience here.
                   </p>
-                ) : isAuthenticated ? (
+                ) : isAuthenticated && profile.can_rate ? (
                   <>
                     <p className="mt-3 text-sm leading-6 text-brand-mid">
-                      Rate this host based on their hosted events. You can update your score later.
+                      Rate this host based on your experience. You can update your score later.
                     </p>
                     <div className="mt-5 rounded-[22px] bg-brand-bg/75 p-4">
                       <RatingStars
@@ -503,6 +503,10 @@ export function HostProfilePage() {
                       {isSubmittingRating ? "Saving..." : "Submit Rating"}
                     </Button>
                   </>
+                ) : isAuthenticated ? (
+                  <p className="mt-3 text-sm leading-6 text-brand-mid">
+                    You can rate this host after attending one of their events that has ended.
+                  </p>
                 ) : (
                   <>
                     <p className="mt-3 text-sm leading-6 text-brand-mid">
