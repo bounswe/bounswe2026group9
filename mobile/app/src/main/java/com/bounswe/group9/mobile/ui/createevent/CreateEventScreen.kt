@@ -116,7 +116,12 @@ fun CreateEventScreen(
 
     val imagePickerLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetMultipleContents()
-    ) { uris: List<Uri> -> uris.forEach { viewModel.addImageUri(it) } }
+    ) { uris: List<Uri> ->
+        if (uris.isNotEmpty()) {
+            uris.forEach { viewModel.addImageUri(it) }
+            viewModel.uploadImages(context)
+        }
+    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
@@ -929,45 +934,7 @@ private fun MediaStep(
                 }
             }
 
-            // Upload button if URIs selected
-            if (uiState.selectedImageUris.isNotEmpty()) {
-                Spacer(Modifier.height(10.dp))
-                Button(
-                    onClick = { viewModel.uploadImages(context) },
-                    enabled = !uiState.isUploadingImages,
-                    colors = ButtonDefaults.buttonColors(containerColor = BrandDark),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Upload ${uiState.selectedImageUris.size} selected image${if (uiState.selectedImageUris.size == 1) "" else "s"}")
-                }
-            }
-
             uiState.imageUploadError?.let { Spacer(Modifier.height(6.dp)); Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
-        }
-
-        // Pending images (selected but not yet uploaded)
-        if (uiState.selectedImageUris.isNotEmpty()) {
-            StepCard {
-                Text("Selected for upload", style = MaterialTheme.typography.labelMedium, color = Color(0xFF78716C))
-                Spacer(Modifier.height(8.dp))
-                Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    uiState.selectedImageUris.forEach { uri ->
-                        Box {
-                            AsyncImage(
-                                model = uri, contentDescription = null,
-                                modifier = Modifier.size(80.dp).clip(RoundedCornerShape(8.dp)),
-                                contentScale = ContentScale.Crop
-                            )
-                            IconButton(
-                                onClick = { viewModel.removeImageUri(uri) },
-                                modifier = Modifier.align(Alignment.TopEnd).size(24.dp).background(Color.Black.copy(0.5f), CircleShape)
-                            ) {
-                                Icon(Icons.Default.Close, null, modifier = Modifier.size(12.dp), tint = Color.White)
-                            }
-                        }
-                    }
-                }
-            }
         }
 
         // Already uploaded images

@@ -7,6 +7,7 @@ package com.bounswe.group9.mobile.data.remote
 data class EventDetailDto(
     val id: String,
     val host_id: String,
+    val host_username: String? = null,
     val title: String,
     val description: String,
     val start_datetime: String,
@@ -68,5 +69,6 @@ data class EventLimitedDto(
     val is_age_restricted: Boolean,
     val status: String,
     val is_bookmarked: Boolean?,
+    val access_request_status: String? = null,  // "pending" | "approved" | "rejected" | null
     val categories: List<CategoryDto>
 )

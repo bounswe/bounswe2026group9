@@ -17,6 +17,9 @@ import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -41,8 +44,16 @@ fun ProfileScreen(
     val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Init / refresh when token changes
+    // Init when token/credentials change (login/logout)
     LaunchedEffect(token) { viewModel.setToken(token) }
+
+    // Refresh every time this screen becomes the active destination (e.g. returning from event detail)
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            viewModel.refresh()
+        }
+    }
 
     // Show success toast
     LaunchedEffect(uiState.successMessage) {
@@ -136,9 +147,34 @@ fun ProfileScreen(
                 }
             }
 
+            // ── Stats Row ─────────────────────────────────────────────────
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    StatCard(
+                        value = uiState.hostedEventsCount.toString(),
+                        label = "EVENTS",
+                        modifier = Modifier.weight(1f)
+                    )
+                    StatCard(
+                        value = uiState.averageRating?.let { "%.1f".format(it) } ?: "New",
+                        label = "AVG RATING",
+                        modifier = Modifier.weight(1f)
+                    )
+                    StatCard(
+                        value = uiState.upcomingEventsCount.toString(),
+                        label = "UPCOMING",
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+
             // ── Edit Profile Card ─────────────────────────────────────────
             item {
-                Spacer(Modifier.height(16.dp))
                 SectionLabel("EDIT PROFILE")
                 Card(
                     modifier = Modifier
@@ -355,6 +391,38 @@ fun ProfileScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun StatCard(value: String, label: String, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 14.dp, horizontal = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = value,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = label,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.5.sp,
+                color = MaterialTheme.colorScheme.tertiary
+            )
         }
     }
 }

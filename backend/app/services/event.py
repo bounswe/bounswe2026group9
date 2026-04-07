@@ -204,6 +204,7 @@ def _build_detail_response(
     bookmark_count: int = 0,
     access_request_status: str | None = None,
     attendees: list[dict] | None = None,
+    host_username: str = "",
 ) -> EventDetailResponse:
     actual_going = going_count if going_count is not None else event["attendee_count"]
     is_full = None
@@ -213,6 +214,7 @@ def _build_detail_response(
     return EventDetailResponse(
         id=event["id"],
         host_id=event["host_id"],
+        host_username=host_username,
         title=event["title"],
         description=event["description"],
         start_datetime=event["start_datetime"],
@@ -357,6 +359,9 @@ def get_event_detail(
         for attendee_id in attendee_ids
     ]
 
+    host = user_repo.get_user_by_id(db, str(event["host_id"]))
+    host_username = host["username"] if host else ""
+
     return _build_detail_response(
         event, locations, categories, images, venue_metadata, equipment,
         is_bookmarked=is_bookmarked,
@@ -365,6 +370,7 @@ def get_event_detail(
         bookmark_count=bookmark_count,
         access_request_status=access_request_status,
         attendees=attendees,
+        host_username=host_username,
     )
 
 

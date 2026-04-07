@@ -65,8 +65,21 @@ class ProfileViewModel : ViewModel() {
             _uiState.value = _uiState.value.copy(isLoadingHostedEvents = true)
             repository.getHostProfile(token, userId).fold(
                 onSuccess = { profile ->
+                    val now = System.currentTimeMillis()
+                    val upcomingCount = profile.hosted_events.count { event ->
+                        (event.status == "published" || event.status == "updated") &&
+                            try {
+                                val sdf = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US)
+                                sdf.isLenient = true
+                                val startMs = sdf.parse(event.start_datetime.take(19))?.time ?: 0L
+                                startMs > now
+                            } catch (_: Exception) { false }
+                    }
                     _uiState.value = _uiState.value.copy(
                         hostedEvents = profile.hosted_events,
+                        hostedEventsCount = profile.hosted_events_count,
+                        averageRating = profile.average_rating,
+                        upcomingEventsCount = upcomingCount,
                         isLoadingHostedEvents = false
                     )
                 },
@@ -167,6 +180,12 @@ class ProfileViewModel : ViewModel() {
         val state = _uiState.value
         if (state.isLoadingMoreBookmarks || state.bookmarkPage >= state.bookmarkTotalPages) return
         loadBookmarks(page = state.bookmarkPage + 1, reset = false)
+    }
+
+    fun refresh() {
+        if (currentToken == null || currentUserId == null) return
+        loadHostedEvents()
+        loadBookmarks(page = 1, reset = true)
     }
 
     fun dismissSuccess() {

@@ -117,6 +117,7 @@ class EventUpdateRequest(BaseModel):
 class EventDetailResponse(BaseModel):
     id: UUID
     host_id: UUID
+    host_username: str = ""
     title: str
     description: str
     start_datetime: datetime

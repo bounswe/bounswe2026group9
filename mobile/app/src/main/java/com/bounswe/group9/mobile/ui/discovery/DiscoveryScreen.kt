@@ -136,7 +136,9 @@ fun DiscoveryScreen(
                     if (isMapView) {
                         EventMapView(
                             events = uiState.displayedEvents,
-                            onEventClick = onEventClick
+                            onEventClick = onEventClick,
+                            onBookmarkToggle = { eventId -> viewModel.toggleBookmark(eventId) },
+                            token = token
                         )
                     } else {
                         LazyColumn(

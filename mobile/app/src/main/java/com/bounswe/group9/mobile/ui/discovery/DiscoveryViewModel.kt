@@ -64,6 +64,31 @@ class DiscoveryViewModel(
 
     fun refresh() = loadEvents(reset = true)
 
+    fun toggleBookmark(eventId: String) {
+        val t = token ?: return
+        val events = _uiState.value.events
+        val event = events.find { it.id == eventId } ?: return
+        val isBookmarked = event.is_bookmarked == true
+
+        // Optimistic update
+        _uiState.value = _uiState.value.copy(
+            events = events.map { if (it.id == eventId) it.copy(is_bookmarked = !isBookmarked) else it }
+        )
+
+        viewModelScope.launch {
+            val result = if (isBookmarked) repository.removeBookmark(t, eventId)
+                         else repository.addBookmark(t, eventId)
+            result.onFailure {
+                // Rollback on error
+                _uiState.value = _uiState.value.copy(
+                    events = _uiState.value.events.map {
+                        if (it.id == eventId) it.copy(is_bookmarked = isBookmarked) else it
+                    }
+                )
+            }
+        }
+    }
+
     fun onBookmarkedOnlyToggle() {
         val current = _uiState.value.bookmarkedOnly
         _uiState.value = _uiState.value.copy(bookmarkedOnly = !current, goingOnly = false)

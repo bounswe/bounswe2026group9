@@ -48,6 +48,16 @@ class AuthViewModel(
     fun onDateOfBirthChange(v: String) { _uiState.value = _uiState.value.copy(dateOfBirth = v) }
 
     fun login() {
+        val s = _uiState.value
+        val validationError = when {
+            s.email.isBlank()    -> "Email is required."
+            s.password.isBlank() -> "Password is required."
+            else -> null
+        }
+        if (validationError != null) {
+            _uiState.value = s.copy(errorMessage = validationError)
+            return
+        }
         _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
         viewModelScope.launch {
             val result = repository.login(
@@ -73,6 +83,22 @@ class AuthViewModel(
     }
 
     fun register() {
+        val s = _uiState.value
+        val validationError = when {
+            s.username.isBlank()     -> "Username is required."
+            s.username.length < 3    -> "Username must be at least 3 characters."
+            s.email.isBlank()        -> "Email is required."
+            s.password.isBlank()     -> "Password is required."
+            s.password.length < 8    -> "Password must be at least 8 characters."
+            s.dateOfBirth.isBlank()  -> "Date of birth is required."
+            !Regex("""\d{4}-\d{2}-\d{2}""").matches(s.dateOfBirth) ->
+                "Date of birth must be in YYYY-MM-DD format."
+            else -> null
+        }
+        if (validationError != null) {
+            _uiState.value = s.copy(errorMessage = validationError)
+            return
+        }
         _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
         viewModelScope.launch {
             val result = repository.register(
