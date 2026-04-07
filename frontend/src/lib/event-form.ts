@@ -481,7 +481,7 @@ export function validateStep(
     }
 
     if (start && start <= new Date()) {
-      errors.startDateTime = "Start time needs to be in the future.";
+      errors.startDateTime = "Start time cannot be in the past.";
     }
 
     if (start && end && end <= start) {
