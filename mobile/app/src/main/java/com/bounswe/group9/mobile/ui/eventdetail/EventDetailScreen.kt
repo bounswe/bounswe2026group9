@@ -705,7 +705,10 @@ private fun CommentSection(
             CommentItem(
                 comment = comment,
                 canDelete = currentUserId == comment.user.id || currentUserId == hostId,
-                onDelete = { onDelete(comment.id) }
+                onDelete = { onDelete(comment.id) },
+                currentUserId = currentUserId,
+                hostId = hostId,
+                onDeleteReply = { onDelete(it) }
             )
             Spacer(Modifier.height(8.dp))
         }
@@ -726,7 +729,10 @@ private fun CommentSection(
 private fun CommentItem(
     comment: com.bounswe.group9.mobile.data.remote.CommentDto,
     canDelete: Boolean,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    currentUserId: String? = null,
+    hostId: String? = null,
+    onDeleteReply: (String) -> Unit = {}
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -754,6 +760,45 @@ private fun CommentItem(
             }
             Spacer(Modifier.height(4.dp))
             Text(comment.text, style = MaterialTheme.typography.bodyMedium)
+
+            if (comment.replies.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                comment.replies.forEach { reply ->
+                    Row(Modifier.fillMaxWidth()) {
+                        Spacer(Modifier.width(12.dp))
+                        Card(
+                            modifier = Modifier.weight(1f),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                        ) {
+                            Column(Modifier.padding(10.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(reply.user.username, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            formatCommentTime(reply.created_at),
+                                            fontSize = 10.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        val canDeleteReply = currentUserId == reply.user.id || currentUserId == hostId
+                                        if (canDeleteReply) {
+                                            IconButton(onClick = { onDeleteReply(reply.id) }, modifier = Modifier.size(24.dp)) {
+                                                Icon(Icons.Default.Close, contentDescription = "Delete reply", modifier = Modifier.size(12.dp))
+                                            }
+                                        }
+                                    }
+                                }
+                                Spacer(Modifier.height(2.dp))
+                                Text(reply.text, style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(4.dp))
+                }
+            }
         }
     }
 }

@@ -192,8 +192,11 @@ class EventDetailViewModel(
         viewModelScope.launch {
             repository.deleteComment(token, eventId, commentId).fold(
                 onSuccess = {
+                    val updated = _uiState.value.comments
+                        .filter { it.id != commentId }
+                        .map { it.copy(replies = it.replies.filter { r -> r.id != commentId }) }
                     _uiState.value = _uiState.value.copy(
-                        comments = _uiState.value.comments.filter { it.id != commentId },
+                        comments = updated,
                         commentsTotal = (_uiState.value.commentsTotal - 1).coerceAtLeast(0)
                     )
                 },
