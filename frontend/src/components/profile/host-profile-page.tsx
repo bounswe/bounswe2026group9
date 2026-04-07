@@ -77,7 +77,7 @@ function RatingStars({
             onClick={() => onSelect?.(value)}
             className={cn(
               "rounded-md p-1.5 transition-colors",
-              onSelect && !disabled && "hover:bg-brand-mid-alpha/60",
+              onSelect && !disabled && "cursor-pointer hover:bg-brand-mid-alpha/60",
               disabled && "cursor-default",
             )}
             aria-label={`Rate ${value} stars`}
@@ -382,7 +382,7 @@ export function HostProfilePage() {
                       type="button"
                       onClick={() => setActiveTab(tab.key)}
                       className={cn(
-                        "rounded-[18px] px-5 py-3 text-sm font-semibold transition-colors",
+                        "rounded-[18px] px-5 py-3 text-sm font-semibold transition-colors cursor-pointer",
                         activeTab === tab.key
                           ? "bg-brand-bg text-brand-dark shadow-[0_6px_20px_-16px_rgba(73,54,40,0.55)]"
                           : "text-brand-mid hover:bg-brand-bg/70 hover:text-brand-dark",

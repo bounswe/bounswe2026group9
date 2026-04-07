@@ -111,7 +111,7 @@ function PrivacyToggle({
         aria-checked={isEnabled}
         onClick={() => onChange(isEnabled ? "private" : "public")}
         className={cn(
-          "relative inline-flex h-8 w-[58px] shrink-0 rounded-full border transition-colors",
+          "relative inline-flex h-8 w-[58px] shrink-0 rounded-full border transition-colors cursor-pointer",
           isEnabled ? "border-brand-mid bg-brand-mid" : "border-brand-mid/20 bg-brand-bg",
         )}
       >
@@ -688,7 +688,7 @@ export function MyProfilePage() {
                       type="button"
                       onClick={() => setActiveSection(section.key)}
                       className={cn(
-                        "flex min-w-[190px] items-center gap-3 rounded-[20px] px-4 py-3 text-left transition-colors",
+                        "flex min-w-[190px] items-center gap-3 rounded-[20px] px-4 py-3 text-left transition-colors cursor-pointer",
                         isActive
                           ? "bg-brand-dark text-white shadow-[0_14px_26px_-20px_rgba(73,54,40,0.8)]"
                           : "text-brand-dark hover:bg-brand-bg",
@@ -990,7 +990,7 @@ export function MyProfilePage() {
                         type="button"
                         onClick={() => setEventsTab(tab.key)}
                         className={cn(
-                          "inline-flex items-center gap-2 border-b-[3px] px-6 py-3 text-sm transition-colors",
+                          "inline-flex items-center gap-2 border-b-[3px] px-6 py-3 text-sm transition-colors cursor-pointer",
                           eventsTab === tab.key
                             ? "border-brand-dark font-bold text-brand-dark"
                             : "border-transparent font-medium text-brand-mid hover:text-brand-dark",

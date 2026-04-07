@@ -217,7 +217,7 @@ function PopupBody({
                     <button
                       onClick={() => { void handleRequestAccess(); }}
                       disabled={accessStatus === "loading"}
-                      className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-brand-dark px-3 py-1.5 text-xs font-bold text-white transition-all duration-150 hover:bg-brand-dark/85 hover:shadow-md active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-60"
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-brand-dark px-3 py-1.5 text-xs font-bold text-white transition-all duration-150 hover:bg-brand-dark/85 hover:shadow-md cursor-pointer active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <Lock className="size-3.5" />
                       {accessStatus === "loading" ? "Sending…" : accessStatus === "error" ? "Try Again" : "Request Access"}

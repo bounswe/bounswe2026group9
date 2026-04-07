@@ -394,7 +394,7 @@ function LimitedView({
               <button
                 onClick={() => { void handleRequestAccess(); }}
                 disabled={accessStatus === "loading"}
-                className="w-full flex items-center justify-center gap-2 rounded-lg bg-brand-dark px-5 py-3 text-sm font-bold text-white transition-all hover:bg-brand-dark/85 hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center gap-2 rounded-lg bg-brand-dark px-5 py-3 text-sm font-bold text-white transition-all hover:bg-brand-dark/85 hover:-translate-y-0.5 hover:shadow-lg cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {accessStatus === "loading" ? (
                   <Loader2 className="size-4 animate-spin" />
@@ -637,7 +637,7 @@ function FullView({
       <div className="max-w-screen-xl mx-auto">
         <Link
           href="/"
-          className="inline-flex items-center gap-1.5 px-10 py-4 text-sm font-bold text-brand-mid hover:text-brand-dark transition-colors"
+          className="inline-flex items-center gap-1.5 px-4 py-4 sm:px-6 lg:px-10 text-sm font-bold text-brand-mid hover:text-brand-dark transition-colors"
         >
           <ArrowLeft className="size-4" />
           Back to Discovery
@@ -647,12 +647,12 @@ function FullView({
       {/* Main content */}
       <div
         className={cn(
-          "max-w-screen-xl mx-auto px-10 pb-16 flex gap-8 h-[calc(100vh-120px)]",
+          "max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-10 pb-16 flex gap-8 lg:h-[calc(100vh-120px)] overflow-x-hidden",
           isCancelled && "opacity-70",
         )}
       >
         {/* ── Left column ─────────────────────────────────────────────────── */}
-        <div className="relative flex-[0_0_65%] min-w-0">
+        <div className="relative w-full min-w-0 lg:flex-[0_0_65%]">
           {/* Scroll indicator track */}
           <div
             ref={leftTrackRef}
@@ -665,7 +665,7 @@ function FullView({
               style={{ top: "var(--thumb-top, 0%)", height: "var(--thumb-height, 20%)" }}
             />
           </div>
-        <div ref={leftColRef} className="h-full overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div ref={leftColRef} className="lg:h-full overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {/* Carousel */}
           <div className="mb-6">
             <ImageCarousel images={event.images ?? []} title={event.title} />
@@ -674,7 +674,7 @@ function FullView({
           {/* Title + badges */}
           <div className="mb-4">
             <div className="flex flex-wrap items-center gap-3 mb-2">
-              <h1 className="font-heading text-brand-dark text-[32px] font-bold leading-tight">
+              <h1 className="font-heading text-brand-dark text-[24px] sm:text-[28px] lg:text-[32px] font-bold leading-tight">
                 {event.title}
               </h1>
               {event.visibility === "private" && <StatusBadge variant="private" />}
@@ -726,7 +726,7 @@ function FullView({
             <h3 className="font-heading text-brand-dark text-lg font-semibold mb-3">
               About this event
             </h3>
-            <p className="text-[15px] leading-[1.7] text-brand-dark whitespace-pre-wrap">
+            <p className="text-[15px] leading-[1.7] text-brand-dark whitespace-pre-wrap break-words">
               {event.description}
             </p>
           </section>
@@ -763,7 +763,7 @@ function FullView({
               <h3 className="font-heading text-brand-dark text-lg font-semibold mb-3">
                 Venue details
               </h3>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {event.venue_metadata.price && (
                   <div className="flex items-center gap-2 text-sm text-brand-dark">
                     <span className="text-base">🎟️</span>
@@ -867,7 +867,7 @@ function FullView({
                 <button
                   onClick={() => router.push(`/edit-event/${event.id}`)}
                   disabled={isCancelled || isEnded}
-                  className="w-full flex items-center justify-center gap-2 rounded-[10px] border-2 border-brand-dark py-3 text-[15px] font-bold text-brand-dark transition-colors hover:bg-brand-dark/10 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="w-full flex items-center justify-center gap-2 rounded-[10px] border-2 border-brand-dark py-3 text-[15px] font-bold text-brand-dark transition-colors hover:bg-brand-dark/10 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <Edit className="size-[18px]" />
                   Edit Event
@@ -875,7 +875,7 @@ function FullView({
                 {isActive && (
                   <button
                     onClick={() => setShowCancelDialog(true)}
-                    className="w-full flex items-center justify-center gap-2 rounded-[10px] border-2 border-danger py-3 text-[15px] font-bold text-danger transition-colors hover:bg-danger/8"
+                    className="w-full flex items-center justify-center gap-2 rounded-[10px] border-2 border-danger py-3 text-[15px] font-bold text-danger transition-colors hover:bg-danger/8 cursor-pointer"
                   >
                     <XCircle className="size-[18px]" />
                     Cancel Event
@@ -971,7 +971,7 @@ function FullView({
               <button
                 onClick={() => { void handleCreateInvite(); }}
                 disabled={inviteLoading || !isActive}
-                className="w-full flex items-center justify-center gap-2 rounded-[10px] border-2 border-brand-dark py-3 text-[15px] font-bold text-brand-dark transition-colors hover:bg-brand-dark/10 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center gap-2 rounded-[10px] border-2 border-brand-dark py-3 text-[15px] font-bold text-brand-dark transition-colors hover:bg-brand-dark/10 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {inviteLoading ? (
                   <Loader2 className="size-[18px] animate-spin" />
@@ -1062,14 +1062,14 @@ function FullView({
                         <button
                           onClick={() => { void handleAccessRequestAction(req.id, "approved"); }}
                           disabled={requestActionLoading === req.id}
-                          className="rounded-md bg-green-600 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-green-700 disabled:opacity-50 transition-colors"
+                          className="rounded-md bg-green-600 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-green-700 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
                           {requestActionLoading === req.id ? "…" : "Approve"}
                         </button>
                         <button
                           onClick={() => { void handleAccessRequestAction(req.id, "rejected"); }}
                           disabled={requestActionLoading === req.id}
-                          className="rounded-md bg-red-500 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-red-600 disabled:opacity-50 transition-colors"
+                          className="rounded-md bg-red-500 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-red-600 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
                           Reject
                         </button>
