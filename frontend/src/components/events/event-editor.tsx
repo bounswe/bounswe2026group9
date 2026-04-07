@@ -923,7 +923,7 @@ export function EventEditor({ eventId, mode }: EventEditorProps) {
       setFeedback({ message: "Event published successfully.", tone: "success" });
 
       if (mode === "create") {
-        router.replace(getEditEventPagePath(publishedEvent.id));
+        router.replace(`/event/${publishedEvent.id}`);
       }
     } catch (error) {
       setFeedback({
