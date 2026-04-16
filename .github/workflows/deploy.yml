@@ -9,6 +9,13 @@ on:
       - "frontend/**"
       - ".github/workflows/deploy.yml"
   workflow_dispatch:
+    inputs:
+      target:
+        description: "Which app to deploy"
+        required: true
+        default: "both"
+        type: choice
+        options: [both, backend, frontend]
 
 env:
   RESOURCE_GROUP: sem-backend-rg
@@ -17,9 +24,58 @@ env:
   ACR_SERVER: semgroup9acr.azurecr.io
   BACKEND_APP: sem-backend
   FRONTEND_APP: sem-frontend
+  # Frontend calls backend via the stable custom domain
+  FRONTEND_API_BASE_URL: https://api.thesocialeventmapper.social
 
 jobs:
-  deploy:
+  # ── Detect which parts changed ──────────────────────────────────────────────
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.decide.outputs.backend }}
+      frontend: ${{ steps.decide.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect paths changed
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+            frontend:
+              - 'frontend/**'
+            workflow:
+              - '.github/workflows/deploy.yml'
+
+      - name: Decide which apps to deploy
+        id: decide
+        run: |
+          # Manual dispatch honors the "target" input
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            case "${{ github.event.inputs.target }}" in
+              both)     echo "backend=true"  >> "$GITHUB_OUTPUT"; echo "frontend=true" >> "$GITHUB_OUTPUT" ;;
+              backend)  echo "backend=true"  >> "$GITHUB_OUTPUT"; echo "frontend=false" >> "$GITHUB_OUTPUT" ;;
+              frontend) echo "backend=false" >> "$GITHUB_OUTPUT"; echo "frontend=true" >> "$GITHUB_OUTPUT" ;;
+            esac
+            exit 0
+          fi
+
+          # If the workflow itself changed, re-deploy both to validate new pipeline
+          if [ "${{ steps.filter.outputs.workflow }}" = "true" ]; then
+            echo "backend=true"  >> "$GITHUB_OUTPUT"
+            echo "frontend=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "backend=${{ steps.filter.outputs.backend }}"   >> "$GITHUB_OUTPUT"
+          echo "frontend=${{ steps.filter.outputs.frontend }}" >> "$GITHUB_OUTPUT"
+
+  # ── Backend: build + push + deploy ──────────────────────────────────────────
+  deploy-backend:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -41,8 +97,6 @@ jobs:
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
-      # ── Backend: build + push + deploy ──────────────────────────────────────
-
       - name: Build & push backend image
         uses: docker/build-push-action@v6
         with:
@@ -54,7 +108,7 @@ jobs:
             ${{ env.ACR_SERVER }}/sem-backend:latest
 
       - name: Deploy backend to ACA
-        id: backend
+        id: deploy
         run: |
           set -e
           IMAGE="${{ env.ACR_SERVER }}/sem-backend:${{ github.sha }}"
@@ -116,23 +170,46 @@ jobs:
 
           BACKEND_FQDN=$(az containerapp show -n ${{ env.BACKEND_APP }} -g ${{ env.RESOURCE_GROUP }} --query properties.configuration.ingress.fqdn -o tsv)
           echo "backend_fqdn=$BACKEND_FQDN" >> $GITHUB_OUTPUT
-          echo "Backend URL: https://$BACKEND_FQDN"
 
       - name: Backend health check
         run: |
-          URL="https://${{ steps.backend.outputs.backend_fqdn }}/health"
-          for i in $(seq 1 20); do
-            if curl --fail --silent "$URL"; then
-              echo ""
-              echo "Backend healthy"
-              exit 0
-            fi
-            sleep 10
+          # Prefer custom domain when bound, fall back to ACA FQDN
+          for URL in "https://api.thesocialeventmapper.social/health" "https://${{ steps.deploy.outputs.backend_fqdn }}/health"; do
+            for i in $(seq 1 20); do
+              if curl --fail --silent "$URL" >/dev/null; then
+                echo "Backend healthy at $URL"
+                exit 0
+              fi
+              sleep 10
+            done
           done
           echo "Backend health check failed"
           exit 1
 
-      # ── Frontend: build + push + deploy ─────────────────────────────────────
+  # ── Frontend: build + push + deploy ─────────────────────────────────────────
+  deploy-frontend:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Install containerapp extension
+        run: az extension add --name containerapp --upgrade --only-show-errors
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: ACR Docker login
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.ACR_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
 
       - name: Build & push frontend image
         uses: docker/build-push-action@v6
@@ -141,13 +218,13 @@ jobs:
           file: ./frontend/Dockerfile
           push: true
           build-args: |
-            NEXT_PUBLIC_API_BASE_URL=https://${{ steps.backend.outputs.backend_fqdn }}
+            NEXT_PUBLIC_API_BASE_URL=${{ env.FRONTEND_API_BASE_URL }}
           tags: |
             ${{ env.ACR_SERVER }}/sem-frontend:${{ github.sha }}
             ${{ env.ACR_SERVER }}/sem-frontend:latest
 
       - name: Deploy frontend to ACA
-        id: frontend
+        id: deploy
         run: |
           set -e
           IMAGE="${{ env.ACR_SERVER }}/sem-frontend:${{ github.sha }}"
@@ -179,23 +256,17 @@ jobs:
 
           FRONTEND_FQDN=$(az containerapp show -n ${{ env.FRONTEND_APP }} -g ${{ env.RESOURCE_GROUP }} --query properties.configuration.ingress.fqdn -o tsv)
           echo "frontend_fqdn=$FRONTEND_FQDN" >> $GITHUB_OUTPUT
-          echo "Frontend URL: https://$FRONTEND_FQDN"
 
       - name: Frontend health check
         run: |
-          URL="https://${{ steps.frontend.outputs.frontend_fqdn }}/login"
-          for i in $(seq 1 20); do
-            if curl --fail --silent "$URL" > /dev/null; then
-              echo "Frontend healthy"
-              exit 0
-            fi
-            sleep 10
+          for URL in "https://thesocialeventmapper.social/login" "https://${{ steps.deploy.outputs.frontend_fqdn }}/login"; do
+            for i in $(seq 1 20); do
+              if curl --fail --silent "$URL" >/dev/null; then
+                echo "Frontend healthy at $URL"
+                exit 0
+              fi
+              sleep 10
+            done
           done
           echo "Frontend health check failed"
           exit 1
-
-      - name: Deployment summary
-        run: |
-          echo "### Deployment URLs" >> $GITHUB_STEP_SUMMARY
-          echo "- Backend: https://${{ steps.backend.outputs.backend_fqdn }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Frontend: https://${{ steps.frontend.outputs.frontend_fqdn }}" >> $GITHUB_STEP_SUMMARY
