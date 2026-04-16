@@ -1,0 +1,155 @@
+name: Deploy Production
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "docker-compose.prod.yml"
+      - "deploy/**"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/sem:latest
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          build-args: |
+            NEXT_PUBLIC_API_BASE_URL=${{ secrets.BACKEND_URL }}
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/sem:frontend-latest
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare deployment bundle
+        run: |
+          mkdir -p .deploy/backend
+          cp docker-compose.prod.yml .deploy/docker-compose.prod.yml
+          cp deploy/nginx/ec2-public-ip.conf .deploy/ec2-public-ip.conf
+          cp deploy/nginx/ec2-https.conf .deploy/ec2-https.conf
+          cp deploy/ec2/redeploy.sh .deploy/redeploy.sh
+          cat > .deploy/backend/.env.production <<EOF
+          SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          ENVIRONMENT=production
+          FRONTEND_URL=${{ secrets.FRONTEND_URL }}
+          BACKEND_URL=${{ secrets.BACKEND_URL }}
+          CORS_ORIGINS=${{ secrets.CORS_ORIGINS }}
+          EOF
+          if [ -n "${{ secrets.GOOGLE_CLIENT_ID }}" ]; then echo "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}" >> .deploy/backend/.env.production; fi
+          if [ -n "${{ secrets.GOOGLE_CLIENT_SECRET }}" ]; then echo "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" >> .deploy/backend/.env.production; fi
+          if [ -n "${{ secrets.GOOGLE_REDIRECT_URI }}" ]; then echo "GOOGLE_REDIRECT_URI=${{ secrets.GOOGLE_REDIRECT_URI }}" >> .deploy/backend/.env.production; fi
+          if [ -n "${{ secrets.SMTP_HOST }}" ]; then echo "SMTP_HOST=${{ secrets.SMTP_HOST }}" >> .deploy/backend/.env.production; fi
+          if [ -n "${{ secrets.SMTP_PORT }}" ]; then echo "SMTP_PORT=${{ secrets.SMTP_PORT }}" >> .deploy/backend/.env.production; fi
+          if [ -n "${{ secrets.SMTP_USER }}" ]; then echo "SMTP_USER=${{ secrets.SMTP_USER }}" >> .deploy/backend/.env.production; fi
+          if [ -n "${{ secrets.SMTP_PASSWORD }}" ]; then echo "SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}" >> .deploy/backend/.env.production; fi
+          if [ -n "${{ secrets.SMTP_FROM_EMAIL }}" ]; then echo "SMTP_FROM_EMAIL=${{ secrets.SMTP_FROM_EMAIL }}" >> .deploy/backend/.env.production; fi
+          if [ -n "${{ secrets.SMTP_FROM_NAME }}" ]; then echo "SMTP_FROM_NAME=${{ secrets.SMTP_FROM_NAME }}" >> .deploy/backend/.env.production; fi
+
+      - uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: ".deploy/*"
+          target: "/home/${{ secrets.EC2_USERNAME }}/sem-backend"
+          strip_components: 1
+
+      - uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            cd /home/${{ secrets.EC2_USERNAME }}/sem-backend
+            echo "${{ secrets.DOCKERHUB_TOKEN }}" | sudo docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+            sudo mkdir -p /opt/sem-backend/backend
+            sudo cp docker-compose.prod.yml /opt/sem-backend/docker-compose.prod.yml
+            sudo cp backend/.env.production /opt/sem-backend/backend/.env.production
+            sudo cp redeploy.sh /opt/sem-backend/redeploy.sh
+            sudo chmod +x /opt/sem-backend/redeploy.sh
+            if sudo test -f /etc/letsencrypt/live/thesocialeventmapper.social/fullchain.pem; then
+              sudo cp ec2-https.conf /etc/nginx/sites-available/sem-backend
+            else
+              sudo cp ec2-public-ip.conf /etc/nginx/sites-available/sem-backend
+            fi
+            if [ ! -L /etc/nginx/sites-enabled/sem-backend ]; then
+              sudo ln -s /etc/nginx/sites-available/sem-backend /etc/nginx/sites-enabled/sem-backend
+            fi
+            sudo rm -f /etc/nginx/sites-enabled/default
+            sudo nginx -t
+            sudo systemctl reload nginx
+            sudo BACKEND_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/sem:latest FRONTEND_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/sem:frontend-latest docker compose -f /opt/sem-backend/docker-compose.prod.yml pull
+            sudo BACKEND_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/sem:latest FRONTEND_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/sem:frontend-latest docker compose -f /opt/sem-backend/docker-compose.prod.yml up -d
+            sleep 5
+            for i in $(seq 1 12); do
+              if curl --fail --silent http://127.0.0.1:8000/health; then
+                break
+              fi
+              if [ "$i" -eq 12 ]; then
+                exit 1
+              fi
+              sleep 5
+            done
+            for i in $(seq 1 12); do
+              if curl --fail --silent http://127.0.0.1:3000/login > /dev/null; then
+                break
+              fi
+              if [ "$i" -eq 12 ]; then
+                exit 1
+              fi
+              sleep 5
+            done
+            sudo docker image prune -f
+
+      - name: Verify public health endpoint
+        run: |
+          sleep 5
+          for i in $(seq 1 12); do
+            if curl --fail --silent ${{ secrets.BACKEND_URL }}/health; then
+              exit 0
+            fi
+            sleep 5
+          done
+          exit 1
+
+      - name: Verify public frontend endpoint
+        run: |
+          sleep 5
+          for i in $(seq 1 12); do
+            if curl --fail --silent ${{ secrets.FRONTEND_URL }}/login > /dev/null; then
+              exit 0
+            fi
+            sleep 5
+          done
+          exit 1
