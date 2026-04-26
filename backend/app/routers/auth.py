@@ -50,7 +50,7 @@ REFRESH_COOKIE_MAX_AGE = 30 * 24 * 60 * 60  # 30 days
 
 
 def _set_refresh_cookie(response: Response, token: str) -> None:
-    response.set_cookie(
+    kwargs: dict = dict(
         key=REFRESH_TOKEN_COOKIE,
         value=token,
         httponly=True,
@@ -59,10 +59,16 @@ def _set_refresh_cookie(response: Response, token: str) -> None:
         max_age=REFRESH_COOKIE_MAX_AGE,
         path="/",
     )
+    if settings.COOKIE_DOMAIN:
+        kwargs["domain"] = settings.COOKIE_DOMAIN
+    response.set_cookie(**kwargs)
 
 
 def _clear_refresh_cookie(response: Response) -> None:
-    response.delete_cookie(key=REFRESH_TOKEN_COOKIE, path="/")
+    kwargs: dict = dict(key=REFRESH_TOKEN_COOKIE, path="/")
+    if settings.COOKIE_DOMAIN:
+        kwargs["domain"] = settings.COOKIE_DOMAIN
+    response.delete_cookie(**kwargs)
 
 
 def _user_response(user: dict) -> UserResponse:

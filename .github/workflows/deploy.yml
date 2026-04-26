@@ -174,6 +174,7 @@ jobs:
                 "FRONTEND_URL=${{ secrets.FRONTEND_URL }}" \
                 "BACKEND_URL=${{ secrets.BACKEND_URL }}" \
                 "CORS_ORIGINS=${{ secrets.CORS_ORIGINS }}" \
+                "COOKIE_DOMAIN=.thesocialeventmapper.social" \
                 "GOOGLE_CLIENT_ID=secretref:google-client-id" \
                 "GOOGLE_CLIENT_SECRET=secretref:google-client-secret" \
                 "GOOGLE_REDIRECT_URI=secretref:google-redirect-uri" \
