@@ -113,7 +113,25 @@ jobs:
           set -e
           IMAGE="${{ env.ACR_SERVER }}/sem-backend:${{ github.sha }}"
           if az containerapp show -n ${{ env.BACKEND_APP }} -g ${{ env.RESOURCE_GROUP }} >/dev/null 2>&1; then
-            echo "Backend app exists — updating image..."
+            echo "Backend app exists — syncing secrets from GitHub Secrets..."
+            az containerapp secret set \
+              -n ${{ env.BACKEND_APP }} \
+              -g ${{ env.RESOURCE_GROUP }} \
+              --secrets \
+                supabase-url="${{ secrets.SUPABASE_URL }}" \
+                supabase-key="${{ secrets.SUPABASE_KEY }}" \
+                jwt-secret="${{ secrets.JWT_SECRET }}" \
+                google-client-id="${{ secrets.GOOGLE_CLIENT_ID }}" \
+                google-client-secret="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
+                google-redirect-uri="${{ secrets.GOOGLE_REDIRECT_URI }}" \
+                smtp-host="${{ secrets.SMTP_HOST }}" \
+                smtp-port="${{ secrets.SMTP_PORT }}" \
+                smtp-user="${{ secrets.SMTP_USER }}" \
+                smtp-password="${{ secrets.SMTP_PASSWORD }}" \
+                smtp-from-email="${{ secrets.SMTP_FROM_EMAIL }}" \
+                smtp-from-name="${{ secrets.SMTP_FROM_NAME }}" \
+              --output none
+            echo "Updating image..."
             az containerapp update \
               -n ${{ env.BACKEND_APP }} \
               -g ${{ env.RESOURCE_GROUP }} \
