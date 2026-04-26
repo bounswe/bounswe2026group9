@@ -1,9 +1,20 @@
 """Event service — business logic, validation, orchestration."""
 
+import math
 from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException, status
 from supabase import Client
+
+
+def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    """Great-circle distance in kilometres between two (lat, lng) points."""
+    r = 6371.0
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlam = math.radians(lng2 - lng1)
+    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlam / 2) ** 2
+    return 2 * r * math.asin(math.sqrt(a))
 
 from app.models.event import (
     EventCreateRequest,
@@ -580,15 +591,58 @@ def list_events(
     user_id: str | None = None,
     search: str | None = None,
     category_id: str | None = None,
-    temporal_filter: str | None = None,
+    quick_filter: str | None = None,
+    start_after: datetime | None = None,
+    end_before: datetime | None = None,
+    near_lat: float | None = None,
+    near_lng: float | None = None,
+    radius_km: float | None = None,
+    use_default_area: bool = False,
+    accessibility: dict[str, bool | None] | None = None,
+    sort: str | None = None,
     page: int = 1,
     page_size: int = 20,
 ) -> EventListResponse:
+    # Resolve default-area fallback when client opts in and didn't pass coords.
+    if use_default_area and near_lat is None and near_lng is None and user_id:
+        result = (
+            db.table("users")
+            .select("default_location_lat,default_location_lng")
+            .eq("id", user_id)
+            .execute()
+        )
+        row = result.data[0] if result.data else {}
+        if row.get("default_location_lat") is None or row.get("default_location_lng") is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="No default area set on profile",
+            )
+        near_lat = row["default_location_lat"]
+        near_lng = row["default_location_lng"]
+
+    has_location = near_lat is not None and near_lng is not None
+    if sort == "distance" and not has_location:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="sort=distance requires near_lat/near_lng or use_default_area",
+        )
+    if sort is None:
+        sort = "distance" if has_location else "start_time"
+
+    effective_radius_km = radius_km if radius_km is not None else (50.0 if has_location else None)
+
     events, total = event_repo.list_events(
         db,
         search=search,
         category_id=category_id,
-        temporal_filter=temporal_filter,
+        quick_filter=quick_filter,
+        start_after=start_after,
+        end_before=end_before,
+        near_lat=near_lat,
+        near_lng=near_lng,
+        radius_km=effective_radius_km,
+        accessibility=accessibility or {},
+        sort=sort,
         page=page,
         page_size=page_size,
     )
@@ -596,6 +650,36 @@ def list_events(
     total_pages = (total + page_size - 1) // page_size if total > 0 else 0
     if not events:
         return EventListResponse(items=[], total=total, page=page, page_size=page_size, total_pages=total_pages)
+
+    # For sort in {distance, category} the repo returned the full filtered set;
+    # rank in Python and slice to the requested page.
+    if sort in ("distance", "category"):
+        if sort == "distance":
+            full_event_ids = [e["id"] for e in events]
+            locations_by_event = event_repo.get_primary_locations_for_events(db, full_event_ids)
+
+            def _distance_key(ev: dict) -> tuple[float, str]:
+                loc = locations_by_event.get(ev["id"])
+                if not loc or loc.get("latitude") is None or loc.get("longitude") is None:
+                    return (float("inf"), ev["id"])
+                return (_haversine_km(near_lat, near_lng, loc["latitude"], loc["longitude"]), ev["id"])
+
+            events.sort(key=_distance_key)
+        else:  # category
+            full_event_ids = [e["id"] for e in events]
+            categories_by_event_full = event_repo.get_categories_for_events(db, full_event_ids)
+
+            def _category_key(ev: dict) -> tuple[str, str, str]:
+                cats = categories_by_event_full.get(ev["id"]) or []
+                primary = min((c.get("name", "") for c in cats), default="￿")
+                return (primary, ev["start_datetime"], ev["id"])
+
+            events.sort(key=_category_key)
+
+        offset = (page - 1) * page_size
+        events = events[offset:offset + page_size]
+        if not events:
+            return EventListResponse(items=[], total=total, page=page, page_size=page_size, total_pages=total_pages)
 
     event_ids = [e["id"] for e in events]
     locations_by_event = event_repo.get_primary_locations_for_events(db, event_ids)

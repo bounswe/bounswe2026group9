@@ -1,5 +1,6 @@
 """Event endpoints — HTTP layer only."""
 
+from datetime import datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, UploadFile, status
@@ -64,22 +65,103 @@ def _optional_user_id(authorization: str | None = Header(default=None)) -> str |
         ) from e
 
 
-@router.get("", response_model=EventListResponse)
+@router.get(
+    "",
+    response_model=EventListResponse,
+    summary="Discover events",
+    description=(
+        "Paginated event discovery with quick filters, custom time window, accessibility "
+        "filters, distance bounding box, and ranking by start time / distance / category. "
+        "When the client opts in via use_default_area, the authenticated user's stored "
+        "default location is used in place of explicit near_lat/near_lng."
+    ),
+)
 def list_events_endpoint(
     search: str | None = Query(default=None, max_length=200),
     category_id: UUID | None = Query(default=None),
-    temporal_filter: str | None = Query(default=None, pattern="^(upcoming|today|this_week)$"),
+    quick_filter: str | None = Query(
+        default=None,
+        pattern="^(now|today|weekend|upcoming|this_week|past)$",
+        description="Time-window quick filter. Mutually exclusive with start_after/end_before.",
+    ),
+    start_after: datetime | None = Query(
+        default=None,
+        description="Custom window: only events starting at or after this time.",
+    ),
+    end_before: datetime | None = Query(
+        default=None,
+        description="Custom window: only events ending at or before this time.",
+    ),
+    near_lat: float | None = Query(default=None, ge=-90, le=90),
+    near_lng: float | None = Query(default=None, ge=-180, le=180),
+    radius_km: float | None = Query(default=None, gt=0, le=500),
+    use_default_area: bool = Query(
+        default=False,
+        description="If true, use the authenticated user's stored default area. Ignored when near_lat/near_lng are provided.",
+    ),
+    wheelchair: bool | None = Query(default=None),
+    accessible_restroom: bool | None = Query(default=None),
+    elevator: bool | None = Query(default=None),
+    seating: bool | None = Query(default=None),
+    sign_language: bool | None = Query(default=None),
+    quiet_friendly: bool | None = Query(default=None),
+    sort: str | None = Query(
+        default=None,
+        pattern="^(start_time|distance|category)$",
+        description="Sort order. Defaults to distance when location is provided, otherwise start_time.",
+    ),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     user_id: str | None = Depends(_optional_user_id),
 ):
+    if quick_filter is not None and (start_after is not None or end_before is not None):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="quick_filter cannot be combined with start_after/end_before",
+        )
+    if start_after is not None and end_before is not None and start_after >= end_before:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="start_after must be earlier than end_before",
+        )
+    if (near_lat is None) != (near_lng is None):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="near_lat and near_lng must be provided together",
+        )
+    if radius_km is not None and near_lat is None and not use_default_area:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="radius_km requires near_lat/near_lng or use_default_area",
+        )
+    if use_default_area and user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="use_default_area requires authentication",
+        )
+
     db = get_supabase()
     return list_events_svc(
         db,
         user_id=user_id,
         search=search,
         category_id=str(category_id) if category_id else None,
-        temporal_filter=temporal_filter,
+        quick_filter=quick_filter,
+        start_after=start_after,
+        end_before=end_before,
+        near_lat=near_lat,
+        near_lng=near_lng,
+        radius_km=radius_km,
+        use_default_area=use_default_area,
+        accessibility={
+            "wheelchair_access": wheelchair,
+            "accessible_restroom": accessible_restroom,
+            "elevator": elevator,
+            "seating": seating,
+            "sign_language": sign_language,
+            "quiet_friendly": quiet_friendly,
+        },
+        sort=sort,
         page=page,
         page_size=page_size,
     )

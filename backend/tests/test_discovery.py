@@ -426,7 +426,7 @@ class TestListEventsTemporalFilter:
         cat_ids = _get_category_ids(1)
         future_event = _create_published_event(user["id"], cat_ids, title="Future Event", days_from_now=10)
 
-        resp = client.get("/events?temporal_filter=upcoming")
+        resp = client.get("/events?quick_filter=upcoming")
         assert resp.status_code == 200
         ids = [i["id"] for i in resp.json()["items"]]
         assert future_event["id"] in ids
@@ -435,7 +435,7 @@ class TestListEventsTemporalFilter:
         _cleanup_user(user["id"])
 
     def test_today_filter(self):
-        resp = client.get("/events?temporal_filter=today")
+        resp = client.get("/events?quick_filter=today")
         assert resp.status_code == 200
         data = resp.json()
         # All returned events must start today (UTC)
@@ -449,7 +449,7 @@ class TestListEventsTemporalFilter:
         cat_ids = _get_category_ids(1)
         event = _create_published_event(user["id"], cat_ids, title="This Week Event", days_from_now=3)
 
-        resp = client.get("/events?temporal_filter=this_week")
+        resp = client.get("/events?quick_filter=this_week")
         assert resp.status_code == 200
         data = resp.json()
         ids = [i["id"] for i in data["items"]]
@@ -463,7 +463,7 @@ class TestListEventsTemporalFilter:
         cat_ids = _get_category_ids(1)
         far_event = _create_published_event(user["id"], cat_ids, title="Far Future Event", days_from_now=30)
 
-        resp = client.get("/events?temporal_filter=this_week")
+        resp = client.get("/events?quick_filter=this_week")
         ids = [i["id"] for i in resp.json()["items"]]
         assert far_event["id"] not in ids
 
@@ -471,7 +471,7 @@ class TestListEventsTemporalFilter:
         _cleanup_user(user["id"])
 
     def test_invalid_temporal_filter_rejected(self):
-        resp = client.get("/events?temporal_filter=yesterday")
+        resp = client.get("/events?quick_filter=yesterday")
         assert resp.status_code == 422
 
 
@@ -571,7 +571,7 @@ class TestListEventsCombinedFilters:
         ev_near = _create_published_event(user["id"], cat_ids, title=f"SrchTmp{unique}", days_from_now=3)
         ev_far = _create_published_event(user["id"], cat_ids, title=f"SrchTmp{unique}", days_from_now=30)
 
-        resp = client.get(f"/events?search=SrchTmp{unique}&temporal_filter=this_week")
+        resp = client.get(f"/events?search=SrchTmp{unique}&quick_filter=this_week")
         ids = [i["id"] for i in resp.json()["items"]]
         assert ev_near["id"] in ids
         assert ev_far["id"] not in ids
@@ -592,7 +592,7 @@ class TestListEventsCombinedFilters:
         ev_wrong_cat = _create_published_event(user["id"], [cat_b], title=f"AllFilt{unique}", days_from_now=2)
         ev_far = _create_published_event(user["id"], [cat_a], title=f"AllFilt{unique}", days_from_now=20)
 
-        resp = client.get(f"/events?search=AllFilt{unique}&category_id={cat_a}&temporal_filter=this_week&page=1&page_size=10")
+        resp = client.get(f"/events?search=AllFilt{unique}&category_id={cat_a}&quick_filter=this_week&page=1&page_size=10")
         assert resp.status_code == 200
         ids = [i["id"] for i in resp.json()["items"]]
         assert ev_target["id"] in ids
@@ -601,4 +601,220 @@ class TestListEventsCombinedFilters:
 
         for e in (ev_target, ev_wrong_cat, ev_far):
             _cleanup_event(e["id"])
+        _cleanup_user(user["id"])
+
+
+class TestListEventsNewQuickFilters:
+    """Quick filters added in final-milestone discovery (now / past / weekend)."""
+
+    def test_past_filter_returns_ended_events(self):
+        """quick_filter=past returns events whose end_datetime has passed."""
+        user = _create_test_user("pastflt")
+        cat_ids = _get_category_ids(1)
+        # Direct DB insert to backdate end_datetime
+        from datetime import UTC, datetime, timedelta
+        result = db.table("events").insert({
+            "host_id": user["id"],
+            "title": "Past Filter Event",
+            "description": "ended",
+            "start_datetime": (datetime.now(UTC) - timedelta(days=2)).isoformat(),
+            "end_datetime": (datetime.now(UTC) - timedelta(hours=1)).isoformat(),
+            "visibility": "public",
+            "status": "ended",
+            "is_age_restricted": False,
+            "attendee_count": 0,
+        }).execute()
+        ev_id = result.data[0]["id"]
+        db.table("event_categories").insert({"event_id": ev_id, "category_id": cat_ids[0]}).execute()
+
+        resp = client.get("/events?quick_filter=past")
+        assert resp.status_code == 200
+        ids = [i["id"] for i in resp.json()["items"]]
+        assert ev_id in ids
+
+        # And the past event is NOT in default listing
+        resp_default = client.get("/events")
+        default_ids = [i["id"] for i in resp_default.json()["items"]]
+        assert ev_id not in default_ids
+
+        _cleanup_event(ev_id)
+        _cleanup_user(user["id"])
+
+    def test_now_filter_returns_currently_running(self):
+        """quick_filter=now returns events where start <= now <= end."""
+        user = _create_test_user("nowflt")
+        cat_ids = _get_category_ids(1)
+        from datetime import UTC, datetime, timedelta
+        # Currently running event
+        running = db.table("events").insert({
+            "host_id": user["id"],
+            "title": "Now Running",
+            "description": "running",
+            "start_datetime": (datetime.now(UTC) - timedelta(hours=1)).isoformat(),
+            "end_datetime": (datetime.now(UTC) + timedelta(hours=1)).isoformat(),
+            "visibility": "public",
+            "status": "published",
+            "is_age_restricted": False,
+            "attendee_count": 0,
+        }).execute().data[0]
+        db.table("event_categories").insert({"event_id": running["id"], "category_id": cat_ids[0]}).execute()
+        # Future event (should not appear under "now")
+        future = _create_published_event(user["id"], cat_ids, title="Future", days_from_now=3)
+
+        resp = client.get("/events?quick_filter=now")
+        assert resp.status_code == 200
+        ids = [i["id"] for i in resp.json()["items"]]
+        assert running["id"] in ids
+        assert future["id"] not in ids
+
+        _cleanup_event(running["id"])
+        _cleanup_event(future["id"])
+        _cleanup_user(user["id"])
+
+
+class TestListEventsCustomWindow:
+    """start_after / end_before custom time window."""
+
+    def test_quick_filter_mutex_with_custom_window(self):
+        resp = client.get("/events?quick_filter=today&start_after=2030-01-01T00:00:00Z")
+        assert resp.status_code == 422
+
+    def test_start_after_filters_earlier_events(self):
+        user = _create_test_user("after")
+        cat_ids = _get_category_ids(1)
+        ev_soon = _create_published_event(user["id"], cat_ids, title="Soon", days_from_now=1)
+        ev_far = _create_published_event(user["id"], cat_ids, title="Far", days_from_now=10)
+
+        cutoff = (datetime.now(UTC) + timedelta(days=5)).isoformat()
+        resp = client.get("/events", params={"start_after": cutoff})
+        assert resp.status_code == 200, resp.text
+        ids = [i["id"] for i in resp.json()["items"]]
+        assert ev_soon["id"] not in ids
+        assert ev_far["id"] in ids
+
+        _cleanup_event(ev_soon["id"])
+        _cleanup_event(ev_far["id"])
+        _cleanup_user(user["id"])
+
+    def test_start_after_must_be_before_end_before(self):
+        resp = client.get(
+            "/events?start_after=2030-12-31T00:00:00Z&end_before=2030-01-01T00:00:00Z"
+        )
+        assert resp.status_code == 422
+
+
+class TestListEventsAccessibility:
+    """Accessibility filtering against venue_metadata."""
+
+    def test_wheelchair_filter(self):
+        user = _create_test_user("acca11y")
+        cat_ids = _get_category_ids(1)
+        ev_with = _create_published_event(user["id"], cat_ids, title="A11y Yes", days_from_now=2)
+        ev_without = _create_published_event(user["id"], cat_ids, title="A11y No", days_from_now=2)
+        # Insert venue metadata with wheelchair=true on one event
+        db.table("venue_metadata").insert({
+            "event_id": ev_with["id"],
+            "wheelchair_access": True,
+            "accessible_restroom": False,
+            "elevator_available": False,
+            "seating_available": False,
+            "captions_support": False,
+            "quiet_friendly": False,
+        }).execute()
+
+        resp = client.get("/events?wheelchair=true")
+        ids = [i["id"] for i in resp.json()["items"]]
+        assert ev_with["id"] in ids
+        assert ev_without["id"] not in ids
+
+        _cleanup_event(ev_with["id"])
+        _cleanup_event(ev_without["id"])
+        _cleanup_user(user["id"])
+
+
+class TestListEventsLocation:
+    """near_lat/near_lng/radius_km bounding-box and distance sort."""
+
+    def test_near_lat_without_lng_rejected(self):
+        resp = client.get("/events?near_lat=41.0")
+        assert resp.status_code == 422
+
+    def test_radius_without_location_rejected(self):
+        resp = client.get("/events?radius_km=10")
+        assert resp.status_code == 422
+
+    def test_distance_sort_without_location_rejected(self):
+        resp = client.get("/events?sort=distance")
+        assert resp.status_code == 422
+
+    def test_bounding_box_filter(self):
+        user = _create_test_user("bbox")
+        cat_ids = _get_category_ids(1)
+        # Istanbul at (41.0, 29.0). _create_published_event uses these coords by default.
+        ev_near = _create_published_event(user["id"], cat_ids, title="Near", days_from_now=2)
+        # Override another event's location to a very distant place (Tokyo)
+        ev_far = _create_published_event(user["id"], cat_ids, title="Far", days_from_now=2)
+        db.table("event_locations").update({"latitude": 35.68, "longitude": 139.69}).eq("event_id", ev_far["id"]).execute()
+
+        resp = client.get("/events?near_lat=41.0&near_lng=29.0&radius_km=100")
+        ids = [i["id"] for i in resp.json()["items"]]
+        assert ev_near["id"] in ids
+        assert ev_far["id"] not in ids
+
+        _cleanup_event(ev_near["id"])
+        _cleanup_event(ev_far["id"])
+        _cleanup_user(user["id"])
+
+    def test_distance_sort_orders_closer_first(self):
+        user = _create_test_user("distsort")
+        cat_ids = _get_category_ids(1)
+        ev_close = _create_published_event(user["id"], cat_ids, title="Close", days_from_now=2)
+        ev_medium = _create_published_event(user["id"], cat_ids, title="Medium", days_from_now=2)
+        # Move medium event ~30km away (still inside default 50km radius)
+        db.table("event_locations").update({"latitude": 41.27, "longitude": 29.0}).eq("event_id", ev_medium["id"]).execute()
+
+        resp = client.get("/events?near_lat=41.0&near_lng=29.0&sort=distance")
+        ids = [i["id"] for i in resp.json()["items"]]
+        # close before medium
+        if ev_close["id"] in ids and ev_medium["id"] in ids:
+            assert ids.index(ev_close["id"]) < ids.index(ev_medium["id"])
+
+        _cleanup_event(ev_close["id"])
+        _cleanup_event(ev_medium["id"])
+        _cleanup_user(user["id"])
+
+
+class TestListEventsDefaultArea:
+    """use_default_area falls back to authenticated user's stored profile lat/lng."""
+
+    def test_default_area_requires_auth(self):
+        resp = client.get("/events?use_default_area=true")
+        assert resp.status_code == 422
+
+    def test_default_area_requires_stored_default(self):
+        user = _create_test_user("nodefault")
+        # User has no default_location_* set
+        resp = client.get("/events?use_default_area=true", headers=_auth_header(user["id"]))
+        assert resp.status_code == 422
+        _cleanup_user(user["id"])
+
+    def test_default_area_used_when_no_explicit_coords(self):
+        user = _create_test_user("withdef")
+        db.table("users").update({
+            "default_location_name": "Istanbul",
+            "default_location_lat": 41.0,
+            "default_location_lng": 29.0,
+        }).eq("id", user["id"]).execute()
+        cat_ids = _get_category_ids(1)
+        ev_near = _create_published_event(user["id"], cat_ids, title="DefArea", days_from_now=2)
+
+        resp = client.get(
+            "/events?use_default_area=true&radius_km=100",
+            headers=_auth_header(user["id"]),
+        )
+        assert resp.status_code == 200, resp.text
+        ids = [i["id"] for i in resp.json()["items"]]
+        assert ev_near["id"] in ids
+
+        _cleanup_event(ev_near["id"])
         _cleanup_user(user["id"])
