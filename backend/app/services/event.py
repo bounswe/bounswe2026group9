@@ -6,16 +6,6 @@ from datetime import UTC, datetime, timedelta
 from fastapi import HTTPException, status
 from supabase import Client
 
-
-def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
-    """Great-circle distance in kilometres between two (lat, lng) points."""
-    r = 6371.0
-    phi1, phi2 = math.radians(lat1), math.radians(lat2)
-    dphi = math.radians(lat2 - lat1)
-    dlam = math.radians(lng2 - lng1)
-    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlam / 2) ** 2
-    return 2 * r * math.asin(math.sqrt(a))
-
 from app.models.event import (
     EventCreateRequest,
     EventDetailResponse,
@@ -31,6 +21,17 @@ from app.repositories import image as image_repo
 from app.repositories import invite as invite_repo
 from app.repositories import user as user_repo
 from app.services.rate_limit import is_rate_limit_exempt_email
+
+
+def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    """Great-circle distance in kilometres between two (lat, lng) points."""
+    r = 6371.0
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlam = math.radians(lng2 - lng1)
+    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlam / 2) ** 2
+    return 2 * r * math.asin(math.sqrt(a))
+
 
 # --- Validators ---
 
