@@ -58,6 +58,29 @@ class EquipmentResponse(BaseModel):
     is_required: bool
 
 
+class SegmentRequest(BaseModel):
+    """Single itinerary segment for an event.
+
+    location_index references a position in the request's locations[] array
+    (locations are inserted before segments inside the atomic RPC, so we use
+    positional indexing rather than a UUID the client cannot know yet).
+    """
+    location_index: int = Field(ge=0)
+    order_index: int = Field(ge=0)
+    start_datetime: datetime
+    end_datetime: datetime
+    description: str | None = Field(default=None, max_length=1000)
+
+
+class SegmentResponse(BaseModel):
+    id: UUID
+    location_id: UUID
+    order_index: int
+    start_datetime: datetime
+    end_datetime: datetime
+    description: str | None = None
+
+
 class CategoryResponse(BaseModel):
     id: UUID
     name: str
@@ -95,6 +118,7 @@ class EventCreateRequest(BaseModel):
     locations: list[LocationRequest] = Field(min_length=1)
     venue_metadata: VenueMetadataRequest | None = None
     equipment_requirements: list[EquipmentRequest] | None = None
+    segments: list[SegmentRequest] | None = None
 
 
 class EventUpdateRequest(BaseModel):
@@ -110,6 +134,7 @@ class EventUpdateRequest(BaseModel):
     locations: list[LocationRequest] | None = Field(default=None, min_length=1)
     venue_metadata: VenueMetadataRequest | None = None
     equipment_requirements: list[EquipmentRequest] | None = None
+    segments: list[SegmentRequest] | None = None
 
 
 # --- Event Response Schemas ---
@@ -141,6 +166,7 @@ class EventDetailResponse(BaseModel):
     venue_metadata: VenueMetadataResponse | None = None
     equipment_requirements: list[EquipmentResponse] = []
     attendees: list[AttendeeSummaryResponse] = []
+    segments: list[SegmentResponse] = []
 
 
 class StatusChangeRequest(BaseModel):

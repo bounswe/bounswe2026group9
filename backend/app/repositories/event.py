@@ -16,6 +16,7 @@ _VENUE_COLS = (
     "elevator_available,seating_available,captions_support,quiet_friendly"
 )
 _EQUIPMENT_COLS = "id,event_id,item_name,is_required"
+_SEGMENT_COLS = "id,event_id,location_id,order_index,start_datetime,end_datetime,description"
 _RATE_LIMIT_COLS = "id,max_events_per_user,time_window_hours,updated_at"
 
 
@@ -28,14 +29,16 @@ def create_event_atomic(
     category_ids: list[str],
     venue_metadata: dict | None = None,
     equipment: list[dict] | None = None,
+    segments: list[dict] | None = None,
 ) -> dict:
-    """Create event + locations + categories + venue + equipment in a single DB transaction."""
+    """Create event + locations + categories + venue + equipment + segments in a single DB transaction."""
     params = {
         "p_event": event_data,
         "p_locations": locations,
         "p_categories": [{"category_id": cid} for cid in category_ids],
         "p_venue_metadata": venue_metadata,
         "p_equipment": equipment,
+        "p_segments": segments,
     }
     result = db.rpc("create_event_atomic", params).execute()
     return result.data
@@ -49,6 +52,7 @@ def update_event_atomic(
     category_ids: list[str] | None = None,
     venue_metadata: dict | None = None,
     equipment: list[dict] | None = None,
+    segments: list[dict] | None = None,
 ) -> dict:
     """Update event + related tables in a single DB transaction."""
     params = {
@@ -58,6 +62,7 @@ def update_event_atomic(
         "p_categories": [{"category_id": cid} for cid in category_ids] if category_ids is not None else None,
         "p_venue_metadata": venue_metadata,
         "p_equipment": equipment,
+        "p_segments": segments,
     }
     result = db.rpc("update_event_atomic", params).execute()
     return result.data
@@ -97,7 +102,19 @@ def get_event_by_id(db: Client, event_id: str) -> dict | None:
 
 
 def get_event_locations(db: Client, event_id: str) -> list[dict]:
-    result = db.table("event_locations").select(_LOCATION_COLS).eq("event_id", event_id).execute()
+    # Deterministic order — matches the fallback in update_event_atomic so
+    # that SegmentRequest.location_index against an *existing* location set
+    # (a PATCH that only sends `segments`) refers to the same position the
+    # client saw from this read.
+    result = (
+        db.table("event_locations")
+        .select(_LOCATION_COLS)
+        .eq("event_id", event_id)
+        .order("created_at")
+        .order("order_index")
+        .order("id")
+        .execute()
+    )
     return result.data or []
 
 
@@ -123,6 +140,17 @@ def get_venue_metadata(db: Client, event_id: str) -> dict | None:
 
 def get_equipment(db: Client, event_id: str) -> list[dict]:
     result = db.table("equipment_requirements").select(_EQUIPMENT_COLS).eq("event_id", event_id).execute()
+    return result.data or []
+
+
+def get_event_segments(db: Client, event_id: str) -> list[dict]:
+    result = (
+        db.table("event_segments")
+        .select(_SEGMENT_COLS)
+        .eq("event_id", event_id)
+        .order("order_index")
+        .execute()
+    )
     return result.data or []
 
 
@@ -181,11 +209,19 @@ def find_duplicate_events(db: Client, host_id: str, title: str, start_datetime: 
 
 
 def find_location_by_event_and_name(db: Client, event_id: str, name: str) -> list[dict]:
+    """Return matching primary-location rows for the event.
+
+    Scoped to is_primary=True so duplicate-event detection only fires when the
+    *primary* location matches (issue #149 FRS-2: "identical title +
+    start_datetime + primary location"). A non-primary stop with the same name
+    on the candidate event is intentionally not treated as a collision.
+    """
     result = (
         db.table("event_locations")
         .select("name")
         .eq("event_id", event_id)
         .eq("name", name)
+        .eq("is_primary", True)
         .execute()
     )
     return result.data or []
