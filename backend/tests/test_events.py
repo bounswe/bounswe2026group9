@@ -1017,12 +1017,18 @@ class TestEventSegments:
         _cleanup_user(user["id"])
 
     def test_segment_overlap_rejected(self):
+        # Build body first so segments can anchor to the event's actual
+        # start_datetime — Python evaluates kwargs before the call, which
+        # would otherwise put each segment's anchor a few microseconds
+        # *before* the event start and trip the window check first.
         user = _create_test_user("segoverlap")
         cat_ids = _get_category_ids(1)
-        body = _two_locations_body(cat_ids, segments=[
-            _seg_payload(location_index=0, order_index=0, start_offset_min=0,  duration_min=60),
-            _seg_payload(location_index=1, order_index=1, start_offset_min=30, duration_min=60),
-        ])
+        body = _two_locations_body(cat_ids)
+        event_start = datetime.fromisoformat(body["start_datetime"])
+        body["segments"] = [
+            _seg_payload(anchor=event_start, location_index=0, order_index=0, start_offset_min=0,  duration_min=60),
+            _seg_payload(anchor=event_start, location_index=1, order_index=1, start_offset_min=30, duration_min=60),
+        ]
 
         resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
         assert resp.status_code == 400
@@ -1082,10 +1088,12 @@ class TestEventSegments:
     def test_segment_non_contiguous_order_rejected(self):
         user = _create_test_user("segorder")
         cat_ids = _get_category_ids(1)
-        body = _two_locations_body(cat_ids, segments=[
-            _seg_payload(location_index=0, order_index=0, start_offset_min=0,  duration_min=30),
-            _seg_payload(location_index=1, order_index=2, start_offset_min=60, duration_min=30),
-        ])
+        body = _two_locations_body(cat_ids)
+        event_start = datetime.fromisoformat(body["start_datetime"])
+        body["segments"] = [
+            _seg_payload(anchor=event_start, location_index=0, order_index=0, start_offset_min=0,  duration_min=30),
+            _seg_payload(anchor=event_start, location_index=1, order_index=2, start_offset_min=60, duration_min=30),
+        ]
 
         resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
         assert resp.status_code == 400
@@ -1096,10 +1104,12 @@ class TestEventSegments:
     def test_segment_duplicate_order_index_rejected(self):
         user = _create_test_user("segduplo")
         cat_ids = _get_category_ids(1)
-        body = _two_locations_body(cat_ids, segments=[
-            _seg_payload(location_index=0, order_index=0, start_offset_min=0,  duration_min=30),
-            _seg_payload(location_index=1, order_index=0, start_offset_min=60, duration_min=30),
-        ])
+        body = _two_locations_body(cat_ids)
+        event_start = datetime.fromisoformat(body["start_datetime"])
+        body["segments"] = [
+            _seg_payload(anchor=event_start, location_index=0, order_index=0, start_offset_min=0,  duration_min=30),
+            _seg_payload(anchor=event_start, location_index=1, order_index=0, start_offset_min=60, duration_min=30),
+        ]
 
         resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
         assert resp.status_code == 400
@@ -1110,10 +1120,12 @@ class TestEventSegments:
     def test_update_replaces_segments(self):
         user = _create_test_user("segupd")
         cat_ids = _get_category_ids(1)
-        body = _two_locations_body(cat_ids, segments=[
-            _seg_payload(location_index=0, order_index=0, start_offset_min=0,  duration_min=30),
-            _seg_payload(location_index=1, order_index=1, start_offset_min=60, duration_min=30),
-        ])
+        body = _two_locations_body(cat_ids)
+        event_start = datetime.fromisoformat(body["start_datetime"])
+        body["segments"] = [
+            _seg_payload(anchor=event_start, location_index=0, order_index=0, start_offset_min=0,  duration_min=30),
+            _seg_payload(anchor=event_start, location_index=1, order_index=1, start_offset_min=60, duration_min=30),
+        ]
         create_resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
         assert create_resp.status_code == 201
         event_id = create_resp.json()["id"]
@@ -1121,7 +1133,7 @@ class TestEventSegments:
 
         # PUT with a single segment should replace the existing two
         new_segs = [
-            _seg_payload(location_index=0, order_index=0,
+            _seg_payload(anchor=event_start, location_index=0, order_index=0,
                          start_offset_min=15, duration_min=15, description="Just one"),
         ]
         update_resp = client.put(
@@ -1140,9 +1152,11 @@ class TestEventSegments:
         # PUT with no `segments` key → existing segments preserved.
         user = _create_test_user("segleave")
         cat_ids = _get_category_ids(1)
-        body = _two_locations_body(cat_ids, segments=[
-            _seg_payload(location_index=0, order_index=0, start_offset_min=0,  duration_min=30),
-        ])
+        body = _two_locations_body(cat_ids)
+        event_start = datetime.fromisoformat(body["start_datetime"])
+        body["segments"] = [
+            _seg_payload(anchor=event_start, location_index=0, order_index=0, start_offset_min=0,  duration_min=30),
+        ]
         create_resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
         event_id = create_resp.json()["id"]
 
@@ -1162,9 +1176,11 @@ class TestEventSegments:
         # Replacing locations CASCADEs through segments — must reject silent loss.
         user = _create_test_user("seglocrep")
         cat_ids = _get_category_ids(1)
-        body = _two_locations_body(cat_ids, segments=[
-            _seg_payload(location_index=0, order_index=0, start_offset_min=0, duration_min=30),
-        ])
+        body = _two_locations_body(cat_ids)
+        event_start = datetime.fromisoformat(body["start_datetime"])
+        body["segments"] = [
+            _seg_payload(anchor=event_start, location_index=0, order_index=0, start_offset_min=0, duration_min=30),
+        ]
         create_resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
         event_id = create_resp.json()["id"]
 
@@ -1185,9 +1201,11 @@ class TestEventSegments:
     def test_update_locations_with_explicit_empty_segments_clears_them(self):
         user = _create_test_user("segclear")
         cat_ids = _get_category_ids(1)
-        body = _two_locations_body(cat_ids, segments=[
-            _seg_payload(location_index=0, order_index=0, start_offset_min=0, duration_min=30),
-        ])
+        body = _two_locations_body(cat_ids)
+        event_start = datetime.fromisoformat(body["start_datetime"])
+        body["segments"] = [
+            _seg_payload(anchor=event_start, location_index=0, order_index=0, start_offset_min=0, duration_min=30),
+        ]
         create_resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
         event_id = create_resp.json()["id"]
 
