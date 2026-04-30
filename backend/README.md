@@ -279,8 +279,50 @@ Notes:
 |--------|----------|------|-------------|
 | GET | /users/me/bookmarks | Bearer | List current user's bookmarks |
 | PUT | /users/me | Bearer | Update current user's profile |
-| GET | /users/{id}/profile | Optional | Get host profile details |
-| POST | /users/{id}/ratings | Bearer | Rate a host |
+| GET | /users/{id}/profile | Optional | Get host profile details (avg rating + count summary) |
+| POST | /users/{id}/ratings | Bearer | Rate a host (1–5 stars + optional text review) — returns 201 |
+| GET | /users/{id}/reviews | - | Paginated reviews for a host, newest-first |
+
+**Rating eligibility:** the rater must have attended at least one *ended* event hosted by the target user. Self-rating is rejected with 400. Repeated POSTs from the same rater overwrite the previous score and review text (upsert).
+
+**Optional review text:** `POST /users/{id}/ratings` accepts an optional `review_text` field (max 1000 characters). Whitespace-only values are normalised to `null` server-side. The same payload shape is used for new ratings and for editing an existing one.
+
+```jsonc
+// POST /users/{host_id}/ratings — minimal (back-compat with star-only clients)
+{ "score": 4.5 }
+
+// POST /users/{host_id}/ratings — with review text
+{ "score": 4.5, "review_text": "Walk was excellent — leader was clear and friendly." }
+```
+
+**Reviews list:** `GET /users/{id}/reviews?page=1&page_size=20` returns reviews ordered by `created_at DESC, id DESC`. Star-only ratings are included with `review_text: null` so the list mirrors the aggregate rating count on the profile. Unknown host → 404 (mirrors `GET /users/{id}/profile`); existing host with no ratings → 200 with empty `items`.
+
+```json
+{
+  "items": [
+    {
+      "id": "…",
+      "rater_id": "…",
+      "rater_username": "alice",
+      "score": 5.0,
+      "review_text": "Walk was excellent",
+      "created_at": "2030-06-01T13:30:00+00:00"
+    },
+    {
+      "id": "…",
+      "rater_id": "…",
+      "rater_username": "bob",
+      "score": 4.0,
+      "review_text": null,
+      "created_at": "2030-06-01T12:00:00+00:00"
+    }
+  ],
+  "total": 2,
+  "page": 1,
+  "page_size": 20,
+  "total_pages": 1
+}
+```
 
 ## Project Structure
 
@@ -337,13 +379,16 @@ backend/
 │   ├── test_invites.py       # Invite/Access request tests (28)
 │   ├── test_notifications.py # Notification tests (12)
 │   ├── test_notification_emitter.py  # Notification emission tests (11)
+│   ├── test_reviews_unit.py  # Review/rating-text unit tests (issue #235)
+│   ├── test_users.py         # User/profile/rating integration tests
 │   └── test_health.py        # Health check test (1)
-├── sql/
-│   ├── 001_create_tables.sql         # Auth tables
-│   ├── 002_create_core_tables.sql    # Core data model tables
-│   ├── 003_pg_cron_auto_end.sql      # Auto-end expired events
-│   ├── 005_create_invite_tables.sql  # Invite/Access tables
-│   └── 006_reconcile_invite_schema.sql  # Manual Supabase reconcile script
+├── sql/                                  # Apply manually in Supabase SQL Editor (no runner)
+│   ├── 001_create_tables.sql             # Auth tables
+│   ├── 002_create_core_tables.sql        # Core data model tables
+│   ├── 003_pg_cron_auto_end.sql          # Auto-end expired events
+│   ├── 005_create_invite_tables.sql      # Invite/Access tables
+│   ├── 006_reconcile_invite_schema.sql   # Manual Supabase reconcile script
+│   └── 014_add_rating_review_text.sql    # Optional free-text review on ratings (issue #235)
 ├── requirements.txt
 ├── pyproject.toml            # Ruff + pytest config
 ├── Dockerfile
