@@ -25,6 +25,21 @@
 -- Run this in the Supabase SQL Editor AFTER 012_create_event_segments.sql.
 
 -- ----------------------------------------------------------------
+-- Drop the legacy 5-parameter signatures from migrations 009/010 first.
+-- `CREATE OR REPLACE FUNCTION` only replaces a function with an *identical*
+-- parameter list — adding p_segments produces a new overload alongside the
+-- old one, and PostgREST then errors out with PGRST203 on every RPC call
+-- ("could not choose the best candidate"). Dropping the legacy signatures
+-- here keeps the namespace unambiguous; the Python wrappers always send
+-- the full 6-key payload (p_segments included, possibly NULL).
+-- Safe to re-run: the IF EXISTS clauses turn this into a no-op when the
+-- legacy signatures are already gone.
+-- ----------------------------------------------------------------
+
+DROP FUNCTION IF EXISTS public.create_event_atomic(jsonb, jsonb, jsonb, jsonb, jsonb);
+DROP FUNCTION IF EXISTS public.update_event_atomic(uuid, jsonb, jsonb, jsonb, jsonb, jsonb);
+
+-- ----------------------------------------------------------------
 -- create_event_atomic
 -- ----------------------------------------------------------------
 
