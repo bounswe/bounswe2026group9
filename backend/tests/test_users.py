@@ -110,12 +110,21 @@ def test_user_profiles_and_ratings(client, db):
 # --- Rating reviews (issue #235) ------------------------------------------
 
 def _register_and_login(client, prefix: str) -> tuple[str, str, str]:
-    """Register a fresh user, log in, return (id, email, access_token)."""
+    """Register a fresh user, log in, return (id, email, access_token).
+
+    Raises an explicit assertion if the register call fails so a too-long
+    prefix (username max_length=30 — see app/models/user.py) doesn't
+    cascade into a KeyError on `access_token` later.
+    """
     username, email = build_test_identity(prefix)
-    client.post("/auth/register", json={
+    reg = client.post("/auth/register", json={
         "username": username, "email": email,
         "password": "password123", "date_of_birth": "1990-01-01",
     })
+    assert reg.status_code == 201, (
+        f"Register failed for prefix={prefix!r} (username={username!r}, "
+        f"len={len(username)}): {reg.status_code} {reg.json()}"
+    )
     token = client.post("/auth/login", json={
         "email": email, "password": "password123",
     }).json()["access_token"]
@@ -305,10 +314,12 @@ class TestRatingReviews:
     def test_list_reviews_includes_star_only_with_null_text(self, client, db):
         # Locked decision #1: star-only ratings appear in the list with
         # review_text=null so the count mirrors the aggregate.
+        # Prefixes kept short so build_test_identity stays within the
+        # username max_length=30 (see app/models/user.py).
         host_id, _r1, _host_token, r1_token, event_id = _make_eligible_rater(
-            client, db, host_prefix="revstar-list-host", rater_prefix="revstar-list-r1",
+            client, db, host_prefix="rsl-host", rater_prefix="rsl-r1",
         )
-        r2_id, _, r2_token = _register_and_login(client, "revstar-list-r2")
+        r2_id, _, r2_token = _register_and_login(client, "rsl-r2")
         db.table("attendances").insert({
             "user_id": r2_id, "event_id": event_id, "status": "going",
         }).execute()
