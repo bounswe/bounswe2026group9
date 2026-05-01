@@ -546,3 +546,61 @@ class TestAccessDecision:
         )
         assert resp.status_code == 400
         assert "resolved" in resp.json()["detail"].lower()
+
+
+class TestAccessDecisionNotifications:
+    """Issue #149: rejection of an access request must persist an
+    `access_rejected` notification for the requester."""
+
+    def test_rejection_notifies_requester(self):
+        host = _create_test_user()
+        user = _create_test_user()
+        event = _create_private_published_event(host["id"])
+
+        req_resp = client.post(
+            f"/events/{event['id']}/access-requests",
+            headers=_auth_header(user["id"]),
+        )
+        request_id = req_resp.json()["id"]
+
+        decide_resp = client.patch(
+            f"/events/{event['id']}/access-requests/{request_id}",
+            json={"status": "rejected"},
+            headers=_auth_header(host["id"]),
+        )
+        assert decide_resp.status_code == 200
+
+        notif_resp = client.get("/notifications", headers=_auth_header(user["id"]))
+        assert notif_resp.status_code == 200
+        notifications = notif_resp.json()["items"]
+        rejected = [n for n in notifications if n["type"] == "access_rejected"]
+        assert len(rejected) == 1
+        row = rejected[0]
+        assert row["event_id"] == event["id"]
+        assert event["title"] in row["message"]
+        assert row["is_read"] is False
+
+    def test_approval_does_not_emit_access_rejected(self):
+        # Pin exclusivity — approving an access request must not emit
+        # an access_rejected row.
+        host = _create_test_user()
+        user = _create_test_user()
+        event = _create_private_published_event(host["id"])
+
+        req_resp = client.post(
+            f"/events/{event['id']}/access-requests",
+            headers=_auth_header(user["id"]),
+        )
+        request_id = req_resp.json()["id"]
+
+        client.patch(
+            f"/events/{event['id']}/access-requests/{request_id}",
+            json={"status": "approved"},
+            headers=_auth_header(host["id"]),
+        )
+
+        notif_resp = client.get("/notifications", headers=_auth_header(user["id"]))
+        notifications = notif_resp.json()["items"]
+        assert all(n["type"] != "access_rejected" for n in notifications)
+        # Sanity: approval *does* notify with access_approved.
+        assert any(n["type"] == "access_approved" for n in notifications)
