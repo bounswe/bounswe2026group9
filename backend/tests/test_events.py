@@ -113,6 +113,7 @@ def _create_published_event(user_id: str, cat_ids: list[str], mock_upload, **ove
 
 def _cleanup_event(event_id: str):
     """Delete an event and all related data."""
+    db.table("event_segments").delete().eq("event_id", event_id).execute()
     db.table("equipment_requirements").delete().eq("event_id", event_id).execute()
     db.table("venue_metadata").delete().eq("event_id", event_id).execute()
     db.table("event_categories").delete().eq("event_id", event_id).execute()
@@ -899,3 +900,427 @@ class TestClearAttendeeLimit:
 
         _cleanup_event(event_id)
         _cleanup_user(user["id"])
+
+
+# --- Itinerary segments (issue #149) ---------------------------------------
+
+def _two_locations_body(category_ids: list[str], **overrides) -> dict:
+    """Build a multi-location event body for segment tests.
+
+    Index 0 = primary stop, index 1 = secondary stop.
+    """
+    body = _valid_event_body(category_ids, **overrides)
+    body["locations"] = [
+        {"name": "Stop A", "latitude": 41.0, "longitude": 29.0, "is_primary": True, "order_index": 0},
+        {"name": "Stop B", "latitude": 41.1, "longitude": 29.1, "is_primary": False, "order_index": 1},
+    ]
+    return body
+
+
+def _seg_payload(*, location_index: int = 0, order_index: int = 0,
+                 start_offset_min: int = 30, duration_min: int = 30,
+                 description: str | None = None,
+                 anchor: datetime | None = None) -> dict:
+    """Build a segment payload anchored at the next-day event start."""
+    if anchor is None:
+        anchor = datetime.now(UTC) + timedelta(days=1)
+    start = anchor + timedelta(minutes=start_offset_min)
+    end = start + timedelta(minutes=duration_min)
+    return {
+        "location_index": location_index,
+        "order_index": order_index,
+        "start_datetime": start.isoformat(),
+        "end_datetime": end.isoformat(),
+        "description": description,
+    }
+
+
+class TestEventSegments:
+    """Create / read / update flows for itinerary segments."""
+
+    def test_create_event_with_segments(self):
+        user = _create_test_user("segcreate")
+        cat_ids = _get_category_ids(1)
+        body = _two_locations_body(cat_ids, segments=[
+            _seg_payload(location_index=0, order_index=0,
+                         start_offset_min=30, duration_min=30, description="Welcome"),
+            _seg_payload(location_index=1, order_index=1,
+                         start_offset_min=60, duration_min=30, description="Move to Stop B"),
+        ])
+
+        resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
+        assert resp.status_code == 201, resp.json()
+
+        data = resp.json()
+        assert "segments" in data
+        assert len(data["segments"]) == 2
+        # Returned in order_index order
+        assert data["segments"][0]["order_index"] == 0
+        assert data["segments"][1]["order_index"] == 1
+        assert data["segments"][0]["description"] == "Welcome"
+        # location_id should resolve to a real location row on the event
+        location_ids = {loc["id"] for loc in data["locations"]}
+        for seg in data["segments"]:
+            assert seg["location_id"] in location_ids
+
+        _cleanup_event(data["id"])
+        _cleanup_user(user["id"])
+
+    def test_segment_location_index_matches_request_position_when_order_index_is_reversed(self):
+        # Pin the contract: location_index references the *position in the
+        # request's locations array*, not the position-after-sorting-by-order_index.
+        # If a host sends locations in non-monotonic order_index, segments
+        # must still resolve to the location at the same array position.
+        user = _create_test_user("seglocidx_pin")
+        cat_ids = _get_category_ids(1)
+        body = _valid_event_body(cat_ids)
+        # locations[0] has order_index=5, locations[1] has order_index=0
+        body["locations"] = [
+            {"name": "Position 0 (order_index 5)", "latitude": 41.0,
+             "longitude": 29.0, "is_primary": True,  "order_index": 5},
+            {"name": "Position 1 (order_index 0)", "latitude": 41.1,
+             "longitude": 29.1, "is_primary": False, "order_index": 0},
+        ]
+        # Segment 0 references location_index=0 → must point to "Position 0".
+        # Segment 1 references location_index=1 → must point to "Position 1".
+        body["segments"] = [
+            _seg_payload(location_index=0, order_index=0,
+                         start_offset_min=0,  duration_min=30),
+            _seg_payload(location_index=1, order_index=1,
+                         start_offset_min=60, duration_min=30),
+        ]
+
+        resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
+        assert resp.status_code == 201, resp.json()
+
+        data = resp.json()
+        loc_by_id = {loc["id"]: loc for loc in data["locations"]}
+        # Pull segments back ordered by order_index to make assertions stable.
+        segs = sorted(data["segments"], key=lambda s: s["order_index"])
+        assert loc_by_id[segs[0]["location_id"]]["name"] == "Position 0 (order_index 5)"
+        assert loc_by_id[segs[1]["location_id"]]["name"] == "Position 1 (order_index 0)"
+
+        _cleanup_event(data["id"])
+        _cleanup_user(user["id"])
+
+    def test_create_event_without_segments_is_unaffected(self):
+        # Backward-compat: no segments provided → segments == []
+        user = _create_test_user("segnone")
+        cat_ids = _get_category_ids(1)
+        body = _valid_event_body(cat_ids)
+
+        resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
+        assert resp.status_code == 201
+        assert resp.json().get("segments", []) == []
+
+        _cleanup_event(resp.json()["id"])
+        _cleanup_user(user["id"])
+
+    def test_segment_overlap_rejected(self):
+        # Build body first so segments can anchor to the event's actual
+        # start_datetime — Python evaluates kwargs before the call, which
+        # would otherwise put each segment's anchor a few microseconds
+        # *before* the event start and trip the window check first.
+        user = _create_test_user("segoverlap")
+        cat_ids = _get_category_ids(1)
+        body = _two_locations_body(cat_ids)
+        event_start = datetime.fromisoformat(body["start_datetime"])
+        body["segments"] = [
+            _seg_payload(anchor=event_start, location_index=0, order_index=0, start_offset_min=0,  duration_min=60),
+            _seg_payload(anchor=event_start, location_index=1, order_index=1, start_offset_min=30, duration_min=60),
+        ]
+
+        resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
+        assert resp.status_code == 400
+        assert "overlap" in resp.json()["detail"].lower()
+
+        _cleanup_user(user["id"])
+
+    def test_segment_inverted_time_rejected(self):
+        user = _create_test_user("seginvert")
+        cat_ids = _get_category_ids(1)
+        anchor = datetime.now(UTC) + timedelta(days=1)
+        bad = {
+            "location_index": 0,
+            "order_index": 0,
+            # end before start
+            "start_datetime": (anchor + timedelta(hours=1)).isoformat(),
+            "end_datetime": (anchor + timedelta(minutes=30)).isoformat(),
+            "description": None,
+        }
+        body = _two_locations_body(cat_ids, segments=[bad])
+
+        resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
+        assert resp.status_code == 400
+        assert "after start_datetime" in resp.json()["detail"]
+
+        _cleanup_user(user["id"])
+
+    def test_segment_outside_event_window_rejected(self):
+        user = _create_test_user("segwindow")
+        cat_ids = _get_category_ids(1)
+        body = _two_locations_body(cat_ids, segments=[
+            # Event is 2h long; this segment lands 5h after start.
+            _seg_payload(location_index=0, order_index=0,
+                         start_offset_min=300, duration_min=30),
+        ])
+
+        resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
+        assert resp.status_code == 400
+        assert "within event" in resp.json()["detail"]
+
+        _cleanup_user(user["id"])
+
+    def test_segment_invalid_location_index(self):
+        user = _create_test_user("seglocidx")
+        cat_ids = _get_category_ids(1)
+        body = _two_locations_body(cat_ids, segments=[
+            # Only 2 locations → location_index 5 is out of range.
+            _seg_payload(location_index=5, order_index=0),
+        ])
+
+        resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
+        assert resp.status_code == 400
+        assert "out of range" in resp.json()["detail"]
+
+        _cleanup_user(user["id"])
+
+    def test_segment_non_contiguous_order_rejected(self):
+        user = _create_test_user("segorder")
+        cat_ids = _get_category_ids(1)
+        body = _two_locations_body(cat_ids)
+        event_start = datetime.fromisoformat(body["start_datetime"])
+        body["segments"] = [
+            _seg_payload(anchor=event_start, location_index=0, order_index=0, start_offset_min=0,  duration_min=30),
+            _seg_payload(anchor=event_start, location_index=1, order_index=2, start_offset_min=60, duration_min=30),
+        ]
+
+        resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
+        assert resp.status_code == 400
+        assert "contiguous order_index" in resp.json()["detail"]
+
+        _cleanup_user(user["id"])
+
+    def test_segment_duplicate_order_index_rejected(self):
+        user = _create_test_user("segduplo")
+        cat_ids = _get_category_ids(1)
+        body = _two_locations_body(cat_ids)
+        event_start = datetime.fromisoformat(body["start_datetime"])
+        body["segments"] = [
+            _seg_payload(anchor=event_start, location_index=0, order_index=0, start_offset_min=0,  duration_min=30),
+            _seg_payload(anchor=event_start, location_index=1, order_index=0, start_offset_min=60, duration_min=30),
+        ]
+
+        resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
+        assert resp.status_code == 400
+        assert "contiguous order_index" in resp.json()["detail"]
+
+        _cleanup_user(user["id"])
+
+    def test_update_replaces_segments(self):
+        user = _create_test_user("segupd")
+        cat_ids = _get_category_ids(1)
+        body = _two_locations_body(cat_ids)
+        event_start = datetime.fromisoformat(body["start_datetime"])
+        body["segments"] = [
+            _seg_payload(anchor=event_start, location_index=0, order_index=0, start_offset_min=0,  duration_min=30),
+            _seg_payload(anchor=event_start, location_index=1, order_index=1, start_offset_min=60, duration_min=30),
+        ]
+        create_resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
+        assert create_resp.status_code == 201
+        event_id = create_resp.json()["id"]
+        assert len(create_resp.json()["segments"]) == 2
+
+        # PUT with a single segment should replace the existing two
+        new_segs = [
+            _seg_payload(anchor=event_start, location_index=0, order_index=0,
+                         start_offset_min=15, duration_min=15, description="Just one"),
+        ]
+        update_resp = client.put(
+            f"/events/{event_id}",
+            json={"segments": new_segs},
+            headers=_auth_header(user["id"]),
+        )
+        assert update_resp.status_code == 200, update_resp.json()
+        assert len(update_resp.json()["segments"]) == 1
+        assert update_resp.json()["segments"][0]["description"] == "Just one"
+
+        _cleanup_event(event_id)
+        _cleanup_user(user["id"])
+
+    def test_update_without_segments_leaves_them_untouched(self):
+        # PUT with no `segments` key → existing segments preserved.
+        user = _create_test_user("segleave")
+        cat_ids = _get_category_ids(1)
+        body = _two_locations_body(cat_ids)
+        event_start = datetime.fromisoformat(body["start_datetime"])
+        body["segments"] = [
+            _seg_payload(anchor=event_start, location_index=0, order_index=0, start_offset_min=0,  duration_min=30),
+        ]
+        create_resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
+        event_id = create_resp.json()["id"]
+
+        update_resp = client.put(
+            f"/events/{event_id}",
+            json={"title": "New title"},
+            headers=_auth_header(user["id"]),
+        )
+        assert update_resp.status_code == 200
+        assert update_resp.json()["title"] == "New title"
+        assert len(update_resp.json()["segments"]) == 1
+
+        _cleanup_event(event_id)
+        _cleanup_user(user["id"])
+
+    def test_update_locations_without_segments_when_segments_exist_rejected(self):
+        # Replacing locations CASCADEs through segments — must reject silent loss.
+        user = _create_test_user("seglocrep")
+        cat_ids = _get_category_ids(1)
+        body = _two_locations_body(cat_ids)
+        event_start = datetime.fromisoformat(body["start_datetime"])
+        body["segments"] = [
+            _seg_payload(anchor=event_start, location_index=0, order_index=0, start_offset_min=0, duration_min=30),
+        ]
+        create_resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
+        event_id = create_resp.json()["id"]
+
+        new_locs = [
+            {"name": "New stop", "latitude": 42.0, "longitude": 30.0, "is_primary": True, "order_index": 0},
+        ]
+        resp = client.put(
+            f"/events/{event_id}",
+            json={"locations": new_locs},
+            headers=_auth_header(user["id"]),
+        )
+        assert resp.status_code == 400
+        assert "clears existing segments" in resp.json()["detail"]
+
+        _cleanup_event(event_id)
+        _cleanup_user(user["id"])
+
+    def test_update_locations_with_explicit_empty_segments_clears_them(self):
+        user = _create_test_user("segclear")
+        cat_ids = _get_category_ids(1)
+        body = _two_locations_body(cat_ids)
+        event_start = datetime.fromisoformat(body["start_datetime"])
+        body["segments"] = [
+            _seg_payload(anchor=event_start, location_index=0, order_index=0, start_offset_min=0, duration_min=30),
+        ]
+        create_resp = client.post("/events", json=body, headers=_auth_header(user["id"]))
+        event_id = create_resp.json()["id"]
+
+        new_locs = [
+            {"name": "New stop", "latitude": 42.0, "longitude": 30.0, "is_primary": True, "order_index": 0},
+        ]
+        resp = client.put(
+            f"/events/{event_id}",
+            json={"locations": new_locs, "segments": []},
+            headers=_auth_header(user["id"]),
+        )
+        assert resp.status_code == 200, resp.json()
+        assert resp.json()["segments"] == []
+
+        _cleanup_event(event_id)
+        _cleanup_user(user["id"])
+
+    def test_update_segments_after_event_start_rejected(self):
+        # Insert an event whose start is in the past, then try to PUT segments.
+        user = _create_test_user("segstarted")
+        event_data = {
+            "host_id": user["id"],
+            "title": "In-flight event",
+            "description": "Already running",
+            "start_datetime": (datetime.now(UTC) - timedelta(hours=1)).isoformat(),
+            "end_datetime": (datetime.now(UTC) + timedelta(hours=2)).isoformat(),
+            "visibility": "public",
+            "status": "published",
+        }
+        result = db.table("events").insert(event_data).execute()
+        event_id = result.data[0]["id"]
+        db.table("event_locations").insert({
+            "event_id": event_id, "name": "Stop A", "latitude": 41.0, "longitude": 29.0,
+            "is_primary": True, "order_index": 0,
+        }).execute()
+
+        anchor = datetime.now(UTC) - timedelta(minutes=30)
+        resp = client.put(
+            f"/events/{event_id}",
+            json={"segments": [_seg_payload(
+                location_index=0, order_index=0, anchor=anchor,
+                start_offset_min=0, duration_min=30,
+            )]},
+            headers=_auth_header(user["id"]),
+        )
+        assert resp.status_code == 400
+        assert "segments after event has started" in resp.json()["detail"]
+
+        _cleanup_event(event_id)
+        _cleanup_user(user["id"])
+
+
+# --- Duplicate event detection (FRS-2: primary location only) --------------
+
+class TestDuplicateEventDetection:
+    """Issue #149 FRS-2: identical title + start_datetime + primary location for the same host is rejected."""
+
+    def test_duplicate_with_matching_primary_rejected(self):
+        user = _create_test_user("dupprim")
+        cat_ids = _get_category_ids(1)
+        body = _valid_event_body(cat_ids)
+
+        first = client.post("/events", json=body, headers=_auth_header(user["id"]))
+        assert first.status_code == 201
+        first_id = first.json()["id"]
+
+        # Same body, same host → conflict on title + start + primary location
+        second = client.post("/events", json=body, headers=_auth_header(user["id"]))
+        assert second.status_code == 409
+        assert "primary location" in second.json()["detail"]
+
+        _cleanup_event(first_id)
+        _cleanup_user(user["id"])
+
+    def test_duplicate_with_only_secondary_match_allowed(self):
+        # Both events share title + start_datetime + a stop name, but the
+        # collision is only on the *secondary* stop. Issue spec scopes
+        # duplicate detection to primary, so this must be allowed.
+        user = _create_test_user("dupsec")
+        cat_ids = _get_category_ids(1)
+
+        first_body = _valid_event_body(cat_ids)
+        first_body["locations"] = [
+            {"name": "Primary One", "latitude": 41.0, "longitude": 29.0, "is_primary": True, "order_index": 0},
+            {"name": "Shared Stop", "latitude": 41.1, "longitude": 29.1, "is_primary": False, "order_index": 1},
+        ]
+        first_resp = client.post("/events", json=first_body, headers=_auth_header(user["id"]))
+        assert first_resp.status_code == 201
+
+        second_body = dict(first_body)
+        # Different primary, same secondary "Shared Stop"
+        second_body["locations"] = [
+            {"name": "Primary Two", "latitude": 42.0, "longitude": 30.0, "is_primary": True, "order_index": 0},
+            {"name": "Shared Stop", "latitude": 41.1, "longitude": 29.1, "is_primary": False, "order_index": 1},
+        ]
+        second_resp = client.post("/events", json=second_body, headers=_auth_header(user["id"]))
+        assert second_resp.status_code == 201, second_resp.json()
+
+        _cleanup_event(first_resp.json()["id"])
+        _cleanup_event(second_resp.json()["id"])
+        _cleanup_user(user["id"])
+
+    def test_duplicate_for_different_hosts_allowed(self):
+        # Same title, time, primary — but different hosts: not a duplicate.
+        host_a = _create_test_user("duphostA")
+        host_b = _create_test_user("duphostB")
+        cat_ids = _get_category_ids(1)
+        body = _valid_event_body(cat_ids)
+
+        first = client.post("/events", json=body, headers=_auth_header(host_a["id"]))
+        second = client.post("/events", json=body, headers=_auth_header(host_b["id"]))
+        assert first.status_code == 201
+        assert second.status_code == 201
+
+        _cleanup_event(first.json()["id"])
+        _cleanup_event(second.json()["id"])
+        _cleanup_user(host_a["id"])
+        _cleanup_user(host_b["id"])

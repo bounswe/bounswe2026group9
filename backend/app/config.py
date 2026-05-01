@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:3000"
     BACKEND_URL: str = "http://localhost:8888"
     CORS_ORIGINS: str = "http://localhost:3000"
+    # Cookie domain: when frontend and backend are on different subdomains of the same parent
+    # domain (e.g. thesocialeventmapper.social and api.thesocialeventmapper.social), set this
+    # to the parent domain (e.g. ".thesocialeventmapper.social") so the refresh-token cookie
+    # is shared across both. Leave empty for host-only cookies (single-host deploys).
+    COOKIE_DOMAIN: str = ""
 
     @property
     def is_production(self) -> bool:

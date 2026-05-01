@@ -211,6 +211,59 @@ Notes:
 | PATCH | /events/{id}/status | Bearer | Change status: draft→published, cancel, end |
 | DELETE | /events/{id} | Bearer | Delete event (host only, must be cancelled/ended) |
 
+**Duplicate detection:** creating an event with the same `title`, `start_datetime`, and *primary* location as another event from the same host returns `409 Conflict`. Non-primary stop name collisions are intentionally allowed.
+
+**Lifecycle constraints:** once `start_datetime` is in the past, `time`, `locations`, and `segments` updates are rejected with `400`. Status changes follow `draft → published`, `published/updated → cancelled/ended`. Only `cancelled` or `ended` events can be deleted.
+
+#### Itinerary segments (multi-stop events)
+
+Both `POST /events` and `PUT /events/{id}` accept an optional `segments` array. Each segment ties a single location (referenced by **position** in the request's `locations` array) to a time window with an optional description.
+
+```json
+{
+  "title": "City photo walk",
+  "start_datetime": "2030-06-01T09:00:00+00:00",
+  "end_datetime":   "2030-06-01T13:00:00+00:00",
+  "category_ids": ["..."],
+  "locations": [
+    {"name": "Galata Tower", "latitude": 41.025, "longitude": 28.974, "is_primary": true,  "order_index": 0},
+    {"name": "Karaköy Pier", "latitude": 41.022, "longitude": 28.978, "is_primary": false, "order_index": 1}
+  ],
+  "segments": [
+    {"location_index": 0, "order_index": 0,
+     "start_datetime": "2030-06-01T09:00:00+00:00",
+     "end_datetime":   "2030-06-01T10:30:00+00:00",
+     "description": "Meet at the tower"},
+    {"location_index": 1, "order_index": 1,
+     "start_datetime": "2030-06-01T11:00:00+00:00",
+     "end_datetime":   "2030-06-01T12:00:00+00:00",
+     "description": "Walk to the pier"}
+  ]
+}
+```
+
+Validation (`400` on failure):
+
+- `location_index` must be `0 ≤ i < len(locations)`
+- both timestamps must be timezone-aware; `end_datetime > start_datetime`
+- each segment must lie within `[event.start_datetime, event.end_datetime]`
+- `order_index` values must be contiguous from `0` (no gaps, no duplicates)
+- when sorted by `order_index`, segments must not overlap in time (the rule is location-independent)
+
+Update semantics on `PUT`:
+
+- omitting `segments` leaves existing segments untouched
+- `segments: []` clears all segments
+- providing a non-empty array fully replaces existing segments
+- replacing `locations` cascades through `event_segments.location_id`; the API rejects this with `400` unless `segments` is also re-sent (or set to `[]` to opt into clearing)
+
+`location_index` semantics:
+
+- on **create** and on **update with new `locations`**, `location_index` is the position in the request's `locations` array (`location_index = i` ⇔ `locations[i]`).
+- on **update that sends `segments` without `locations`**, `location_index` is the position in the locations array returned by the most recent `GET /events/{id}` (the API orders locations by `created_at`, then `order_index`, then `id`).
+
+`GET /events/{id}` includes `segments` ordered by `order_index`, each with the resolved `location_id`.
+
 ### Event Images
 
 | Method | Endpoint | Auth | Description |
@@ -248,9 +301,13 @@ Notes:
 **Query parameters** for `GET /notifications`: `page` (default 1), `page_size` (default 20, max 100).
 
 **Automatic emission:** Notifications are created automatically when:
-- An event is updated → `event_updated` sent to all going/interested/bookmarked users
-- An event is cancelled → `event_cancelled` sent to all going/interested/bookmarked users
-- The host is excluded from receiving their own notifications
+- An event is updated → `event_updated` sent to going attendees + bookmarkers
+- An event is cancelled → `event_cancelled` sent to going attendees + bookmarkers
+- An event is deleted → `event_deleted` sent to going attendees + bookmarkers (emitted *before* the row is removed; the notification's `event_id` is `NULL` after delete because the FK is `ON DELETE SET NULL`)
+- A user requests access to a private event → `access_request` sent to the host
+- A host approves an access request → `access_approved` sent to the requester
+- A host rejects an access request → `access_rejected` sent to the requester
+- The host is excluded from receiving their own action notifications
 
 ### Categories
 
@@ -378,17 +435,26 @@ backend/
 │   ├── test_comments.py      # Comment tests (20)
 │   ├── test_invites.py       # Invite/Access request tests (28)
 │   ├── test_notifications.py # Notification tests (12)
-│   ├── test_notification_emitter.py  # Notification emission tests (11)
+│   ├── test_notification_emitter.py  # Notification emission tests
+│   ├── test_segments_unit.py # Itinerary-segment + duplicate-detection unit tests
 │   ├── test_reviews_unit.py  # Review/rating-text unit tests (issue #235)
 │   ├── test_users.py         # User/profile/rating integration tests
 │   └── test_health.py        # Health check test (1)
-├── sql/                                  # Apply manually in Supabase SQL Editor (no runner)
-│   ├── 001_create_tables.sql             # Auth tables
-│   ├── 002_create_core_tables.sql        # Core data model tables
-│   ├── 003_pg_cron_auto_end.sql          # Auto-end expired events
-│   ├── 005_create_invite_tables.sql      # Invite/Access tables
-│   ├── 006_reconcile_invite_schema.sql   # Manual Supabase reconcile script
-│   └── 014_add_rating_review_text.sql    # Optional free-text review on ratings (issue #235)
+├── sql/                                # Apply manually in Supabase SQL Editor (no runner)
+│   ├── 001_create_tables.sql           # Auth tables
+│   ├── 002_create_core_tables.sql      # Core data model tables
+│   ├── 003_pg_cron_auto_end.sql        # Auto-end expired events
+│   ├── 004_revoke_public_access.sql    # Tighten RLS / public role
+│   ├── 005_create_invite_tables.sql    # Invite + access-request tables
+│   ├── 006_reconcile_invite_schema.sql # Reconcile invite schema + add notification types
+│   ├── 007_add_phone_visibility.sql    # Phone visibility column on profiles
+│   ├── 008_token_cleanup_cron.sql      # pg_cron job for refresh/verification token cleanup
+│   ├── 009_atomic_event_rpc.sql        # create_event_atomic RPC (superseded by 013)
+│   ├── 010_atomic_event_update_rpc.sql # update_event_atomic RPC (superseded by 013)
+│   ├── 011_add_comment_parent_id.sql   # Threaded comments
+│   ├── 012_create_event_segments.sql   # Itinerary segments table
+│   ├── 013_atomic_event_rpc_segments.sql  # Replaces 009/010 with p_segments support
+│   └── 014_add_rating_review_text.sql  # Optional free-text review on ratings (issue #235)
 ├── requirements.txt
 ├── pyproject.toml            # Ruff + pytest config
 ├── Dockerfile

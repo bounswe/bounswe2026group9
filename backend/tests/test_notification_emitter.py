@@ -195,3 +195,94 @@ class TestCancelNotification:
         assert len(end_notifs) == 0
 
         _cleanup_notifications(user["id"])
+
+
+# --- Delete Notification Tests (issue #149) ---
+
+class TestDeleteNotification:
+    """delete_event must emit `event_deleted` to bookmarkers and going attendees
+    *before* the event row is removed. notifications.event_id is ON DELETE
+    SET NULL, so the rows survive with event_id cleared.
+    """
+
+    def _force_terminal(self, event_id: str, status_str: str = "cancelled") -> None:
+        """Bypass the host-driven cancel route to set up a deletable event quickly."""
+        db.table("events").update({"status": status_str}).eq("id", event_id).execute()
+
+    def test_delete_notifies_going_attendee(self):
+        host = _create_test_user()
+        attendee = _create_test_user()
+        event = _create_published_event(host["id"])
+        event_id = event["id"]
+
+        _add_attendance(attendee["id"], event_id, "going")
+        self._force_terminal(event_id, "cancelled")
+        # Wipe the cancel notification so we can inspect the delete one alone.
+        _cleanup_notifications(attendee["id"])
+
+        del_resp = client.delete(f"/events/{event_id}", headers=_auth_header(host["id"]))
+        assert del_resp.status_code == 200, del_resp.json()
+
+        notifications = _get_notifications(attendee["id"])
+        deleted = [n for n in notifications if n["type"] == "event_deleted"]
+        assert len(deleted) == 1
+        # FK is SET NULL after delete — the notification stays, event_id is None.
+        assert deleted[0].get("event_id") is None
+
+        _cleanup_notifications(attendee["id"])
+
+    def test_delete_notifies_bookmarker(self):
+        host = _create_test_user()
+        bookmarker = _create_test_user()
+        event = _create_published_event(host["id"])
+        event_id = event["id"]
+
+        _add_bookmark(bookmarker["id"], event_id)
+        self._force_terminal(event_id, "ended")  # ended path: no cancel notification
+
+        del_resp = client.delete(f"/events/{event_id}", headers=_auth_header(host["id"]))
+        assert del_resp.status_code == 200
+
+        notifications = _get_notifications(bookmarker["id"])
+        deleted = [n for n in notifications if n["type"] == "event_deleted"]
+        assert len(deleted) == 1
+        assert deleted[0].get("event_id") is None
+
+        _cleanup_notifications(bookmarker["id"])
+
+    def test_delete_does_not_notify_host(self):
+        host = _create_test_user()
+        event = _create_published_event(host["id"])
+        event_id = event["id"]
+
+        _add_bookmark(host["id"], event_id)  # host bookmarking own event — edge case
+        self._force_terminal(event_id, "ended")
+
+        del_resp = client.delete(f"/events/{event_id}", headers=_auth_header(host["id"]))
+        assert del_resp.status_code == 200
+
+        host_notifications = _get_notifications(host["id"])
+        deleted = [n for n in host_notifications if n["type"] == "event_deleted"]
+        assert len(deleted) == 0  # host is excluded from emit_event_notification
+
+        _cleanup_notifications(host["id"])
+
+    def test_delete_does_not_notify_interested_only_user(self):
+        # Only `going` attendees and bookmarkers receive event_deleted —
+        # `interested` is intentionally not in the affected set.
+        host = _create_test_user()
+        interested = _create_test_user()
+        event = _create_published_event(host["id"])
+        event_id = event["id"]
+
+        _add_attendance(interested["id"], event_id, "interested")
+        self._force_terminal(event_id, "ended")
+
+        del_resp = client.delete(f"/events/{event_id}", headers=_auth_header(host["id"]))
+        assert del_resp.status_code == 200
+
+        notifications = _get_notifications(interested["id"])
+        deleted = [n for n in notifications if n["type"] == "event_deleted"]
+        assert len(deleted) == 0
+
+        _cleanup_notifications(interested["id"])

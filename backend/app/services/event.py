@@ -12,6 +12,8 @@ from app.models.event import (
     EventListItemResponse,
     EventListResponse,
     EventUpdateRequest,
+    SegmentRequest,
+    SegmentResponse,
 )
 from app.repositories import attendance as attendance_repo
 from app.repositories import bookmark as bookmark_repo
@@ -65,16 +67,103 @@ def validate_categories_exist(db: Client, category_ids: list[str]) -> None:
         )
 
 
+def validate_segments(
+    segments: list[SegmentRequest] | None,
+    location_count: int,
+    event_start: datetime,
+    event_end: datetime,
+) -> None:
+    """Validate itinerary segments against the issue's rules.
+
+    Rules (issue #149):
+      1. Each segment.location_index references a real position
+         (0 <= location_index < location_count).
+      2. Each segment is timezone-aware and end > start.
+      3. Each segment lies within [event_start, event_end].
+      4. order_index values are contiguous from 0 with no duplicates.
+      5. Sorted by order_index, segments do not overlap in time
+         (current.start >= previous.end).
+    """
+    if not segments:
+        return
+
+    # 1. location_index in range
+    for seg in segments:
+        if seg.location_index >= location_count:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"segment.location_index {seg.location_index} out of range "
+                       f"(locations has {location_count} entries)",
+            )
+
+    # 2. timezone + inverted time
+    for seg in segments:
+        _ensure_timezone_aware(seg.start_datetime, "segment.start_datetime")
+        _ensure_timezone_aware(seg.end_datetime, "segment.end_datetime")
+        if seg.end_datetime <= seg.start_datetime:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="segment end_datetime must be after start_datetime",
+            )
+
+    # 3. each segment within event window
+    for seg in segments:
+        if seg.start_datetime < event_start or seg.end_datetime > event_end:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="segment must lie within event start_datetime and end_datetime",
+            )
+
+    # 4. order_index contiguous from 0
+    order_values = sorted(seg.order_index for seg in segments)
+    for expected, actual in enumerate(order_values):
+        if actual != expected:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="segments must have contiguous order_index starting at 0",
+            )
+
+    # 5. no time overlaps when sorted by order
+    sorted_by_order = sorted(segments, key=lambda s: s.order_index)
+    for prev, curr in zip(sorted_by_order, sorted_by_order[1:], strict=False):
+        if curr.start_datetime < prev.end_datetime:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="segments must not overlap in time when sorted by order_index",
+            )
+
+
+def _build_segment_rows(segments: list[SegmentRequest] | None) -> list[dict] | None:
+    if segments is None:
+        return None
+    return [
+        {
+            "location_index": seg.location_index,
+            "order_index": seg.order_index,
+            "start_datetime": seg.start_datetime.isoformat(),
+            "end_datetime": seg.end_datetime.isoformat(),
+            "description": seg.description,
+        }
+        for seg in segments
+    ]
+
+
 def check_duplicate_event(
     db: Client, host_id: str, title: str, start_datetime: str, location_name: str
 ) -> None:
+    """Reject creation when title + start_datetime + *primary* location collide for the same host.
+
+    Issue #149 FRS-2 explicitly scopes this to the primary location. A separate
+    event whose primary differs but happens to include `location_name` as a
+    non-primary stop is allowed.
+    """
     events = event_repo.find_duplicate_events(db, host_id, title, start_datetime)
     for event in events:
         locations = event_repo.find_location_by_event_and_name(db, event["id"], location_name)
         if locations:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="A similar event already exists with the same title, time, and location",
+                detail="A similar event already exists with the same title, time, and primary location",
             )
 
 
@@ -134,6 +223,12 @@ def create_event(db: Client, user_id: str, body: EventCreateRequest) -> EventDet
     if not has_primary:
         body.locations[0].is_primary = True
 
+    # Itinerary segments (optional)
+    validate_segments(
+        body.segments, len(body.locations), body.start_datetime, body.end_datetime,
+    )
+    segment_rows = _build_segment_rows(body.segments)
+
     # Build atomic insert params
     event_data = {
         "host_id": user_id,
@@ -174,6 +269,7 @@ def create_event(db: Client, user_id: str, body: EventCreateRequest) -> EventDet
         category_ids=category_id_strs,
         venue_metadata=venue_data,
         equipment=equip_data,
+        segments=segment_rows,
     )
     if not event:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create event")
@@ -185,8 +281,11 @@ def create_event(db: Client, user_id: str, body: EventCreateRequest) -> EventDet
     categories = event_repo.get_event_categories(db, event_id)
     venue_meta = event_repo.get_venue_metadata(db, event_id)
     equipment = event_repo.get_equipment(db, event_id)
+    segments = event_repo.get_event_segments(db, event_id)
 
-    return _build_detail_response(event, locations, categories, [], venue_meta, equipment)
+    return _build_detail_response(
+        event, locations, categories, [], venue_meta, equipment, segments=segments,
+    )
 
 
 # --- Helpers ---
@@ -205,11 +304,25 @@ def _build_detail_response(
     access_request_status: str | None = None,
     attendees: list[dict] | None = None,
     host_username: str = "",
+    segments: list[dict] | None = None,
 ) -> EventDetailResponse:
     actual_going = going_count if going_count is not None else event["attendee_count"]
     is_full = None
     if event["attendee_limit"] is not None:
         is_full = actual_going >= event["attendee_limit"]
+
+    segment_rows = segments or []
+    segment_responses = [
+        SegmentResponse(
+            id=row["id"],
+            location_id=row["location_id"],
+            order_index=row["order_index"],
+            start_datetime=row["start_datetime"],
+            end_datetime=row["end_datetime"],
+            description=row.get("description"),
+        )
+        for row in segment_rows
+    ]
 
     return EventDetailResponse(
         id=event["id"],
@@ -238,6 +351,7 @@ def _build_detail_response(
         venue_metadata=venue_metadata,
         equipment_requirements=equipment,
         attendees=attendees or [],
+        segments=segment_responses,
     )
 
 
@@ -348,6 +462,7 @@ def get_event_detail(
     images = event_repo.get_event_images(db, event_id)
     venue_metadata = event_repo.get_venue_metadata(db, event_id)
     equipment = event_repo.get_equipment(db, event_id)
+    segments = event_repo.get_event_segments(db, event_id)
     attendee_ids = attendance_repo.get_going_user_ids_for_event(db, event_id)
     attendee_users = user_repo.get_users_by_ids(db, attendee_ids)
     attendee_usernames = {
@@ -371,6 +486,7 @@ def get_event_detail(
         access_request_status=access_request_status,
         attendees=attendees,
         host_username=host_username,
+        segments=segments,
     )
 
 
@@ -426,12 +542,40 @@ def update_event(
                 detail="Cannot modify locations after event has started",
             )
 
+    # Itinerary segments — same lifecycle constraint as time/locations (FRS-2)
+    if body.segments is not None and event_started:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot modify segments after event has started",
+        )
+
+    if body.segments is not None:
+        # Validate against the *effective* locations and event window.
+        # body fields shadow stored values when provided; otherwise fall back to DB.
+        if body.locations is not None:
+            effective_location_count = len(body.locations)
+        else:
+            effective_location_count = len(event_repo.get_event_locations(db, event_id))
+
+        effective_start = body.start_datetime or _parse_stored_datetime(event["start_datetime"])
+        effective_end = body.end_datetime or _parse_stored_datetime(event["end_datetime"])
+        validate_segments(
+            body.segments, effective_location_count, effective_start, effective_end,
+        )
+
     if body.category_ids is not None:
         category_id_strs = [str(cid) for cid in body.category_ids]
         validate_categories_exist(db, category_id_strs)
 
     # Set status to "updated" if currently published
-    has_real_changes = bool(update_data) or body.locations is not None or body.category_ids is not None or body.venue_metadata is not None or body.equipment_requirements is not None
+    has_real_changes = (
+        bool(update_data)
+        or body.locations is not None
+        or body.category_ids is not None
+        or body.venue_metadata is not None
+        or body.equipment_requirements is not None
+        or body.segments is not None
+    )
     if event["status"] == "published" and has_real_changes:
         update_data["status"] = "updated"
 
@@ -461,6 +605,20 @@ def update_event(
     if body.equipment_requirements is not None:
         equip_data = [eq.model_dump() for eq in body.equipment_requirements]
 
+    segment_rows = _build_segment_rows(body.segments)
+
+    # Replacing locations CASCADEs through event_segments.location_id, so
+    # require the caller to re-send segments alongside locations (or send []
+    # to explicitly clear them) — silent loss is worse than a clear error.
+    if body.locations is not None and body.segments is None:
+        existing_segments = event_repo.get_event_segments(db, event_id)
+        if existing_segments:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Updating locations clears existing segments. "
+                       "Re-send `segments` (or [] to clear) along with `locations`.",
+            )
+
     # Single-transaction update via RPC
     if has_real_changes or update_data:
         event_repo.update_event_atomic(
@@ -471,6 +629,7 @@ def update_event(
             category_ids=cat_id_strs,
             venue_metadata=venue_data,
             equipment=equip_data,
+            segments=segment_rows,
         )
 
     # Emit notification only if there were real changes
@@ -559,6 +718,17 @@ def delete_event(db: Client, event_id: str, user_id: str) -> None:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Only cancelled or ended events can be deleted",
         )
+
+    # Emit event_deleted notification *before* the row is removed.
+    # _get_affected_user_ids reads bookmarks + 'going' attendances, both of
+    # which CASCADE on event delete — so this must run first. The
+    # notifications.event_id FK is ON DELETE SET NULL, so the rows survive
+    # the subsequent delete with event_id cleared.
+    from app.services.notification_emitter import emit_event_notification
+    emit_event_notification(
+        db, event_id, user_id, "event_deleted",
+        f"Event '{event['title']}' has been deleted by the host",
+    )
 
     # Clean up storage images before DB delete (CASCADE will remove DB records)
     images = image_repo.get_all_event_images(db, event_id)
