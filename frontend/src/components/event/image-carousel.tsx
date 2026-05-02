@@ -27,40 +27,52 @@ export function ImageCarousel({ images, title }: ImageCarouselProps) {
   const next = () => setIndex((i) => (i + 1) % images.length);
 
   return (
-    <div className="group relative aspect-[16/9] w-full overflow-hidden rounded-xl">
+    <div
+      role="region"
+      aria-roledescription="carousel"
+      aria-label={`${title} photos`}
+      className="group relative aspect-[16/9] w-full overflow-hidden rounded-xl"
+    >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={images[index].image_url}
-        alt={`${title} — photo ${index + 1}`}
+        alt={`${title} — photo ${index + 1} of ${images.length}`}
         className="h-full w-full object-cover transition-opacity duration-300"
       />
 
       {images.length > 1 && (
         <>
-          {/* Arrows */}
+          {/* Arrows — visible on hover and on keyboard focus so keyboard users
+              can see them when tabbed into. */}
           <button
+            type="button"
             onClick={prev}
-            className="absolute left-3 top-1/2 -translate-y-1/2 flex size-9 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm transition-colors hover:bg-black/50 opacity-0 group-hover:opacity-100"
+            className="absolute left-3 top-1/2 -translate-y-1/2 flex size-9 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm transition-colors hover:bg-black/50 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
             aria-label="Previous image"
           >
-            <ChevronLeft className="size-5" />
+            <ChevronLeft className="size-5" aria-hidden="true" />
           </button>
           <button
+            type="button"
             onClick={next}
-            className="absolute right-3 top-1/2 -translate-y-1/2 flex size-9 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm transition-colors hover:bg-black/50 opacity-0 group-hover:opacity-100"
+            className="absolute right-3 top-1/2 -translate-y-1/2 flex size-9 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm transition-colors hover:bg-black/50 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
             aria-label="Next image"
           >
-            <ChevronRight className="size-5" />
+            <ChevronRight className="size-5" aria-hidden="true" />
           </button>
 
-          {/* Dots */}
-          <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5">
+          {/* Dots — current dot announces selected state. */}
+          <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5" role="tablist" aria-label="Photo selector">
             {images.map((_, i) => (
               <button
                 key={i}
+                type="button"
+                role="tab"
+                aria-selected={i === index}
+                aria-controls={`carousel-photo-${i}`}
                 onClick={() => setIndex(i)}
                 className={cn(
-                  "size-2 rounded-full transition-all",
+                  "size-2 rounded-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80",
                   i === index ? "bg-white scale-125" : "bg-white/50 hover:bg-white/75",
                 )}
                 aria-label={`Go to photo ${i + 1}`}
@@ -68,8 +80,11 @@ export function ImageCarousel({ images, title }: ImageCarouselProps) {
             ))}
           </div>
 
-          {/* Counter */}
-          <span className="absolute right-3 top-3 rounded-full bg-black/40 px-2.5 py-0.5 text-[11px] font-bold text-white backdrop-blur-sm">
+          {/* Counter — announced live so screen readers report which photo is on. */}
+          <span
+            aria-live="polite"
+            className="absolute right-3 top-3 rounded-full bg-black/40 px-2.5 py-0.5 text-[11px] font-bold text-white backdrop-blur-sm"
+          >
             {index + 1} / {images.length}
           </span>
         </>

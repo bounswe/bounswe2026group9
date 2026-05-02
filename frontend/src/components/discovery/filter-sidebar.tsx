@@ -113,9 +113,11 @@ export function FilterSidebar({
               {TEMPORAL_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
+                  type="button"
                   onClick={() => toggleTemporal(opt.value)}
+                  aria-pressed={filters.temporal === opt.value}
                   className={cn(
-                    "rounded-full border px-4 py-1.5 text-xs font-bold transition-colors",
+                    "rounded-full border px-4 py-1.5 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-mid/60 focus-visible:ring-offset-2",
                     filters.temporal === opt.value
                       ? "bg-brand-dark border-brand-dark text-white"
                       : "border-brand-mid-alpha text-brand-dark hover:bg-brand-mid-alpha",
@@ -127,9 +129,11 @@ export function FilterSidebar({
               {isAuthenticated && PERSONAL_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
+                  type="button"
                   onClick={() => togglePersonal(opt.value)}
+                  aria-pressed={filters.personal === opt.value}
                   className={cn(
-                    "rounded-full border px-4 py-1.5 text-xs font-bold transition-colors",
+                    "rounded-full border px-4 py-1.5 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-mid/60 focus-visible:ring-offset-2",
                     filters.personal === opt.value
                       ? "bg-brand-dark border-brand-dark text-white"
                       : "border-brand-mid-alpha text-brand-dark hover:bg-brand-mid-alpha",
@@ -154,8 +158,10 @@ export function FilterSidebar({
                   return (
                     <button
                       key={cat.id}
+                      type="button"
                       onClick={() => toggleCategory(cat.id)}
-                      className="flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left text-sm transition-colors hover:bg-brand-mid-alpha"
+                      aria-pressed={isSelected}
+                      className="flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left text-sm transition-colors hover:bg-brand-mid-alpha focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-mid/60 focus-visible:ring-offset-2"
                     >
                       <span
                         className={cn(
@@ -199,7 +205,7 @@ export function FilterSidebar({
 
   return (
     <>
-      <aside className="bg-card border-brand-mid-alpha hidden h-full w-72 shrink-0 flex-col border-r lg:flex">
+      <aside aria-label="Event filters" className="bg-card border-brand-mid-alpha hidden h-full w-72 shrink-0 flex-col border-r lg:flex">
         {renderSidebarContent(false)}
       </aside>
 
@@ -208,7 +214,9 @@ export function FilterSidebar({
         aria-hidden={!mobileOpen}
       >
         <button
+          type="button"
           onClick={onMobileClose}
+          tabIndex={mobileOpen ? 0 : -1}
           className={cn(
             "absolute inset-0 bg-brand-dark/35 transition-opacity",
             mobileOpen ? "opacity-100" : "opacity-0",
@@ -216,6 +224,9 @@ export function FilterSidebar({
           aria-label="Close filters"
         />
         <aside
+          role="dialog"
+          aria-modal="true"
+          aria-label="Event filters"
           className={cn(
             "bg-card border-brand-mid-alpha absolute left-0 top-0 flex h-full w-[min(22rem,88vw)] flex-col border-r shadow-brand-panel transition-transform duration-200",
             mobileOpen ? "translate-x-0" : "-translate-x-full",

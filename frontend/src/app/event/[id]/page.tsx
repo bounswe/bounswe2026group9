@@ -1315,6 +1315,7 @@ export default function EventDetailPage() {
     <div className="bg-brand-bg min-h-screen">
       <Navbar />
 
+      <main aria-label="Event details">
       {loading ? (
         <div className="flex items-center justify-center py-32">
           <div className="flex flex-col items-center gap-3">
@@ -1352,6 +1353,7 @@ export default function EventDetailPage() {
           isAuthenticated={isAuthenticated}
         />
       )}
+      </main>
     </div>
   );
 }
