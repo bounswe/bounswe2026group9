@@ -99,6 +99,52 @@ export async function fetchCategories(): Promise<Category[]> {
   return apiRequest<Category[]>("/categories");
 }
 
+// ─── GeoJSON Types ─────────────────────────────────────────────────────────────
+
+export interface GeoJSONPoint {
+  type: "Point";
+  coordinates: [number, number];
+}
+
+export interface EventGeoJSONProperties {
+  id: string;
+  host_id: string;
+  title: string;
+  start_datetime: string;
+  status: string;
+  visibility: string;
+  primary_category: string | null;
+  attendee_count: number;
+  attendee_limit: number | null;
+  is_bookmarked: boolean | null;
+  attendance_status: string | null;
+  going_count: number;
+  bookmark_count: number;
+  primary_image_url: string | null;
+}
+
+export interface GeoJSONFeature {
+  type: "Feature";
+  geometry: GeoJSONPoint;
+  properties: EventGeoJSONProperties;
+}
+
+export interface GeoJSONFeatureCollection {
+  type: "FeatureCollection";
+  features: GeoJSONFeature[];
+}
+
+export async function fetchGeoJsonEvents(params: DiscoveryParams = {}): Promise<GeoJSONFeatureCollection> {
+  const query = new URLSearchParams();
+
+  if (params.search?.trim()) query.set("search", params.search.trim());
+  if (params.category_id) query.set("category_id", params.category_id);
+  if (params.temporal_filter) query.set("temporal_filter", params.temporal_filter);
+
+  const qs = query.toString();
+  return apiRequest<GeoJSONFeatureCollection>(`/events/geojson${qs ? `?${qs}` : ""}`, { auth: "optional" });
+}
+
 // ─── Event Detail Types ────────────────────────────────────────────────────────
 
 export interface EventImage {

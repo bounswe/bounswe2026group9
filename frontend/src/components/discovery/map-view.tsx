@@ -1,14 +1,15 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
-import Map, { Marker, Popup, type MapRef } from "react-map-gl/maplibre";
+import { useRef, useState, useEffect } from "react";
+import Map, { Popup, Source, Layer, type MapRef } from "react-map-gl/maplibre";
 import { Bookmark, BookmarkCheck, Minus, Pencil, Plus, Users, X } from "lucide-react";
 import Link from "next/link";
 
-import { type EventListItem } from "@/lib/events-api";
+import { type EventListItem, type EventGeoJSONProperties, type GeoJSONFeatureCollection, fetchGeoJsonEvents, type TemporalFilter } from "@/lib/events-api";
 import { useEventInteraction } from "@/hooks/use-event-interaction";
 import { getEditEventPagePath } from "@/lib/event-routes";
 import { cn } from "@/lib/utils";
+import { useSearchParams } from "next/navigation";
 
 import "maplibre-gl/dist/maplibre-gl.css";
 
@@ -17,7 +18,8 @@ const DEFAULT_CENTER = { longitude: 28.9784, latitude: 41.0082, zoom: 11 };
 
 interface MapViewProps {
   currentUserId: string | null;
-  events: EventListItem[];
+  // Kept for backward compatibility with page.tsx, but ignored in favor of GeoJSON fetch
+  events?: EventListItem[]; 
   isAuthenticated: boolean;
 }
 
@@ -29,9 +31,7 @@ function formatTime(dateStr: string): string {
   return new Date(dateStr).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
-function CategoryIcon({ name }: { name: string }) {
-  return <span className="text-[10px] font-extrabold text-white uppercase">{name.slice(0, 1)}</span>;
-}
+
 
 // ── Popup body — separate component so it can use the shared hook ────────────
 
@@ -41,7 +41,7 @@ function PopupBody({
   currentUserId,
   onClose,
 }: {
-  event: EventListItem;
+  event: EventGeoJSONProperties;
   isAuthenticated: boolean;
   currentUserId: string | null;
   onClose: () => void;
@@ -84,9 +84,9 @@ function PopupBody({
           {formatDateShort(event.start_datetime)} · {formatTime(event.start_datetime)}
         </p>
 
-        {event.categories[0] && (
+        {event.primary_category && (
           <span className="bg-brand-mid-alpha text-brand-dark mb-3 inline-block rounded-full px-3 py-0.5 text-[11px] font-bold">
-            {event.categories[0].name}
+            {event.primary_category}
           </span>
         )}
 
@@ -138,20 +138,37 @@ function PopupBody({
 // ── Main MapView ─────────────────────────────────────────────────────────────
 
 interface ActivePopup {
-  event: EventListItem;
+  event: EventGeoJSONProperties;
   longitude: number;
   latitude: number;
 }
 
-export function MapView({ currentUserId, events, isAuthenticated }: MapViewProps) {
+export function MapView({ currentUserId, isAuthenticated }: MapViewProps) {
   const [popup, setPopup] = useState<ActivePopup | null>(null);
   const mapRef = useRef<MapRef>(null);
-  const mappableEvents = events.filter((e) => e.primary_location !== null);
+  const searchParams = useSearchParams();
+  
+  const [geoJson, setGeoJson] = useState<GeoJSONFeatureCollection | null>(null);
 
-  const handleMarkerClick = useCallback((event: EventListItem) => {
-    const loc = event.primary_location!;
-    setPopup({ event, longitude: loc.longitude, latitude: loc.latitude });
-  }, []);
+  // Fetch GeoJSON whenever URL filters change
+  useEffect(() => {
+    let cancelled = false;
+    const fetchGeo = async () => {
+      try {
+        const res = await fetchGeoJsonEvents({
+          search: searchParams.get("q") ?? undefined,
+          category_id: searchParams.get("category")?.split(",")[0] ?? undefined,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          temporal_filter: (searchParams.get("temporal") as any) ?? undefined,
+        });
+        if (!cancelled) setGeoJson(res);
+      } catch (err) {
+        console.error("Failed to fetch map GeoJSON", err);
+      }
+    };
+    void fetchGeo();
+    return () => { cancelled = true; };
+  }, [searchParams]);
 
   return (
     <div className="relative flex-1">
@@ -164,22 +181,52 @@ export function MapView({ currentUserId, events, isAuthenticated }: MapViewProps
         </button>
       </div>
 
-      <Map ref={mapRef} initialViewState={DEFAULT_CENTER} style={{ width: "100%", height: "100%" }} mapStyle={MAPTILER_STYLE} attributionControl={false}>
-        {mappableEvents.map((event) => {
-          const loc = event.primary_location!;
-          const isActive = popup?.event.id === event.id;
-          const primaryCategory = event.categories[0];
-          return (
-            <Marker key={event.id} longitude={loc.longitude} latitude={loc.latitude} anchor="bottom" onClick={(e) => { e.originalEvent.stopPropagation(); handleMarkerClick(event); }}>
-              <div className={cn("flex cursor-pointer flex-col items-center transition-transform hover:scale-110", isActive && "scale-110")}>
-                <div className={cn("relative flex size-9 items-center justify-center rounded-full shadow-brand-card", isActive ? "bg-brand-mid ring-4 ring-brand-mid/30" : "bg-brand-dark")}>
-                  {primaryCategory ? <CategoryIcon name={primaryCategory.name} /> : <span className="text-[10px] font-extrabold text-white">E</span>}
-                  <span className={cn("absolute -bottom-1.5 left-1/2 -translate-x-1/2 border-x-[6px] border-t-[8px] border-x-transparent", isActive ? "border-t-brand-mid" : "border-t-brand-dark")} />
-                </div>
-              </div>
-            </Marker>
-          );
-        })}
+      <Map 
+        ref={mapRef} 
+        initialViewState={DEFAULT_CENTER} 
+        style={{ width: "100%", height: "100%" }} 
+        mapStyle={MAPTILER_STYLE} 
+        attributionControl={false}
+        interactiveLayerIds={["events-points"]}
+        onClick={(e) => {
+          if (e.features && e.features.length > 0) {
+            const feature = e.features[0];
+            const properties = feature.properties as unknown as EventGeoJSONProperties;
+            
+            // MapLibre parses stringified booleans/nulls back, but sometimes we need to be careful
+            setPopup({
+              event: {
+                ...properties,
+                is_bookmarked: String(properties.is_bookmarked) === "true",
+              },
+              longitude: e.lngLat.lng,
+              latitude: e.lngLat.lat,
+            });
+          } else {
+            setPopup(null);
+          }
+        }}
+        onMouseEnter={() => {
+          if (mapRef.current) mapRef.current.getCanvas().style.cursor = 'pointer';
+        }}
+        onMouseLeave={() => {
+          if (mapRef.current) mapRef.current.getCanvas().style.cursor = '';
+        }}
+      >
+        {geoJson && (
+          <Source id="events-source" type="geojson" data={geoJson as unknown as string}>
+            <Layer
+              id="events-points"
+              type="circle"
+              paint={{
+                "circle-radius": 12,
+                "circle-color": "#2A2A2A", // brand-dark
+                "circle-stroke-width": 3,
+                "circle-stroke-color": "#FFFFFF",
+              }}
+            />
+          </Source>
+        )}
 
         {popup && (
           <Popup longitude={popup.longitude} latitude={popup.latitude} anchor="top" closeOnClick={false} onClose={() => setPopup(null)} className="!p-0 !bg-transparent !border-0 !shadow-none" maxWidth="280px">

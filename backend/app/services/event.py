@@ -16,6 +16,12 @@ from app.models.event import (
     SegmentRequest,
     SegmentResponse,
 )
+from app.models.geojson import (
+    EventGeoJSONProperties,
+    GeoJSONFeature,
+    GeoJSONFeatureCollection,
+    GeoJSONPoint,
+)
 from app.repositories import attendance as attendance_repo
 from app.repositories import bookmark as bookmark_repo
 from app.repositories import event as event_repo
@@ -942,3 +948,51 @@ def list_events(
         ))
 
     return EventListResponse(items=items, total=total, page=page, page_size=page_size, total_pages=total_pages)
+
+
+def list_events_geojson(
+    db: Client,
+    **kwargs,
+) -> GeoJSONFeatureCollection:
+    """Fetch events using the same filters as list_events and format as GeoJSON.
+
+    This forces page=1 and page_size=2000 to return a comprehensive set of points
+    for the map view without requiring the client to iterate pages.
+    """
+    kwargs["page"] = 1
+    kwargs["page_size"] = 2000
+
+    list_response = list_events(db, **kwargs)
+
+    features: list[GeoJSONFeature] = []
+    for item in list_response.items:
+        # GeoJSON only maps events that have a location
+        if not item.primary_location:
+            continue
+
+        point = GeoJSONPoint(
+            coordinates=[item.primary_location.longitude, item.primary_location.latitude]
+        )
+
+        primary_category = item.categories[0].name if item.categories else None
+
+        properties = EventGeoJSONProperties(
+            id=item.id,
+            host_id=item.host_id,
+            title=item.title,
+            start_datetime=item.start_datetime.isoformat() if isinstance(item.start_datetime, datetime) else str(item.start_datetime),
+            status=item.status,
+            visibility=item.visibility,
+            primary_category=primary_category,
+            attendee_count=item.attendee_count,
+            attendee_limit=item.attendee_limit,
+            is_bookmarked=item.is_bookmarked,
+            attendance_status=item.attendance_status,
+            going_count=item.going_count,
+            bookmark_count=item.bookmark_count,
+            primary_image_url=item.primary_image_url,
+        )
+
+        features.append(GeoJSONFeature(geometry=point, properties=properties))
+
+    return GeoJSONFeatureCollection(features=features)
