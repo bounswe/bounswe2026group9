@@ -1088,11 +1088,16 @@ private fun InfoRow(label: String, value: String) {
 
 private fun formatDateRange(start: String, end: String): String {
     return try {
-        // Backend returns ISO 8601 with timezone (e.g. 2026-04-15T14:30:00+00:00)
-        // Use ISO parser that handles the offset, then display in device local timezone
+        // Backend returns RFC 3339 / ISO 8601 with timezone offset
+        // (e.g. 2026-04-15T14:30:00+00:00 or 2026-04-15T14:30:00Z).
+        // The "XXX" pattern reads the embedded offset — do NOT override the
+        // parser timezone or it will shift the instant incorrectly.
+        // Display formatters use the device default timezone (local time).
         val parser = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.getDefault())
         val display = SimpleDateFormat("EEE, MMM d · HH:mm", Locale.getDefault())
+        display.timeZone = TimeZone.getDefault()
         val displayEnd = SimpleDateFormat("HH:mm", Locale.getDefault())
+        displayEnd.timeZone = TimeZone.getDefault()
         val startDate = parser.parse(start)
         val endDate = parser.parse(end)
         if (startDate != null && endDate != null) {
@@ -1107,8 +1112,11 @@ private fun formatDateRange(start: String, end: String): String {
 
 private fun formatCommentTime(iso: String): String {
     return try {
+        // Backend returns RFC 3339 / ISO 8601 with timezone offset.
+        // Do NOT override the parser timezone; let "XXX" read the offset.
         val parser = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.getDefault())
         val display = SimpleDateFormat("MMM d, HH:mm", Locale.getDefault())
+        display.timeZone = TimeZone.getDefault()
         val date = parser.parse(iso)
         if (date != null) display.format(date) else iso
     } catch (_: Exception) {

@@ -3,10 +3,12 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import ConfigDict
+
+from app.models.base import AppBaseModel
 
 
-class AttendanceStatusRequest(BaseModel):
+class AttendanceStatusRequest(AppBaseModel):
     status: str
 
     model_config = ConfigDict(
@@ -16,7 +18,7 @@ class AttendanceStatusRequest(BaseModel):
     )
 
 
-class AttendanceResponse(BaseModel):
+class AttendanceResponse(AppBaseModel):
     id: UUID
     event_id: UUID
     user_id: UUID

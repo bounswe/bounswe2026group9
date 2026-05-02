@@ -3,18 +3,17 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
-
+from app.models.base import AppBaseModel
 from app.models.event import CategoryResponse, LocationResponse
 
 
-class BookmarkResponse(BaseModel):
+class BookmarkResponse(AppBaseModel):
     id: UUID
     event_id: UUID
     created_at: datetime
 
 
-class BookmarkedEventResponse(BaseModel):
+class BookmarkedEventResponse(AppBaseModel):
     """Event summary shown in user's bookmark list."""
     id: UUID
     title: str
@@ -29,7 +28,7 @@ class BookmarkedEventResponse(BaseModel):
     bookmarked_at: datetime
 
 
-class BookmarkListResponse(BaseModel):
+class BookmarkListResponse(AppBaseModel):
     items: list[BookmarkedEventResponse]
     total: int
     page: int
