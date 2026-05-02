@@ -13,7 +13,7 @@ datetime serialisation across the entire API surface:
   when response models are returned from service functions as dicts.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime
 
 from pydantic import BaseModel
 from pydantic.config import ConfigDict
@@ -28,9 +28,9 @@ def _utc_isoformat(dt: datetime) -> str:
     """
     if dt.tzinfo is None or dt.utcoffset() is None:
         # Treat naive datetimes as UTC (defensive fallback).
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=datetime.UTC)
     else:
-        dt = dt.astimezone(timezone.utc)
+        dt = dt.astimezone(datetime.UTC)
     return dt.isoformat()  # produces "YYYY-MM-DDTHH:MM:SS+00:00"
 
 

@@ -1,8 +1,6 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
-
 from app.models.base import AppBaseModel
 
 # --- Response Schemas ---
