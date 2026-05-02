@@ -26,6 +26,13 @@ def get_host_profile(db: Client, target_user_id: str, current_user_id: str | Non
     # Only include drafts if the current user is viewing their own profile
     is_owner = current_user_id == target_user_id
     events = profile_repo.get_hosted_events(db, target_user_id, include_drafts=is_owner)
+
+    # Order upcoming events first (asc by start) then past events (most recent ended first).
+    upcoming = [e for e in events if e.get("status") != "ended"]
+    past = [e for e in events if e.get("status") == "ended"]
+    upcoming.sort(key=lambda e: e["start_datetime"])
+    past.sort(key=lambda e: e["start_datetime"], reverse=True)
+    events = upcoming + past
     event_ids = [e["id"] for e in events]
 
     locations_by_event = event_repo.get_primary_locations_for_events(db, event_ids)
