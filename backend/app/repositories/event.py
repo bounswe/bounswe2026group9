@@ -209,12 +209,18 @@ def get_valid_category_ids(db: Client, category_ids: list[str]) -> set[str]:
 
 # --- Discovery ---
 
+# Accessibility filter mapping: API canonical name → DB column.
+# `captions` deliberately maps to the existing `captions_support` column.
+# Sign-language interpretation is a separate accessibility feature; modelling
+# it as a column is a follow-up (would require a venue_metadata migration +
+# create-event UI). The previous `sign_language` API name was misleading
+# because it claimed support that the underlying column does not guarantee.
 _ACCESSIBILITY_COLS = (
     "wheelchair_access",
     "accessible_restroom",
     "elevator",
     "seating",
-    "sign_language",
+    "captions",
     "quiet_friendly",
 )
 _ACCESSIBILITY_DB_MAP = {
@@ -222,7 +228,7 @@ _ACCESSIBILITY_DB_MAP = {
     "accessible_restroom": "accessible_restroom",
     "elevator": "elevator_available",
     "seating": "seating_available",
-    "sign_language": "captions_support",
+    "captions": "captions_support",
     "quiet_friendly": "quiet_friendly",
 }
 

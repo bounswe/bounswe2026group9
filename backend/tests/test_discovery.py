@@ -818,3 +818,121 @@ class TestListEventsDefaultArea:
 
         _cleanup_event(ev_near["id"])
         _cleanup_user(user["id"])
+
+
+class TestListEventsCaptionsRename:
+    """The accessibility filter previously named `sign_language` is now `captions`.
+
+    The old name was misleading — captions and sign-language interpretation
+    are different features and the underlying DB column is `captions_support`.
+    """
+
+    def test_captions_filter_matches_captions_support_column(self):
+        user = _create_test_user("captions")
+        cat_ids = _get_category_ids(1)
+        ev_with = _create_published_event(user["id"], cat_ids, title="WithCaptions", days_from_now=2)
+        ev_without = _create_published_event(user["id"], cat_ids, title="NoCaptions", days_from_now=2)
+        db.table("venue_metadata").insert({
+            "event_id": ev_with["id"],
+            "wheelchair_access": False,
+            "accessible_restroom": False,
+            "elevator_available": False,
+            "seating_available": False,
+            "captions_support": True,
+            "quiet_friendly": False,
+        }).execute()
+
+        resp = client.get("/events?captions=true")
+        assert resp.status_code == 200, resp.text
+        ids = [i["id"] for i in resp.json()["items"]]
+        assert ev_with["id"] in ids
+        assert ev_without["id"] not in ids
+
+        _cleanup_event(ev_with["id"])
+        _cleanup_event(ev_without["id"])
+        _cleanup_user(user["id"])
+
+    def test_old_sign_language_param_no_longer_filters(self):
+        """sign_language is no longer a recognised query parameter; passing it
+        is silently ignored by FastAPI rather than rejected, but it must not
+        accidentally apply the captions filter (the misleading old behaviour)."""
+        user = _create_test_user("oldsl")
+        cat_ids = _get_category_ids(1)
+        ev = _create_published_event(user["id"], cat_ids, title="StillVisible", days_from_now=2)
+        # Insert venue metadata with captions_support=False so if sign_language
+        # were still mapping to captions_support, this event would be excluded.
+        db.table("venue_metadata").insert({
+            "event_id": ev["id"],
+            "wheelchair_access": False,
+            "accessible_restroom": False,
+            "elevator_available": False,
+            "seating_available": False,
+            "captions_support": False,
+            "quiet_friendly": False,
+        }).execute()
+
+        resp = client.get("/events?sign_language=true")
+        assert resp.status_code == 200, resp.text
+        ids = [i["id"] for i in resp.json()["items"]]
+        assert ev["id"] in ids
+
+        _cleanup_event(ev["id"])
+        _cleanup_user(user["id"])
+
+
+class TestListEventsCategorySort:
+    """sort=category requires a narrowing filter to keep memory bounded."""
+
+    def test_sort_category_without_narrowing_filter_rejected(self):
+        resp = client.get("/events?sort=category")
+        assert resp.status_code == 422
+        assert "narrowing filter" in resp.json()["detail"].lower()
+
+    def test_sort_category_accepted_with_search(self):
+        user = _create_test_user("catsearch")
+        cat_ids = _get_category_ids(1)
+        ev = _create_published_event(user["id"], cat_ids, title="UniqueCatSortTitle", days_from_now=2)
+
+        resp = client.get("/events?sort=category&search=UniqueCatSortTitle")
+        assert resp.status_code == 200, resp.text
+        ids = [i["id"] for i in resp.json()["items"]]
+        assert ev["id"] in ids
+
+        _cleanup_event(ev["id"])
+        _cleanup_user(user["id"])
+
+    def test_sort_category_accepted_with_quick_filter(self):
+        resp = client.get("/events?sort=category&quick_filter=upcoming")
+        assert resp.status_code == 200, resp.text
+
+    def test_sort_category_accepted_with_category_id(self):
+        cat_ids = _get_category_ids(1)
+        resp = client.get(f"/events?sort=category&category_id={cat_ids[0]}")
+        assert resp.status_code == 200, resp.text
+
+    def test_sort_category_accepted_with_location(self):
+        resp = client.get("/events?sort=category&near_lat=41.0&near_lng=29.0")
+        assert resp.status_code == 200, resp.text
+
+    def test_sort_category_accepted_with_accessibility(self):
+        resp = client.get("/events?sort=category&wheelchair=true")
+        assert resp.status_code == 200, resp.text
+
+    def test_sort_category_orders_alphabetically(self):
+        user = _create_test_user("catorder")
+        cat_ids = _get_category_ids(1)
+        # Same category bucket → tiebreaker on start_datetime
+        ev_first = _create_published_event(user["id"], cat_ids, title="ZZZcatA", days_from_now=2)
+        ev_second = _create_published_event(user["id"], cat_ids, title="ZZZcatB", days_from_now=3)
+
+        # Use search to satisfy the narrowing-filter requirement.
+        resp = client.get("/events?sort=category&search=ZZZcat")
+        assert resp.status_code == 200, resp.text
+        ids = [i["id"] for i in resp.json()["items"]]
+        if ev_first["id"] in ids and ev_second["id"] in ids:
+            # Same category → start_datetime tiebreaker → ev_first earlier
+            assert ids.index(ev_first["id"]) < ids.index(ev_second["id"])
+
+        _cleanup_event(ev_first["id"])
+        _cleanup_event(ev_second["id"])
+        _cleanup_user(user["id"])

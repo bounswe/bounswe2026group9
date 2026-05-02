@@ -103,12 +103,24 @@ def list_events_endpoint(
     accessible_restroom: bool | None = Query(default=None),
     elevator: bool | None = Query(default=None),
     seating: bool | None = Query(default=None),
-    sign_language: bool | None = Query(default=None),
+    captions: bool | None = Query(
+        default=None,
+        description=(
+            "Filter events whose venue offers captions support. "
+            "Note: this maps to the existing `captions_support` venue column; a "
+            "dedicated sign-language interpretation column is not modelled yet."
+        ),
+    ),
     quiet_friendly: bool | None = Query(default=None),
     sort: str | None = Query(
         default=None,
         pattern="^(start_time|distance|category)$",
-        description="Sort order. Defaults to distance when location is provided, otherwise start_time.",
+        description=(
+            "Sort order. Defaults to distance when location is provided, otherwise start_time. "
+            "sort=distance requires a location (near_lat/near_lng or use_default_area). "
+            "sort=category requires a narrowing filter — search, category_id, quick_filter, "
+            "custom window, accessibility, or location — to keep the in-memory candidate set bounded."
+        ),
     ),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
@@ -158,7 +170,7 @@ def list_events_endpoint(
             "accessible_restroom": accessible_restroom,
             "elevator": elevator,
             "seating": seating,
-            "sign_language": sign_language,
+            "captions": captions,
             "quiet_friendly": quiet_friendly,
         },
         sort=sort,
