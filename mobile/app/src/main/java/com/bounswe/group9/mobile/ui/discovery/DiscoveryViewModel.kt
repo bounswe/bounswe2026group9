@@ -42,14 +42,77 @@ class DiscoveryViewModel(
     }
 
     fun onCategorySelected(categoryId: String?) {
-        _uiState.value = _uiState.value.copy(selectedCategoryId = categoryId)
-        // Don't load yet — wait for applyFilters()
+        val new = if (_uiState.value.selectedCategoryId == categoryId) null else categoryId
+        _uiState.value = _uiState.value.copy(selectedCategoryId = new)
     }
 
-    fun onTemporalSelected(filter: String?) {
-        val new = if (_uiState.value.selectedTemporal == filter) null else filter
-        _uiState.value = _uiState.value.copy(selectedTemporal = new)
-        // Don't load yet — wait for applyFilters()
+    fun onQuickFilterSelected(filter: String?) {
+        val new = if (_uiState.value.selectedQuickFilter == filter) null else filter
+        _uiState.value = _uiState.value.copy(selectedQuickFilter = new)
+    }
+
+    fun onBookmarkedOnlyToggle() {
+        _uiState.value = _uiState.value.copy(
+            bookmarkedOnly = !_uiState.value.bookmarkedOnly,
+            goingOnly = false
+        )
+    }
+
+    fun onGoingOnlyToggle() {
+        _uiState.value = _uiState.value.copy(
+            goingOnly = !_uiState.value.goingOnly,
+            bookmarkedOnly = false
+        )
+    }
+
+    // Accessibility toggles
+    fun onWheelchairToggle() {
+        _uiState.value = _uiState.value.copy(wheelchair = !_uiState.value.wheelchair)
+    }
+
+    fun onAccessibleRestroomToggle() {
+        _uiState.value = _uiState.value.copy(accessibleRestroom = !_uiState.value.accessibleRestroom)
+    }
+
+    fun onElevatorToggle() {
+        _uiState.value = _uiState.value.copy(elevator = !_uiState.value.elevator)
+    }
+
+    fun onSeatingToggle() {
+        _uiState.value = _uiState.value.copy(seating = !_uiState.value.seating)
+    }
+
+    fun onCaptionsToggle() {
+        _uiState.value = _uiState.value.copy(captions = !_uiState.value.captions)
+    }
+
+    fun onQuietFriendlyToggle() {
+        _uiState.value = _uiState.value.copy(quietFriendly = !_uiState.value.quietFriendly)
+    }
+
+    fun disableProximitySort() {
+        _uiState.value = _uiState.value.copy(
+            proximitySort = false,
+            nearLat = null,
+            nearLng = null
+        )
+    }
+
+    fun enableProximitySort(lat: Double, lng: Double) {
+        _uiState.value = _uiState.value.copy(
+            proximitySort = true,
+            nearLat = lat,
+            nearLng = lng
+        )
+        loadEvents(reset = true)
+    }
+
+    fun enableProximitySortOptimistic() {
+        _uiState.value = _uiState.value.copy(proximitySort = true)
+    }
+
+    fun revertProximitySort() {
+        _uiState.value = _uiState.value.copy(proximitySort = false, nearLat = null, nearLng = null)
     }
 
     fun applyFilters() {
@@ -70,7 +133,6 @@ class DiscoveryViewModel(
         val event = events.find { it.id == eventId } ?: return
         val isBookmarked = event.is_bookmarked == true
 
-        // Optimistic update
         _uiState.value = _uiState.value.copy(
             events = events.map { if (it.id == eventId) it.copy(is_bookmarked = !isBookmarked) else it }
         )
@@ -79,7 +141,6 @@ class DiscoveryViewModel(
             val result = if (isBookmarked) repository.removeBookmark(t, eventId)
                          else repository.addBookmark(t, eventId)
             result.onFailure {
-                // Rollback on error
                 _uiState.value = _uiState.value.copy(
                     events = _uiState.value.events.map {
                         if (it.id == eventId) it.copy(is_bookmarked = isBookmarked) else it
@@ -89,22 +150,21 @@ class DiscoveryViewModel(
         }
     }
 
-    fun onBookmarkedOnlyToggle() {
-        val current = _uiState.value.bookmarkedOnly
-        _uiState.value = _uiState.value.copy(bookmarkedOnly = !current, goingOnly = false)
-    }
-
-    fun onGoingOnlyToggle() {
-        val current = _uiState.value.goingOnly
-        _uiState.value = _uiState.value.copy(goingOnly = !current, bookmarkedOnly = false)
-    }
-
     fun clearFilters() {
         _uiState.value = _uiState.value.copy(
             selectedCategoryId = null,
-            selectedTemporal = null,
+            selectedQuickFilter = null,
             bookmarkedOnly = false,
-            goingOnly = false
+            goingOnly = false,
+            wheelchair = false,
+            accessibleRestroom = false,
+            elevator = false,
+            seating = false,
+            captions = false,
+            quietFriendly = false,
+            proximitySort = false,
+            nearLat = null,
+            nearLng = null
         )
         loadEvents(reset = true)
     }
@@ -112,10 +172,17 @@ class DiscoveryViewModel(
     fun activeFilterCount(): Int {
         val s = _uiState.value
         var count = 0
-        if (s.selectedTemporal != null) count++
+        if (s.selectedQuickFilter != null) count++
         if (s.selectedCategoryId != null) count++
         if (s.bookmarkedOnly) count++
         if (s.goingOnly) count++
+        if (s.wheelchair) count++
+        if (s.accessibleRestroom) count++
+        if (s.elevator) count++
+        if (s.seating) count++
+        if (s.captions) count++
+        if (s.quietFriendly) count++
+        if (s.proximitySort) count++
         return count
     }
 
@@ -133,7 +200,16 @@ class DiscoveryViewModel(
                 token = token,
                 search = state.search.takeIf { it.isNotBlank() },
                 categoryId = state.selectedCategoryId,
-                temporalFilter = state.selectedTemporal,
+                quickFilter = state.selectedQuickFilter,
+                wheelchair = state.wheelchair.takeIf { it },
+                accessibleRestroom = state.accessibleRestroom.takeIf { it },
+                elevator = state.elevator.takeIf { it },
+                seating = state.seating.takeIf { it },
+                captions = state.captions.takeIf { it },
+                quietFriendly = state.quietFriendly.takeIf { it },
+                sort = if (state.proximitySort && state.nearLat != null) "distance" else null,
+                nearLat = state.nearLat,
+                nearLng = state.nearLng,
                 page = page
             ).fold(
                 onSuccess = { response ->

@@ -15,7 +15,17 @@ class EventRepository {
         token: String? = null,
         search: String? = null,
         categoryId: String? = null,
-        temporalFilter: String? = null,
+        quickFilter: String? = null,
+        wheelchair: Boolean? = null,
+        accessibleRestroom: Boolean? = null,
+        elevator: Boolean? = null,
+        seating: Boolean? = null,
+        captions: Boolean? = null,
+        quietFriendly: Boolean? = null,
+        sort: String? = null,
+        nearLat: Double? = null,
+        nearLng: Double? = null,
+        radiusKm: Double? = null,
         page: Int = 1,
         pageSize: Int = 20
     ): Result<EventListResponse> {
@@ -25,16 +35,27 @@ class EventRepository {
                 token = authHeader,
                 search = search?.takeIf { it.isNotBlank() },
                 categoryId = categoryId,
-                temporalFilter = temporalFilter,
+                quickFilter = quickFilter,
+                nearLat = nearLat,
+                nearLng = nearLng,
+                radiusKm = radiusKm,
+                wheelchair = wheelchair,
+                accessibleRestroom = accessibleRestroom,
+                elevator = elevator,
+                seating = seating,
+                captions = captions,
+                quietFriendly = quietFriendly,
+                sort = sort,
                 page = page,
                 pageSize = pageSize
             )
             Result.success(response)
         } catch (e: retrofit2.HttpException) {
-            // If token expired (401), retry without token — discovery is public
             if (e.code() == 401 && token != null) {
                 Log.w("EventRepository", "Token rejected (401), retrying without auth")
-                return getEvents(null, search, categoryId, temporalFilter, page, pageSize)
+                return getEvents(null, search, categoryId, quickFilter,
+                    wheelchair, accessibleRestroom, elevator, seating, captions,
+                    quietFriendly, sort, nearLat, nearLng, radiusKm, page, pageSize)
             }
             val body = e.response()?.errorBody()?.string() ?: "Unknown error"
             Log.e("EventRepository", "getEvents HTTP ${e.code()}: $body")
