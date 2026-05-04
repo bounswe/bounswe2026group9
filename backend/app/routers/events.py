@@ -257,7 +257,11 @@ def list_events_geojson_endpoint(
         radius_km=radius_km,
         use_default_area=use_default_area,
         accessibility={
-            "wheelchair": wheelchair,
+            # Canonical key is "wheelchair_access" — must match the
+            # _ACCESSIBILITY_DB_MAP keys used by repositories/event.py and
+            # the main /events endpoint, otherwise the filter is silently
+            # ignored.
+            "wheelchair_access": wheelchair,
             "accessible_restroom": accessible_restroom,
             "elevator": elevator,
             "seating": seating,
