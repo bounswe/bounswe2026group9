@@ -1,20 +1,22 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from app.models.base import AppBaseModel
 
 
-class CommentCreateRequest(BaseModel):
+class CommentCreateRequest(AppBaseModel):
     text: str = Field(min_length=1)
     parent_id: UUID | None = None
 
 
-class CommentAuthor(BaseModel):
+class CommentAuthor(AppBaseModel):
     id: UUID
     username: str
 
 
-class CommentResponse(BaseModel):
+class CommentResponse(AppBaseModel):
     id: UUID
     event_id: UUID
     user: CommentAuthor
@@ -24,7 +26,7 @@ class CommentResponse(BaseModel):
     replies: list["CommentResponse"] = []
 
 
-class CommentListResponse(BaseModel):
+class CommentListResponse(AppBaseModel):
     items: list[CommentResponse]
     total: int
     page: int

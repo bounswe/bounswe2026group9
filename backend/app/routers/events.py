@@ -7,6 +7,12 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query, UploadFile
 
 from app.database import get_supabase
 from app.middleware.auth import get_current_user_id
+from app.models.errors import (
+    AUTH_RESPONSES,
+    CONFLICT_RESPONSE,
+    FORBIDDEN_RESPONSE,
+    NOT_FOUND_RESPONSE,
+)
 from app.models.event import (
     EventCreateRequest,
     EventDetailResponse,
@@ -272,7 +278,18 @@ def list_events_geojson_endpoint(
     )
 
 
-@router.post("", status_code=status.HTTP_201_CREATED, response_model=EventDetailResponse)
+@router.post(
+    "",
+    status_code=status.HTTP_201_CREATED,
+    response_model=EventDetailResponse,
+    summary="Create an event",
+    description=(
+        "Create a new event with locations, categories, optional venue "
+        "metadata, equipment list, and itinerary segments — all in one "
+        "atomic transaction."
+    ),
+    responses={**AUTH_RESPONSES, **CONFLICT_RESPONSE},
+)
 def create_event_endpoint(
     body: EventCreateRequest,
     user_id: str = Depends(get_current_user_id),
@@ -281,7 +298,18 @@ def create_event_endpoint(
     return create_event(db, user_id, body)
 
 
-@router.get("/{event_id}", response_model=EventDetailResponse | EventLimitedResponse)
+@router.get(
+    "/{event_id}",
+    response_model=EventDetailResponse | EventLimitedResponse,
+    summary="Get event detail",
+    description=(
+        "Returns the full event payload for callers with access. "
+        "For private events the caller does not have access to, returns a "
+        "limited subset (`EventLimitedResponse`) — title, host, status, "
+        "and the public preview fields only."
+    ),
+    responses={**NOT_FOUND_RESPONSE},
+)
 def get_event_endpoint(
     event_id: UUID,
     user_id: str | None = Depends(_optional_user_id),
@@ -290,7 +318,14 @@ def get_event_endpoint(
     return get_event_detail(db, str(event_id), user_id)
 
 
-@router.put("/{event_id}", response_model=EventDetailResponse)
+@router.put(
+    "/{event_id}",
+    response_model=EventDetailResponse,
+    summary="Update an event",
+    description="Host-only. Replaces event fields and any nested collections "
+                "supplied in the body atomically.",
+    responses={**AUTH_RESPONSES, **FORBIDDEN_RESPONSE, **NOT_FOUND_RESPONSE},
+)
 def update_event_endpoint(
     event_id: UUID,
     body: EventUpdateRequest,
@@ -300,7 +335,16 @@ def update_event_endpoint(
     return update_event(db, str(event_id), user_id, body)
 
 
-@router.patch("/{event_id}/status", response_model=EventDetailResponse)
+@router.patch(
+    "/{event_id}/status",
+    response_model=EventDetailResponse,
+    summary="Change event status",
+    description=(
+        "Host-only. Transition the event between `draft`, `published`, "
+        "`updated`, and `cancelled` per the lifecycle rules."
+    ),
+    responses={**AUTH_RESPONSES, **FORBIDDEN_RESPONSE, **NOT_FOUND_RESPONSE},
+)
 def change_event_status_endpoint(
     event_id: UUID,
     body: StatusChangeRequest,
@@ -310,7 +354,14 @@ def change_event_status_endpoint(
     return change_event_status(db, str(event_id), user_id, body.status)
 
 
-@router.delete("/{event_id}", status_code=status.HTTP_200_OK, response_model=MessageResponse)
+@router.delete(
+    "/{event_id}",
+    status_code=status.HTTP_200_OK,
+    response_model=MessageResponse,
+    summary="Delete an event",
+    description="Host-only.",
+    responses={**AUTH_RESPONSES, **FORBIDDEN_RESPONSE, **NOT_FOUND_RESPONSE},
+)
 def delete_event_endpoint(
     event_id: UUID,
     user_id: str = Depends(get_current_user_id),
@@ -320,7 +371,15 @@ def delete_event_endpoint(
     return MessageResponse(message="Event deleted successfully")
 
 
-@router.post("/{event_id}/images", status_code=status.HTTP_201_CREATED, response_model=EventImageResponse)
+@router.post(
+    "/{event_id}/images",
+    status_code=status.HTTP_201_CREATED,
+    response_model=EventImageResponse,
+    summary="Upload an event image",
+    description="Host-only. `multipart/form-data` upload; max size and "
+                "MIME-type rules are enforced server-side.",
+    responses={**AUTH_RESPONSES, **FORBIDDEN_RESPONSE, **NOT_FOUND_RESPONSE},
+)
 def upload_image_endpoint(
     event_id: UUID,
     file: UploadFile,
@@ -330,7 +389,13 @@ def upload_image_endpoint(
     return upload_event_image(db, str(event_id), user_id, file)
 
 
-@router.delete("/{event_id}/images/{image_id}", response_model=MessageResponse)
+@router.delete(
+    "/{event_id}/images/{image_id}",
+    response_model=MessageResponse,
+    summary="Delete an event image",
+    description="Host-only.",
+    responses={**AUTH_RESPONSES, **FORBIDDEN_RESPONSE, **NOT_FOUND_RESPONSE},
+)
 def delete_image_endpoint(
     event_id: UUID,
     image_id: UUID,

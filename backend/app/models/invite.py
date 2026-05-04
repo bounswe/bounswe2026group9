@@ -1,16 +1,18 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from app.models.base import AppBaseModel
 
 # --- Invite ---
 
-class InviteCreateRequest(BaseModel):
+class InviteCreateRequest(AppBaseModel):
     max_uses: int | None = Field(default=None, gt=0)
     expires_in_hours: int | None = Field(default=None, gt=0, le=720)  # max 30 days
 
 
-class InviteResponse(BaseModel):
+class InviteResponse(AppBaseModel):
     id: UUID
     event_id: UUID
     token: str
@@ -21,13 +23,13 @@ class InviteResponse(BaseModel):
     created_at: datetime
 
 
-class InviteListResponse(BaseModel):
+class InviteListResponse(AppBaseModel):
     items: list[InviteResponse]
 
 
 # --- Access Request ---
 
-class AccessRequestResponse(BaseModel):
+class AccessRequestResponse(AppBaseModel):
     id: UUID
     event_id: UUID
     user_id: UUID
@@ -37,17 +39,17 @@ class AccessRequestResponse(BaseModel):
     resolved_at: datetime | None
 
 
-class AccessRequestListResponse(BaseModel):
+class AccessRequestListResponse(AppBaseModel):
     items: list[AccessRequestResponse]
 
 
-class AccessRequestDecision(BaseModel):
+class AccessRequestDecision(AppBaseModel):
     status: str = Field(pattern="^(approved|rejected)$")
 
 
 # --- Access Grant ---
 
-class AccessGrantResponse(BaseModel):
+class AccessGrantResponse(AppBaseModel):
     id: UUID
     event_id: UUID
     user_id: UUID

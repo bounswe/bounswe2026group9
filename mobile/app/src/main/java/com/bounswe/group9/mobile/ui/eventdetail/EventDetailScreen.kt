@@ -610,7 +610,8 @@ private fun FullDetailContent(
                     uiState = uiState,
                     onCreateInvite = { viewModel.createInvite() },
                     onApprove = { id -> viewModel.decideRequest(id, "approved") },
-                    onReject = { id -> viewModel.decideRequest(id, "rejected") }
+                    onReject = { id -> viewModel.decideRequest(id, "rejected") },
+                    onNavigateToProfile = onNavigateToHost
                 )
             }
 
@@ -631,7 +632,8 @@ private fun FullDetailContent(
                 onPost = { viewModel.postComment() },
                 onDelete = { viewModel.deleteComment(it) },
                 onLoadMore = { viewModel.loadMoreComments() },
-                onRetry = { viewModel.loadMoreComments() }
+                onRetry = { viewModel.loadMoreComments() },
+                onNavigateToProfile = onNavigateToHost
             )
 
             Spacer(Modifier.height(32.dp))
@@ -659,7 +661,8 @@ private fun CommentSection(
     onPost: () -> Unit,
     onDelete: (String) -> Unit,
     onLoadMore: () -> Unit,
-    onRetry: () -> Unit
+    onRetry: () -> Unit,
+    onNavigateToProfile: (String) -> Unit
 ) {
     SectionHeader("Comments")
 
@@ -708,7 +711,8 @@ private fun CommentSection(
                 onDelete = { onDelete(comment.id) },
                 currentUserId = currentUserId,
                 hostId = hostId,
-                onDeleteReply = { onDelete(it) }
+                onDeleteReply = { onDelete(it) },
+                onNavigateToProfile = onNavigateToProfile
             )
             Spacer(Modifier.height(8.dp))
         }
@@ -732,7 +736,8 @@ private fun CommentItem(
     onDelete: () -> Unit,
     currentUserId: String? = null,
     hostId: String? = null,
-    onDeleteReply: (String) -> Unit = {}
+    onDeleteReply: (String) -> Unit = {},
+    onNavigateToProfile: (String) -> Unit = {}
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -744,7 +749,13 @@ private fun CommentItem(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(comment.user.username, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                Text(
+                    comment.user.username,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.clickable { onNavigateToProfile(comment.user.id) }
+                )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         formatCommentTime(comment.created_at),
@@ -776,7 +787,13 @@ private fun CommentItem(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(reply.user.username, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                                    Text(
+                                        reply.user.username,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.clickable { onNavigateToProfile(reply.user.id) }
+                                    )
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(
                                             formatCommentTime(reply.created_at),
@@ -869,7 +886,8 @@ private fun ManageInvitesSection(
     uiState: EventDetailUiState,
     onCreateInvite: () -> Unit,
     onApprove: (String) -> Unit,
-    onReject: (String) -> Unit
+    onReject: (String) -> Unit,
+    onNavigateToProfile: (String) -> Unit
 ) {
     val clipboard = LocalClipboardManager.current
 
@@ -968,7 +986,8 @@ private fun ManageInvitesSection(
             AccessRequestRow(
                 request = req,
                 onApprove = { onApprove(req.id) },
-                onReject = { onReject(req.id) }
+                onReject = { onReject(req.id) },
+                onNavigateToProfile = onNavigateToProfile
             )
             Spacer(Modifier.height(4.dp))
         }
@@ -986,7 +1005,8 @@ private fun ManageInvitesSection(
 private fun AccessRequestRow(
     request: AccessRequestResponseDto,
     onApprove: () -> Unit,
-    onReject: () -> Unit
+    onReject: () -> Unit,
+    onNavigateToProfile: (String) -> Unit = {}
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -1003,7 +1023,10 @@ private fun AccessRequestRow(
                 request.username,
                 fontWeight = FontWeight.Medium,
                 fontSize = 14.sp,
-                modifier = Modifier.weight(1f)
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onNavigateToProfile(request.user_id) }
             )
             Spacer(Modifier.width(8.dp))
             // Approve button
@@ -1088,11 +1111,16 @@ private fun InfoRow(label: String, value: String) {
 
 private fun formatDateRange(start: String, end: String): String {
     return try {
-        // Backend returns ISO 8601 with timezone (e.g. 2026-04-15T14:30:00+00:00)
-        // Use ISO parser that handles the offset, then display in device local timezone
+        // Backend returns RFC 3339 / ISO 8601 with timezone offset
+        // (e.g. 2026-04-15T14:30:00+00:00 or 2026-04-15T14:30:00Z).
+        // The "XXX" pattern reads the embedded offset — do NOT override the
+        // parser timezone or it will shift the instant incorrectly.
+        // Display formatters use the device default timezone (local time).
         val parser = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.getDefault())
         val display = SimpleDateFormat("EEE, MMM d · HH:mm", Locale.getDefault())
+        display.timeZone = TimeZone.getDefault()
         val displayEnd = SimpleDateFormat("HH:mm", Locale.getDefault())
+        displayEnd.timeZone = TimeZone.getDefault()
         val startDate = parser.parse(start)
         val endDate = parser.parse(end)
         if (startDate != null && endDate != null) {
@@ -1107,8 +1135,11 @@ private fun formatDateRange(start: String, end: String): String {
 
 private fun formatCommentTime(iso: String): String {
     return try {
+        // Backend returns RFC 3339 / ISO 8601 with timezone offset.
+        // Do NOT override the parser timezone; let "XXX" read the offset.
         val parser = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.getDefault())
         val display = SimpleDateFormat("MMM d, HH:mm", Locale.getDefault())
+        display.timeZone = TimeZone.getDefault()
         val date = parser.parse(iso)
         if (date != null) display.format(date) else iso
     } catch (_: Exception) {

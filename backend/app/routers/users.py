@@ -8,6 +8,11 @@ from fastapi import APIRouter, Depends, Query
 from app.database import get_supabase
 from app.middleware.auth import get_current_user_id, get_optional_user_id
 from app.models.bookmark import BookmarkListResponse
+from app.models.errors import (
+    AUTH_RESPONSES,
+    FORBIDDEN_RESPONSE,
+    NOT_FOUND_RESPONSE,
+)
 from app.models.profile import HostProfileResponse, ProfileUpdateRequest
 from app.models.rating import RatingRequest, RatingResponse, ReviewListResponse
 from app.models.user import UserResponse
@@ -18,7 +23,12 @@ from app.services.rating import list_reviews, rate_host
 router = APIRouter(prefix="/users", tags=["users"])
 
 
-@router.get("/me/bookmarks", response_model=BookmarkListResponse)
+@router.get(
+    "/me/bookmarks",
+    response_model=BookmarkListResponse,
+    summary="List the authenticated user's bookmarks",
+    responses={**AUTH_RESPONSES},
+)
 def get_my_bookmarks(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
@@ -28,7 +38,12 @@ def get_my_bookmarks(
     return list_user_bookmarks(db, user_id, page=page, page_size=page_size)
 
 
-@router.put("/me", response_model=UserResponse)
+@router.put(
+    "/me",
+    response_model=UserResponse,
+    summary="Update authenticated user's profile",
+    responses={**AUTH_RESPONSES},
+)
 def update_my_profile(
     body: ProfileUpdateRequest,
     user_id: str = Depends(get_current_user_id),
@@ -37,7 +52,16 @@ def update_my_profile(
     return update_profile(db, user_id, body)
 
 
-@router.get("/{target_user_id}/profile", response_model=HostProfileResponse)
+@router.get(
+    "/{target_user_id}/profile",
+    response_model=HostProfileResponse,
+    summary="Get a user's host profile",
+    description=(
+        "Bearer token is optional. Field visibility (email / phone) is "
+        "controlled by the target user's privacy preferences."
+    ),
+    responses={**NOT_FOUND_RESPONSE},
+)
 def get_user_profile(
     target_user_id: UUID,
     current_user_id: str | None = Depends(get_optional_user_id),
@@ -46,7 +70,15 @@ def get_user_profile(
     return get_host_profile(db, str(target_user_id), current_user_id)
 
 
-@router.post("/{host_id}/ratings", response_model=RatingResponse, status_code=201)
+@router.post(
+    "/{host_id}/ratings",
+    response_model=RatingResponse,
+    status_code=201,
+    summary="Rate a host (1.0–5.0)",
+    description="Upserts a rating from the authenticated user for the given "
+                "host. Optionally includes a review text.",
+    responses={**AUTH_RESPONSES, **FORBIDDEN_RESPONSE, **NOT_FOUND_RESPONSE},
+)
 def rate_host_endpoint(
     host_id: UUID,
     body: RatingRequest,
@@ -58,7 +90,12 @@ def rate_host_endpoint(
     )
 
 
-@router.get("/{host_id}/reviews", response_model=ReviewListResponse)
+@router.get(
+    "/{host_id}/reviews",
+    response_model=ReviewListResponse,
+    summary="List reviews for a host",
+    responses={**NOT_FOUND_RESPONSE},
+)
 def list_host_reviews(
     host_id: UUID,
     page: int = Query(1, ge=1),

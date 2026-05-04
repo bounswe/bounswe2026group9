@@ -69,9 +69,14 @@ class ProfileViewModel : ViewModel() {
                     val upcomingCount = profile.hosted_events.count { event ->
                         (event.status == "published" || event.status == "updated") &&
                             try {
-                                val sdf = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US)
-                                sdf.isLenient = true
-                                val startMs = sdf.parse(event.start_datetime.take(19))?.time ?: 0L
+                                // Parse the full RFC 3339 / ISO 8601 string, including the
+                                // timezone offset, so the comparison with the current instant
+                                // is correct for all users regardless of their local timezone.
+                                val sdf = java.text.SimpleDateFormat(
+                                    "yyyy-MM-dd'T'HH:mm:ssXXX",
+                                    java.util.Locale.US
+                                )
+                                val startMs = sdf.parse(event.start_datetime)?.time ?: 0L
                                 startMs > now
                             } catch (_: Exception) { false }
                     }
