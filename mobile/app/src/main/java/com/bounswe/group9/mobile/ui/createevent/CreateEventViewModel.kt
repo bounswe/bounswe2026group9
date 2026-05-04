@@ -10,6 +10,7 @@ import com.bounswe.group9.mobile.data.remote.EventDetailDto
 import com.bounswe.group9.mobile.data.remote.EventUpdateRequest
 import com.bounswe.group9.mobile.data.remote.EventImageDto
 import com.bounswe.group9.mobile.data.remote.LocationRequest
+import com.bounswe.group9.mobile.data.remote.SegmentRequest
 import com.bounswe.group9.mobile.data.remote.VenueMetadataRequest
 import com.bounswe.group9.mobile.data.repository.EventRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,6 +36,18 @@ val EVENT_EDITOR_STEPS = listOf(
 
 enum class FeedbackTone { Success, Error, Info }
 
+data class LocationEntry(
+    val name: String = "",
+    val lat: String = "",
+    val lng: String = "",
+    val segmentStartDate: String = "",
+    val segmentStartTime: String = "",
+    val segmentEndDate: String = "",
+    val segmentEndTime: String = "",
+    val segmentDescription: String = "",
+    val showSegmentFields: Boolean = false
+)
+
 data class CreateEventUiState(
     val currentStep: Int = 0,
     // Step 0
@@ -49,10 +62,8 @@ data class CreateEventUiState(
     val endDate: String = "",
     val endTime: String = "",
     val scheduleConfirmed: Boolean = false,
-    // Step 2
-    val locationName: String = "",
-    val locationLat: String = "",
-    val locationLng: String = "",
+    // Step 2 — multi-location; first entry is always primary
+    val locations: List<LocationEntry> = listOf(LocationEntry()),
     // Step 3
     val selectedImageUris: List<Uri> = emptyList(),
     val uploadedImages: List<EventImageDto> = emptyList(),
@@ -97,8 +108,12 @@ data class CreateEventUiState(
     fun stepCompleted(step: Int): Boolean = when (step) {
         0 -> title.isNotBlank() && description.isNotBlank() && selectedCategoryIds.isNotEmpty()
         1 -> scheduleConfirmed && startDate.isNotBlank() && startTime.isNotBlank() && endDate.isNotBlank() && endTime.isNotBlank()
-        2 -> locationName.isNotBlank() && locationLat.toDoubleOrNull() != null && locationLng.toDoubleOrNull() != null
-        3 -> true  // Media is optional — backend allows publishing without images
+        2 -> {
+            val primary = locations.firstOrNull()
+            primary != null && primary.name.isNotBlank() &&
+                primary.lat.toDoubleOrNull() != null && primary.lng.toDoubleOrNull() != null
+        }
+        3 -> true
         4 -> true
         5 -> settingsConfirmed
         6 -> (0..5).all { stepCompleted(it) }
@@ -121,7 +136,6 @@ class CreateEventViewModel(
 
     fun init(token: String?, editEvent: EventDetailDto? = null) {
         currentToken = token
-        // Guard: unauthenticated users cannot access create/edit
         if (token == null) {
             update { copy(submitError = "You must be signed in to create or edit events.") }
             return
@@ -138,9 +152,24 @@ class CreateEventViewModel(
         fun parse(iso: String): Date? = try { isoParser.parse(iso) } catch (_: Exception) { null }
         val startD = parse(event.start_datetime)
         val endD = parse(event.end_datetime)
-        val loc = event.locations.firstOrNull { it.is_primary } ?: event.locations.firstOrNull()
-        // Check if event has already started — restricts schedule & location edits
         val alreadyStarted = startD != null && startD <= Date()
+
+        val segmentsByLocId = event.segments?.groupBy { it.location_id } ?: emptyMap()
+        val locEntries = event.locations.sortedBy { it.order_index }.map { loc ->
+            val seg = segmentsByLocId[loc.id]?.firstOrNull()
+            LocationEntry(
+                name = loc.name,
+                lat = loc.latitude.toString(),
+                lng = loc.longitude.toString(),
+                segmentStartDate = seg?.let { parseIsoDate(it.start_datetime, isoParser, dateFmt) } ?: "",
+                segmentStartTime = seg?.let { parseIsoTime(it.start_datetime, isoParser, timeFmt) } ?: "",
+                segmentEndDate = seg?.let { parseIsoDate(it.end_datetime, isoParser, dateFmt) } ?: "",
+                segmentEndTime = seg?.let { parseIsoTime(it.end_datetime, isoParser, timeFmt) } ?: "",
+                segmentDescription = seg?.description ?: "",
+                showSegmentFields = seg != null
+            )
+        }.ifEmpty { listOf(LocationEntry()) }
+
         update {
             copy(
                 isEditMode = true, editEventId = event.id, persistedEventId = event.id,
@@ -149,7 +178,7 @@ class CreateEventViewModel(
                 startTime = startD?.let { timeFmt.format(it) } ?: "",
                 endDate = endD?.let { dateFmt.format(it) } ?: "",
                 endTime = endD?.let { timeFmt.format(it) } ?: "",
-                locationName = loc?.name ?: "", locationLat = loc?.latitude?.toString() ?: "", locationLng = loc?.longitude?.toString() ?: "",
+                locations = locEntries,
                 visibility = event.visibility, isAgeRestricted = event.is_age_restricted,
                 attendeeLimitEnabled = event.attendee_limit != null, attendeeLimit = event.attendee_limit?.toString() ?: "",
                 selectedCategoryIds = event.categories.map { it.id }.toSet(),
@@ -163,6 +192,12 @@ class CreateEventViewModel(
             )
         }
     }
+
+    private fun parseIsoDate(iso: String, parser: SimpleDateFormat, fmt: SimpleDateFormat): String =
+        try { fmt.format(parser.parse(iso)!!) } catch (_: Exception) { "" }
+
+    private fun parseIsoTime(iso: String, parser: SimpleDateFormat, fmt: SimpleDateFormat): String =
+        try { fmt.format(parser.parse(iso)!!) } catch (_: Exception) { "" }
 
     private fun loadCategories() {
         update { copy(categoriesLoading = true) }
@@ -192,22 +227,62 @@ class CreateEventViewModel(
 
     fun onTitleChange(v: String) = update { copy(title = v, titleError = null) }
     fun onDescriptionChange(v: String) = update { copy(description = v, descriptionError = null) }
-    fun toggleCategory(id: String) { val c = _uiState.value.selectedCategoryIds; update { copy(selectedCategoryIds = if (id in c) c - id else c + id, categoryError = null) } }
+    fun toggleCategory(id: String) {
+        val c = _uiState.value.selectedCategoryIds
+        update { copy(selectedCategoryIds = if (id in c) c - id else c + id, categoryError = null) }
+    }
     fun onStartDateChange(v: String) = update { copy(startDate = v, startError = null) }
     fun onStartTimeChange(v: String) = update { copy(startTime = v, startError = null) }
     fun onEndDateChange(v: String) = update { copy(endDate = v, endError = null) }
     fun onEndTimeChange(v: String) = update { copy(endTime = v, endError = null) }
-    fun onLocationNameChange(v: String) = update { copy(locationName = v, locationError = null) }
-    fun onLocationLatChange(v: String) = update { copy(locationLat = v, locationError = null) }
-    fun onLocationLngChange(v: String) = update { copy(locationLng = v, locationError = null) }
-    /** Called when the user taps the map in Step 2 — sets both coordinates atomically. */
-    fun onLocationPicked(lat: Double, lng: Double) = update {
-        copy(
-            locationLat = lat.toString(),
-            locationLng = lng.toString(),
-            locationError = null
-        )
+
+    // ── Multi-location management ────────────────────────────────────────────────
+
+    fun onLocationNameChange(index: Int, name: String) = update {
+        copy(locations = locations.mapIndexed { i, l -> if (i == index) l.copy(name = name) else l }, locationError = null)
     }
+
+    fun onLocationPicked(index: Int, lat: Double, lng: Double) = update {
+        copy(locations = locations.mapIndexed { i, l ->
+            if (i == index) l.copy(lat = lat.toString(), lng = lng.toString()) else l
+        }, locationError = null)
+    }
+
+    fun addLocation() = update { copy(locations = locations + LocationEntry()) }
+
+    fun removeLocation(index: Int) = update {
+        if (locations.size <= 1) return@update this
+        copy(locations = locations.filterIndexed { i, _ -> i != index })
+    }
+
+    fun toggleSegmentFields(index: Int) = update {
+        copy(locations = locations.mapIndexed { i, l ->
+            if (i == index) l.copy(showSegmentFields = !l.showSegmentFields) else l
+        })
+    }
+
+    fun onSegmentStartDateChange(index: Int, date: String) = update {
+        copy(locations = locations.mapIndexed { i, l -> if (i == index) l.copy(segmentStartDate = date) else l })
+    }
+
+    fun onSegmentStartTimeChange(index: Int, time: String) = update {
+        copy(locations = locations.mapIndexed { i, l -> if (i == index) l.copy(segmentStartTime = time) else l })
+    }
+
+    fun onSegmentEndDateChange(index: Int, date: String) = update {
+        copy(locations = locations.mapIndexed { i, l -> if (i == index) l.copy(segmentEndDate = date) else l })
+    }
+
+    fun onSegmentEndTimeChange(index: Int, time: String) = update {
+        copy(locations = locations.mapIndexed { i, l -> if (i == index) l.copy(segmentEndTime = time) else l })
+    }
+
+    fun onSegmentDescriptionChange(index: Int, desc: String) = update {
+        copy(locations = locations.mapIndexed { i, l -> if (i == index) l.copy(segmentDescription = desc) else l })
+    }
+
+    // ── Venue & Accessibility ────────────────────────────────────────────────────
+
     fun onHealthRequirementsChange(v: String) = update { copy(healthRequirements = v) }
     fun onWheelchairAccessChange(v: Boolean) = update { copy(wheelchairAccess = v) }
     fun onAccessibleRestroomChange(v: Boolean) = update { copy(accessibleRestroom = v) }
@@ -224,12 +299,15 @@ class CreateEventViewModel(
     fun clearFeedback() = update { copy(feedbackMessage = null, submitError = null) }
 
     private fun validateCurrentStep(): Boolean = when (_uiState.value.currentStep) {
-        0 -> { val s = _uiState.value; var ok = true
+        0 -> {
+            val s = _uiState.value; var ok = true
             if (s.title.isBlank()) { update { copy(titleError = "Title is required") }; ok = false }
             if (s.description.isBlank()) { update { copy(descriptionError = "Description is required") }; ok = false }
             if (s.selectedCategoryIds.isEmpty()) { update { copy(categoryError = "Select at least one category") }; ok = false }
-            ok }
-        1 -> { val s = _uiState.value; var ok = true
+            ok
+        }
+        1 -> {
+            val s = _uiState.value; var ok = true
             if (s.startDate.isBlank() || s.startTime.isBlank()) { update { copy(startError = "Start date and time required") }; ok = false }
             if (s.endDate.isBlank() || s.endTime.isBlank()) { update { copy(endError = "End date and time required") }; ok = false }
             if (ok && !s.eventAlreadyStarted) {
@@ -240,12 +318,58 @@ class CreateEventViewModel(
                     update { copy(endError = "End time must be after start time") }; ok = false
                 }
             }
-            ok }
-        2 -> { val s = _uiState.value; var ok = true
-            if (s.locationName.isBlank()) { update { copy(locationError = "Location name required") }; ok = false }
-            val lat = s.locationLat.toDoubleOrNull(); val lng = s.locationLng.toDoubleOrNull()
-            if (lat == null || lat < -90 || lat > 90 || lng == null || lng < -180 || lng > 180) { update { copy(locationError = "Valid latitude and longitude required") }; ok = false }
-            ok }
+            ok
+        }
+        2 -> {
+            val s = _uiState.value; var ok = true
+            val primary = s.locations.firstOrNull()
+            if (primary == null || primary.name.isBlank()) { update { copy(locationError = "Location name required") }; ok = false }
+            if (ok) {
+                val lat = primary!!.lat.toDoubleOrNull(); val lng = primary.lng.toDoubleOrNull()
+                if (lat == null || lat < -90 || lat > 90 || lng == null || lng < -180 || lng > 180) {
+                    update { copy(locationError = "Valid latitude and longitude required for the primary location") }; ok = false
+                }
+            }
+            if (ok) {
+                val fmt = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+                val eventStart = try { fmt.parse("${s.startDate} ${s.startTime}") } catch (_: Exception) { null }
+                val eventEnd   = try { fmt.parse("${s.endDate} ${s.endTime}") } catch (_: Exception) { null }
+
+                // Collect stops that have complete segment timing
+                val timedSegs = s.locations.mapIndexedNotNull { i, loc ->
+                    if (loc.segmentStartDate.isNotBlank() && loc.segmentStartTime.isNotBlank() &&
+                        loc.segmentEndDate.isNotBlank() && loc.segmentEndTime.isNotBlank()) {
+                        val segStart = try { fmt.parse("${loc.segmentStartDate} ${loc.segmentStartTime}") } catch (_: Exception) { null }
+                        val segEnd   = try { fmt.parse("${loc.segmentEndDate} ${loc.segmentEndTime}") } catch (_: Exception) { null }
+                        if (segStart != null && segEnd != null) Triple(i + 1, segStart, segEnd) else null
+                    } else null
+                }
+
+                for ((stopNum, segStart, segEnd) in timedSegs) {
+                    if (!segEnd.after(segStart)) {
+                        update { copy(locationError = "Stop $stopNum: end time must be after start time") }; ok = false; break
+                    }
+                    if (eventStart != null && segStart.before(eventStart)) {
+                        update { copy(locationError = "Stop $stopNum timing must not be before the event start") }; ok = false; break
+                    }
+                    if (eventEnd != null && segEnd.after(eventEnd)) {
+                        update { copy(locationError = "Stop $stopNum timing must not exceed the event end") }; ok = false; break
+                    }
+                }
+
+                // Consecutive timed stops must not overlap (stop N+1 must start at or after stop N ends)
+                if (ok) {
+                    for (i in 0 until timedSegs.size - 1) {
+                        val (prevNum, _, prevEnd) = timedSegs[i]
+                        val (nextNum, nextStart, _) = timedSegs[i + 1]
+                        if (nextStart.before(prevEnd)) {
+                            update { copy(locationError = "Stop $nextNum must start after Stop $prevNum ends") }; ok = false; break
+                        }
+                    }
+                }
+            }
+            ok
+        }
         else -> true
     }
 
@@ -279,12 +403,11 @@ class CreateEventViewModel(
         val token = currentToken ?: return
         val s = _uiState.value
 
-        // Pre-publish validation: find incomplete required steps (0,1,2,5)
         val missing = listOf(0, 1, 2, 5).filter { !s.stepCompleted(it) }
         if (missing.isNotEmpty()) {
             update {
                 copy(
-                    currentStep = 6, // go to Review to show what's missing
+                    currentStep = 6,
                     missingSteps = missing,
                     feedbackMessage = "Complete all required steps before publishing.",
                     feedbackTone = FeedbackTone.Error
@@ -325,7 +448,6 @@ class CreateEventViewModel(
         if (uris.isEmpty()) return
         update { copy(isUploadingImages = true, imageUploadError = null) }
         viewModelScope.launch {
-            // Auto-create draft first if it doesn't exist yet
             val eventId = _uiState.value.persistedEventId ?: run {
                 val s = _uiState.value
                 repository.createEvent(token, buildCreateRequest(s, "draft")).fold(
@@ -371,7 +493,6 @@ class CreateEventViewModel(
             val parser = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US)
             val parsed = parser.parse("$date $time")
             if (parsed == null) {
-                // Return a valid future datetime fallback for drafts
                 return if (isEnd) "2099-12-31T23:59:00+00:00" else "2099-12-31T00:00:00+00:00"
             }
             val formatter = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US)
@@ -391,25 +512,49 @@ class CreateEventViewModel(
         quiet_friendly = s.quietFriendly
     )
 
+    private fun buildLocationRequests(s: CreateEventUiState): List<LocationRequest> =
+        s.locations.ifEmpty { listOf(LocationEntry()) }.mapIndexed { i, loc ->
+            LocationRequest(
+                name = loc.name.ifBlank { "Stop ${i + 1}" },
+                latitude = loc.lat.toDoubleOrNull() ?: 0.0,
+                longitude = loc.lng.toDoubleOrNull() ?: 0.0,
+                is_primary = (i == 0),
+                order_index = i
+            )
+        }
+
+    private fun buildSegmentRequests(s: CreateEventUiState): List<SegmentRequest>? {
+        val segs = s.locations.mapIndexedNotNull { i, loc ->
+            if (loc.segmentStartDate.isNotBlank() && loc.segmentStartTime.isNotBlank() &&
+                loc.segmentEndDate.isNotBlank() && loc.segmentEndTime.isNotBlank()) {
+                SegmentRequest(
+                    location_index = i,
+                    order_index = i,
+                    start_datetime = buildIso(loc.segmentStartDate, loc.segmentStartTime),
+                    end_datetime = buildIso(loc.segmentEndDate, loc.segmentEndTime, isEnd = true),
+                    description = loc.segmentDescription.ifBlank { null }
+                )
+            } else null
+        }
+        return if (segs.isNotEmpty()) segs else null
+    }
+
     private fun buildCreateRequest(s: CreateEventUiState, status: String): EventCreateRequest {
         val safeTitle = s.title.ifBlank { "Untitled Event" }
         val safeDesc = s.description.ifBlank { "No description provided yet." }
         val safeStart = buildIso(s.startDate, s.startTime)
         val safeEnd = buildIso(s.endDate, s.endTime, isEnd = true)
-        val safeLocName = s.locationName.ifBlank { "TBD" }
-        val safeLat = s.locationLat.toDoubleOrNull() ?: 0.0
-        val safeLng = s.locationLng.toDoubleOrNull() ?: 0.0
         val safeCategoryIds = s.selectedCategoryIds.toList().ifEmpty {
             s.availableCategories.firstOrNull()?.id?.let { listOf(it) } ?: emptyList()
         }
-
         return EventCreateRequest(
             title = safeTitle, description = safeDesc,
             start_datetime = safeStart, end_datetime = safeEnd,
             visibility = s.visibility, is_age_restricted = s.isAgeRestricted,
             attendee_limit = if (s.attendeeLimitEnabled) s.attendeeLimit.toIntOrNull() else null,
             status = status, category_ids = safeCategoryIds,
-            locations = listOf(LocationRequest(safeLocName, safeLat, safeLng)),
+            locations = buildLocationRequests(s),
+            segments = buildSegmentRequests(s),
             venue_metadata = buildVenueMetadata(s)
         )
     }
@@ -419,20 +564,17 @@ class CreateEventViewModel(
         val safeDesc = s.description.ifBlank { "No description provided yet." }
         val safeStart = buildIso(s.startDate, s.startTime)
         val safeEnd = buildIso(s.endDate, s.endTime, isEnd = true)
-        val safeLocName = s.locationName.ifBlank { "TBD" }
-        val safeLat = s.locationLat.toDoubleOrNull() ?: 0.0
-        val safeLng = s.locationLng.toDoubleOrNull() ?: 0.0
         val safeCategoryIds = s.selectedCategoryIds.toList().ifEmpty {
             s.availableCategories.firstOrNull()?.id?.let { listOf(it) } ?: emptyList()
         }
-
         return EventUpdateRequest(
             title = safeTitle, description = safeDesc,
             start_datetime = safeStart, end_datetime = safeEnd,
             visibility = s.visibility, is_age_restricted = s.isAgeRestricted,
             attendee_limit = if (s.attendeeLimitEnabled) s.attendeeLimit.toIntOrNull() else null,
             clear_attendee_limit = !s.attendeeLimitEnabled, category_ids = safeCategoryIds,
-            locations = listOf(LocationRequest(safeLocName, safeLat, safeLng)),
+            locations = buildLocationRequests(s),
+            segments = buildSegmentRequests(s),
             venue_metadata = buildVenueMetadata(s)
         )
     }

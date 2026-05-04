@@ -254,6 +254,14 @@ data class LocationRequest(
     val order_index: Int = 0
 )
 
+data class SegmentRequest(
+    val location_index: Int,
+    val order_index: Int,
+    val start_datetime: String,
+    val end_datetime: String,
+    val description: String? = null
+)
+
 data class VenueMetadataRequest(
     val health_requirements: String? = null,
     val wheelchair_access: Boolean = false,
@@ -275,6 +283,7 @@ data class EventCreateRequest(
     val status: String = "draft",      // "draft" | "published"
     val category_ids: List<String>,
     val locations: List<LocationRequest>,
+    val segments: List<SegmentRequest>? = null,
     val venue_metadata: VenueMetadataRequest? = null
 )
 
@@ -289,6 +298,7 @@ data class EventUpdateRequest(
     val clear_attendee_limit: Boolean = false,
     val category_ids: List<String>? = null,
     val locations: List<LocationRequest>? = null,
+    val segments: List<SegmentRequest>? = null,
     val venue_metadata: VenueMetadataRequest? = null
 )
 

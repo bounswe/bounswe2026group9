@@ -4,7 +4,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -22,6 +25,7 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -46,8 +50,11 @@ import com.bounswe.group9.mobile.data.remote.AccessRequestResponseDto
 import com.bounswe.group9.mobile.data.remote.EventDetailDto
 import com.bounswe.group9.mobile.data.remote.EventLimitedDto
 import com.bounswe.group9.mobile.data.remote.EquipmentDto
+import com.bounswe.group9.mobile.data.remote.EventLocationDto
 import com.bounswe.group9.mobile.data.remote.InviteResponseDto
+import com.bounswe.group9.mobile.data.remote.SegmentDto
 import com.bounswe.group9.mobile.data.remote.VenueMetadataDto
+import com.bounswe.group9.mobile.ui.discovery.EventDetailMapView
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
@@ -494,17 +501,41 @@ private fun FullDetailContent(
             Spacer(Modifier.height(12.dp))
 
             // Locations
-            event.locations.sortedBy { it.order_index }.forEach { loc ->
+            event.locations.sortedBy { it.order_index }.forEachIndexed { i, loc ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.LocationOn, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (event.locations.size > 1) {
+                        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.size(20.dp)) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text("${i + 1}", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    } else {
+                        Icon(Icons.Default.LocationOn, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        loc.name + if (loc.is_primary) " (Primary)" else "",
+                        loc.name + if (loc.is_primary && event.locations.size > 1) " (Primary)" else "",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 Spacer(Modifier.height(4.dp))
+            }
+
+            // Route map for multi-location events
+            if (event.locations.size >= 2) {
+                Spacer(Modifier.height(8.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                ) {
+                    EventDetailMapView(
+                        locations = event.locations,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
             }
 
             Spacer(Modifier.height(12.dp))
@@ -543,6 +574,12 @@ private fun FullDetailContent(
             // Description
             SectionHeader("About")
             Text(event.description, style = MaterialTheme.typography.bodyMedium)
+
+            // Itinerary timeline
+            if (!event.segments.isNullOrEmpty()) {
+                Spacer(Modifier.height(16.dp))
+                ItinerarySection(segments = event.segments, locations = event.locations)
+            }
 
             // Venue Metadata
             if (event.venue_metadata != null) {
@@ -1067,6 +1104,77 @@ private fun AccessRequestRow(
 }
 
 @Composable
+private fun ItinerarySection(segments: List<SegmentDto>, locations: List<EventLocationDto>) {
+    SectionHeader("Itinerary")
+    val locationById = remember(locations) { locations.associateBy { it.id } }
+    val sorted = remember(segments) { segments.sortedBy { it.order_index } }
+    sorted.forEachIndexed { index, segment ->
+        val locName = locationById[segment.location_id]?.name ?: "Stop ${index + 1}"
+        ItineraryTimelineItem(
+            number = index + 1,
+            locationName = locName,
+            startDatetime = segment.start_datetime,
+            endDatetime = segment.end_datetime,
+            description = segment.description,
+            isLast = index == sorted.size - 1
+        )
+    }
+}
+
+@Composable
+private fun ItineraryTimelineItem(
+    number: Int,
+    locationName: String,
+    startDatetime: String,
+    endDatetime: String,
+    description: String?,
+    isLast: Boolean
+) {
+    Row(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.width(28.dp)
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.tertiary,
+                modifier = Modifier.size(24.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text("$number", color = MaterialTheme.colorScheme.onTertiary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+            if (!isLast) {
+                Box(
+                    modifier = Modifier
+                        .width(2.dp)
+                        .height(44.dp)
+                        .background(MaterialTheme.colorScheme.outlineVariant)
+                )
+            }
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(bottom = if (isLast) 0.dp else 4.dp)
+        ) {
+            Text(locationName, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+            Text(
+                "${formatSegmentTime(startDatetime)} – ${formatSegmentTime(endDatetime)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (!description.isNullOrBlank()) {
+                Spacer(Modifier.height(2.dp))
+                Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (!isLast) Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+@Composable
 private fun SectionHeader(title: String) {
     Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
     Spacer(Modifier.height(6.dp))
@@ -1082,17 +1190,33 @@ private fun VenueMetadataSection(venue: VenueMetadataDto) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun EquipmentSection(equipment: List<EquipmentDto>) {
     SectionHeader("Equipment")
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
         equipment.forEach { eq ->
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    if (eq.is_required) "• ${eq.item_name} (Required)" else "• ${eq.item_name} (Optional)",
-                    style = MaterialTheme.typography.bodyMedium
+            AssistChip(
+                onClick = {},
+                label = { Text(eq.item_name, fontSize = 12.sp) },
+                leadingIcon = {
+                    Icon(
+                        if (eq.is_required) Icons.Default.Star else Icons.Default.Info,
+                        contentDescription = if (eq.is_required) "Required" else "Optional",
+                        modifier = Modifier.size(14.dp),
+                        tint = if (eq.is_required) MaterialTheme.colorScheme.error
+                               else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                colors = AssistChipDefaults.assistChipColors(
+                    containerColor = if (eq.is_required)
+                        MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f)
+                    else MaterialTheme.colorScheme.surfaceVariant
                 )
-            }
+            )
         }
     }
 }
@@ -1108,6 +1232,16 @@ private fun InfoRow(label: String, value: String) {
 // endregion
 
 // region Helpers
+
+private fun formatSegmentTime(iso: String): String {
+    return try {
+        val parser = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.getDefault())
+        val display = SimpleDateFormat("MMM d, HH:mm", Locale.getDefault())
+        display.timeZone = TimeZone.getDefault()
+        val date = parser.parse(iso)
+        if (date != null) display.format(date) else iso
+    } catch (_: Exception) { iso }
+}
 
 private fun formatDateRange(start: String, end: String): String {
     return try {
