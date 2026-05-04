@@ -22,6 +22,7 @@ from app.models.event import (
     EventUpdateRequest,
     StatusChangeRequest,
 )
+from app.models.geojson import GeoJSONFeatureCollection
 from app.models.user import MessageResponse
 from app.services.auth import decode_access_token
 from app.services.event import (
@@ -33,6 +34,9 @@ from app.services.event import (
 )
 from app.services.event import (
     list_events as list_events_svc,
+)
+from app.services.event import (
+    list_events_geojson as list_events_geojson_svc,
 )
 from app.services.image import delete_event_image as delete_image_svc
 from app.services.image import upload_event_image
@@ -182,6 +186,95 @@ def list_events_endpoint(
         sort=sort,
         page=page,
         page_size=page_size,
+    )
+
+
+@router.get(
+    "/geojson",
+    response_model=GeoJSONFeatureCollection,
+    summary="Discover events as GeoJSON",
+    description=(
+        "Returns event discovery data as an RFC 7946 GeoJSON FeatureCollection. "
+        "Supports the exact same spatial and temporal filters as /events, but "
+        "forces a large page size internally to return a comprehensive map layer."
+    ),
+)
+def list_events_geojson_endpoint(
+    search: str | None = Query(default=None, max_length=200),
+    category_id: UUID | None = Query(default=None),
+    quick_filter: str | None = Query(
+        default=None,
+        pattern="^(now|today|weekend|upcoming|this_week|past)$",
+        description="Time-window quick filter. Mutually exclusive with start_after/end_before.",
+    ),
+    start_after: datetime | None = Query(
+        default=None,
+        description="Custom window: only events starting at or after this time.",
+    ),
+    end_before: datetime | None = Query(
+        default=None,
+        description="Custom window: only events ending at or before this time.",
+    ),
+    near_lat: float | None = Query(default=None, ge=-90, le=90),
+    near_lng: float | None = Query(default=None, ge=-180, le=180),
+    radius_km: float | None = Query(default=None, gt=0, le=500),
+    use_default_area: bool = Query(
+        default=False,
+        description="If true, use the authenticated user's stored default area. Ignored when near_lat/near_lng are provided.",
+    ),
+    wheelchair: bool | None = Query(default=None),
+    accessible_restroom: bool | None = Query(default=None),
+    elevator: bool | None = Query(default=None),
+    seating: bool | None = Query(default=None),
+    captions: bool | None = Query(default=None),
+    quiet_friendly: bool | None = Query(default=None),
+    sort: str | None = Query(
+        default=None,
+        pattern="^(start_time|distance|category)$",
+    ),
+    user_id: str | None = Depends(_optional_user_id),
+):
+    if quick_filter is not None and (start_after is not None or end_before is not None):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="quick_filter cannot be combined with start_after/end_before",
+        )
+    if start_after is not None and end_before is not None and start_after >= end_before:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="start_after must be earlier than end_before",
+        )
+    if (near_lat is None) != (near_lng is None):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="near_lat and near_lng must be provided together",
+        )
+
+    return list_events_geojson_svc(
+        get_supabase(),
+        user_id=user_id,
+        search=search,
+        category_id=str(category_id) if category_id else None,
+        quick_filter=quick_filter,
+        start_after=start_after,
+        end_before=end_before,
+        near_lat=near_lat,
+        near_lng=near_lng,
+        radius_km=radius_km,
+        use_default_area=use_default_area,
+        accessibility={
+            # Canonical key is "wheelchair_access" — must match the
+            # _ACCESSIBILITY_DB_MAP keys used by repositories/event.py and
+            # the main /events endpoint, otherwise the filter is silently
+            # ignored.
+            "wheelchair_access": wheelchair,
+            "accessible_restroom": accessible_restroom,
+            "elevator": elevator,
+            "seating": seating,
+            "captions": captions,
+            "quiet_friendly": quiet_friendly,
+        },
+        sort=sort,
     )
 
 
