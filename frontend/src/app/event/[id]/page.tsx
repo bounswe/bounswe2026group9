@@ -38,6 +38,7 @@ import { ConfirmDialog } from "@/components/event/confirm-dialog";
 import { AttendeeAvatarStack } from "@/components/event/attendee-avatar-stack";
 import { LocationMapModal } from "@/components/event/location-map-modal";
 import { cn } from "@/lib/utils";
+import { getProfileHref } from "@/lib/profile-route";
 import {
   clearAccessRequestPending,
   isAccessRequestPending,
@@ -702,7 +703,7 @@ function FullView({
                 <>
                   Created by{" "}
                   <Link
-                    href={`/profile/${event.host_id}`}
+                    href={getProfileHref(event.host_id, currentUserId)}
                     className="text-brand-dark font-bold hover:underline"
                   >
                     {host.username}
@@ -1055,9 +1056,12 @@ function FullView({
                       key={req.id}
                       className="flex items-center justify-between gap-2 rounded-lg bg-brand-bg px-3 py-2"
                     >
-                      <span className="text-[13px] font-bold text-brand-dark truncate flex-1">
+                      <Link
+                        href={getProfileHref(req.user_id, currentUserId)}
+                        className="text-[13px] font-bold text-brand-dark truncate flex-1 hover:underline focus:outline-none focus-visible:underline"
+                      >
                         {req.username}
-                      </span>
+                      </Link>
                       <div className="flex gap-1.5">
                         <button
                           onClick={() => { void handleAccessRequestAction(req.id, "approved"); }}
@@ -1085,11 +1089,20 @@ function FullView({
           {host ? (
             <div className="bg-brand-surface rounded-xl border border-brand-mid-alpha p-5">
               <div className="flex items-center gap-3 mb-3">
-                <div className="bg-brand-mid flex size-16 shrink-0 items-center justify-center rounded-full text-[22px] font-bold text-white">
+                <Link
+                  href={getProfileHref(event.host_id, currentUserId)}
+                  aria-label={`View ${host.username}'s profile`}
+                  className="bg-brand-mid flex size-16 shrink-0 items-center justify-center rounded-full text-[22px] font-bold text-white transition-transform hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-dark focus-visible:ring-offset-2"
+                >
                   {host.username.slice(0, 2).toUpperCase()}
-                </div>
+                </Link>
                 <div>
-                  <p className="font-bold text-[16px] text-brand-dark">{host.username}</p>
+                  <Link
+                    href={getProfileHref(event.host_id, currentUserId)}
+                    className="font-bold text-[16px] text-brand-dark hover:underline focus:outline-none focus-visible:underline"
+                  >
+                    {host.username}
+                  </Link>
                   <p className="text-[13px] text-brand-mid">
                     {isHost ? "You are the host" : "Event Host"}
                   </p>
@@ -1108,7 +1121,7 @@ function FullView({
               </p>
               {event.host_id && (
                 <Link
-                  href={`/profile/${event.host_id}`}
+                  href={getProfileHref(event.host_id, currentUserId)}
                   className="text-[13px] font-bold text-brand-mid hover:text-brand-dark transition-colors"
                 >
                   View Profile →
@@ -1181,7 +1194,11 @@ function FullView({
               {/* Avatar stack */}
               {event.attendees && event.attendees.length > 0 && (
                 <div className="mb-3">
-                  <AttendeeAvatarStack attendees={event.attendees} maxShow={5} />
+                  <AttendeeAvatarStack
+                    attendees={event.attendees}
+                    maxShow={5}
+                    currentUserId={currentUserId}
+                  />
                 </div>
               )}
               {event.attendee_limit ? (
