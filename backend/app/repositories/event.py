@@ -9,7 +9,7 @@ _EVENT_COLS = (
     "visibility,is_age_restricted,attendee_limit,attendee_count,"
     "status,created_at,updated_at"
 )
-_LOCATION_COLS = "id,event_id,name,latitude,longitude,is_primary,order_index"
+_LOCATION_COLS = "id,event_id,name,latitude,longitude,is_primary,order_index,location_address"
 _IMAGE_COLS = "id,event_id,image_url,upload_date"
 _VENUE_COLS = (
     "id,event_id,price,language,health_requirements,wheelchair_access,accessible_restroom,"
@@ -360,6 +360,14 @@ def list_events(
             return [], 0
         whitelists.append(ids)
 
+    if search:
+        text_result = db.rpc("search_events_text", {"search_term": search}).execute()
+        text_ids = {row["event_id"] for row in (text_result.data or [])}
+        if text_ids:
+            whitelists.append(text_ids)
+        else:
+            return [], 0
+
     final_whitelist: list[str] | None = None
     if whitelists:
         intersection = set.intersection(*whitelists)
@@ -377,9 +385,6 @@ def list_events(
             q = q.in_("status", ["published", "updated"])
             q = q.gte("end_datetime", now.isoformat())
 
-        if search:
-            safe = search.replace("%", r"\%").replace("_", r"\_")
-            q = q.or_(f"title.ilike.%{safe}%,description.ilike.%{safe}%")
         if final_whitelist is not None:
             q = q.in_("id", final_whitelist)
 

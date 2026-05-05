@@ -10,6 +10,7 @@ import com.bounswe.group9.mobile.data.remote.EventDetailDto
 import com.bounswe.group9.mobile.data.remote.EventUpdateRequest
 import com.bounswe.group9.mobile.data.remote.EventImageDto
 import com.bounswe.group9.mobile.data.remote.LocationRequest
+import com.bounswe.group9.mobile.data.remote.NominatimClient
 import com.bounswe.group9.mobile.data.remote.VenueMetadataRequest
 import com.bounswe.group9.mobile.data.repository.EventRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -53,6 +54,11 @@ data class CreateEventUiState(
     val locationName: String = "",
     val locationLat: String = "",
     val locationLng: String = "",
+    val locationAddress: String = "",
+    val locationAddressLoading: Boolean = false,
+    val locationSuggestions: List<com.bounswe.group9.mobile.data.remote.NominatimResult> = emptyList(),
+    val locationSuggestionsLoading: Boolean = false,
+    val showLocationSuggestions: Boolean = false,
     // Step 3
     val selectedImageUris: List<Uri> = emptyList(),
     val uploadedImages: List<EventImageDto> = emptyList(),
@@ -118,6 +124,7 @@ class CreateEventViewModel(
     private val _uiState = MutableStateFlow(CreateEventUiState())
     val uiState: StateFlow<CreateEventUiState> = _uiState.asStateFlow()
     private var currentToken: String? = null
+    private var locationSearchJob: kotlinx.coroutines.Job? = null
 
     fun init(token: String?, editEvent: EventDetailDto? = null) {
         currentToken = token
@@ -149,7 +156,7 @@ class CreateEventViewModel(
                 startTime = startD?.let { timeFmt.format(it) } ?: "",
                 endDate = endD?.let { dateFmt.format(it) } ?: "",
                 endTime = endD?.let { timeFmt.format(it) } ?: "",
-                locationName = loc?.name ?: "", locationLat = loc?.latitude?.toString() ?: "", locationLng = loc?.longitude?.toString() ?: "",
+                locationName = loc?.name ?: "", locationLat = loc?.latitude?.toString() ?: "", locationLng = loc?.longitude?.toString() ?: "", locationAddress = loc?.location_address ?: "",
                 visibility = event.visibility, isAgeRestricted = event.is_age_restricted,
                 attendeeLimitEnabled = event.attendee_limit != null, attendeeLimit = event.attendee_limit?.toString() ?: "",
                 selectedCategoryIds = event.categories.map { it.id }.toSet(),
@@ -197,16 +204,53 @@ class CreateEventViewModel(
     fun onStartTimeChange(v: String) = update { copy(startTime = v, startError = null) }
     fun onEndDateChange(v: String) = update { copy(endDate = v, endError = null) }
     fun onEndTimeChange(v: String) = update { copy(endTime = v, endError = null) }
-    fun onLocationNameChange(v: String) = update { copy(locationName = v, locationError = null) }
+    fun onLocationNameChange(v: String) {
+        update { copy(locationName = v, locationError = null, showLocationSuggestions = v.isNotBlank()) }
+        locationSearchJob?.cancel()
+        if (v.isNotBlank()) {
+            locationSearchJob = viewModelScope.launch {
+                kotlinx.coroutines.delay(400)
+                update { copy(locationSuggestionsLoading = true) }
+                val results = NominatimClient.suggest(v)
+                update { copy(locationSuggestions = results, locationSuggestionsLoading = false) }
+            }
+        } else {
+            update { copy(locationSuggestions = emptyList(), locationSuggestionsLoading = false) }
+        }
+    }
+
+    fun onLocationSuggestionPicked(result: com.bounswe.group9.mobile.data.remote.NominatimResult) {
+        locationSearchJob?.cancel()
+        update {
+            copy(
+                locationName = result.shortName.ifBlank { result.displayName.split(",").first().trim() },
+                locationLat = result.lat.toString(),
+                locationLng = result.lng.toString(),
+                locationSuggestions = emptyList(),
+                showLocationSuggestions = false,
+                locationError = null,
+                locationAddressLoading = true
+            )
+        }
+        viewModelScope.launch {
+            val address = NominatimClient.reverseGeocode(result.lat, result.lng)
+            update { copy(locationAddress = address ?: "", locationAddressLoading = false) }
+        }
+    }
+
+    fun dismissLocationSuggestions() {
+        update { copy(showLocationSuggestions = false, locationSuggestions = emptyList()) }
+    }
+
     fun onLocationLatChange(v: String) = update { copy(locationLat = v, locationError = null) }
     fun onLocationLngChange(v: String) = update { copy(locationLng = v, locationError = null) }
-    /** Called when the user taps the map in Step 2 — sets both coordinates atomically. */
-    fun onLocationPicked(lat: Double, lng: Double) = update {
-        copy(
-            locationLat = lat.toString(),
-            locationLng = lng.toString(),
-            locationError = null
-        )
+    /** Called when the user taps the map in Step 2 — sets coordinates and kicks off reverse geocoding. */
+    fun onLocationPicked(lat: Double, lng: Double) {
+        update { copy(locationLat = lat.toString(), locationLng = lng.toString(), locationError = null, locationAddressLoading = true) }
+        viewModelScope.launch {
+            val address = NominatimClient.reverseGeocode(lat, lng)
+            update { copy(locationAddress = address ?: "", locationAddressLoading = false) }
+        }
     }
     fun onHealthRequirementsChange(v: String) = update { copy(healthRequirements = v) }
     fun onWheelchairAccessChange(v: Boolean) = update { copy(wheelchairAccess = v) }
@@ -409,7 +453,7 @@ class CreateEventViewModel(
             visibility = s.visibility, is_age_restricted = s.isAgeRestricted,
             attendee_limit = if (s.attendeeLimitEnabled) s.attendeeLimit.toIntOrNull() else null,
             status = status, category_ids = safeCategoryIds,
-            locations = listOf(LocationRequest(safeLocName, safeLat, safeLng)),
+            locations = listOf(LocationRequest(safeLocName, safeLat, safeLng, location_address = s.locationAddress.takeIf { it.isNotBlank() })),
             venue_metadata = buildVenueMetadata(s)
         )
     }
@@ -432,7 +476,7 @@ class CreateEventViewModel(
             visibility = s.visibility, is_age_restricted = s.isAgeRestricted,
             attendee_limit = if (s.attendeeLimitEnabled) s.attendeeLimit.toIntOrNull() else null,
             clear_attendee_limit = !s.attendeeLimitEnabled, category_ids = safeCategoryIds,
-            locations = listOf(LocationRequest(safeLocName, safeLat, safeLng)),
+            locations = listOf(LocationRequest(safeLocName, safeLat, safeLng, location_address = s.locationAddress.takeIf { it.isNotBlank() })),
             venue_metadata = buildVenueMetadata(s)
         )
     }

@@ -16,6 +16,9 @@ class EventRepository {
         search: String? = null,
         categoryId: String? = null,
         temporalFilter: String? = null,
+        nearLat: Double? = null,
+        nearLng: Double? = null,
+        radiusKm: Double? = null,
         page: Int = 1,
         pageSize: Int = 20
     ): Result<EventListResponse> {
@@ -26,15 +29,17 @@ class EventRepository {
                 search = search?.takeIf { it.isNotBlank() },
                 categoryId = categoryId,
                 temporalFilter = temporalFilter,
+                nearLat = nearLat,
+                nearLng = nearLng,
+                radiusKm = radiusKm,
                 page = page,
                 pageSize = pageSize
             )
             Result.success(response)
         } catch (e: retrofit2.HttpException) {
-            // If token expired (401), retry without token — discovery is public
             if (e.code() == 401 && token != null) {
                 Log.w("EventRepository", "Token rejected (401), retrying without auth")
-                return getEvents(null, search, categoryId, temporalFilter, page, pageSize)
+                return getEvents(null, search, categoryId, temporalFilter, nearLat, nearLng, radiusKm, page, pageSize)
             }
             val body = e.response()?.errorBody()?.string() ?: "Unknown error"
             Log.e("EventRepository", "getEvents HTTP ${e.code()}: $body")

@@ -49,7 +49,8 @@ data class EventLocationDto(
     val latitude: Double,
     val longitude: Double,
     val is_primary: Boolean,
-    val order_index: Int
+    val order_index: Int,
+    val location_address: String? = null
 )
 
 data class EventListItemDto(
@@ -251,7 +252,8 @@ data class LocationRequest(
     val latitude: Double,
     val longitude: Double,
     val is_primary: Boolean = true,
-    val order_index: Int = 0
+    val order_index: Int = 0,
+    val location_address: String? = null
 )
 
 data class VenueMetadataRequest(
@@ -312,6 +314,9 @@ interface ApiService {
         @Query("search") search: String? = null,
         @Query("category_id") categoryId: String? = null,
         @Query("temporal_filter") temporalFilter: String? = null,
+        @Query("near_lat") nearLat: Double? = null,
+        @Query("near_lng") nearLng: Double? = null,
+        @Query("radius_km") radiusKm: Double? = null,
         @Query("page") page: Int = 1,
         @Query("page_size") pageSize: Int = 20
     ): EventListResponse

@@ -56,7 +56,9 @@ import coil.compose.AsyncImage
 import java.util.Date
 import java.util.Locale
 import com.bounswe.group9.mobile.data.remote.EventDetailDto
+import com.bounswe.group9.mobile.data.remote.NominatimResult
 import com.bounswe.group9.mobile.ui.discovery.LocationPickerMapView
+import androidx.compose.material.icons.filled.Search
 import com.bounswe.group9.mobile.ui.theme.BrandDark
 import com.bounswe.group9.mobile.ui.theme.BrandMid
 import com.bounswe.group9.mobile.ui.theme.BrandSurfaceLight
@@ -805,16 +807,23 @@ private fun LocationStep(uiState: CreateEventUiState, viewModel: CreateEventView
             )
         }
 
-        // Place name field
+        // Place name search field with autocomplete
         StepCard {
-            FieldLabel("Place name", helper = "Give your venue a recognisable name.")
+            FieldLabel("Place name", helper = "Search for a place or type a venue name.")
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(
                 value = uiState.locationName,
                 onValueChange = { if (!readOnly) viewModel.onLocationNameChange(it) },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("Place name") },
-                placeholder = { Text("e.g. Grand Arena, Istanbul") },
+                placeholder = { Text("e.g. Kadıköy, Istanbul") },
+                leadingIcon = {
+                    if (uiState.locationSuggestionsLoading) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = BrandDark)
+                    } else {
+                        Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp))
+                    }
+                },
                 singleLine = true,
                 enabled = !readOnly,
                 isError = uiState.locationError != null
@@ -822,6 +831,55 @@ private fun LocationStep(uiState: CreateEventUiState, viewModel: CreateEventView
             uiState.locationError?.let {
                 Spacer(Modifier.height(4.dp))
                 Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            }
+
+            // Suggestion dropdown
+            if (uiState.showLocationSuggestions && uiState.locationSuggestions.isNotEmpty()) {
+                Spacer(Modifier.height(4.dp))
+                Card(
+                    shape = RoundedCornerShape(8.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column {
+                        uiState.locationSuggestions.forEach { result ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable(enabled = !readOnly) {
+                                        viewModel.onLocationSuggestionPicked(result)
+                                    }
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.Search,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(Modifier.width(10.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        result.shortName.ifBlank { result.displayName.split(",").first().trim() },
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        result.displayName.take(70),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                            HorizontalDivider(thickness = 0.5.dp)
+                        }
+                    }
+                }
             }
         }
 
@@ -877,13 +935,27 @@ private fun LocationStep(uiState: CreateEventUiState, viewModel: CreateEventView
             if (selectedLat != null && selectedLng != null) {
                 Spacer(Modifier.height(10.dp))
                 Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFF0EDE9)) {
-                    Text(
-                        "📍 ${uiState.locationName.ifBlank { "Location" }} — ${"%.5f".format(selectedLat)}, ${"%.5f".format(selectedLng)}",
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = BrandDark,
-                        fontWeight = FontWeight.Medium
-                    )
+                    Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                        if (uiState.locationAddressLoading) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 1.5.dp, color = BrandDark)
+                                Spacer(Modifier.width(6.dp))
+                                Text("Looking up address...", style = MaterialTheme.typography.bodySmall, color = BrandDark)
+                            }
+                        } else if (uiState.locationAddress.isNotBlank()) {
+                            Text(
+                                "📍 ${uiState.locationAddress}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = BrandDark,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                        Text(
+                            "${"%.5f".format(selectedLat)}, ${"%.5f".format(selectedLng)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = BrandDark.copy(alpha = 0.6f)
+                        )
+                    }
                 }
             } else if (!readOnly) {
                 Spacer(Modifier.height(8.dp))

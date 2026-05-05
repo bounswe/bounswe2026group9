@@ -343,7 +343,7 @@ private fun DiscoveryTopBar(
                 OutlinedTextField(
                     value = search,
                     onValueChange = onSearchChange,
-                    placeholder = { Text("Search events...", fontSize = 13.sp, color = Color.White.copy(alpha = 0.5f)) },
+                    placeholder = { Text("Search events or places...", fontSize = 13.sp, color = Color.White.copy(alpha = 0.5f)) },
                     leadingIcon = {
                         Icon(Icons.Default.Search, null,
                             tint = Color.White.copy(alpha = 0.6f),

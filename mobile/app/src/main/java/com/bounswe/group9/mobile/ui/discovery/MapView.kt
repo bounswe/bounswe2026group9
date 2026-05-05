@@ -28,7 +28,9 @@ import org.maplibre.android.MapLibre
 import org.maplibre.android.annotations.IconFactory
 import org.maplibre.android.annotations.MarkerOptions
 import org.maplibre.android.camera.CameraPosition
+import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 
 private const val MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty"
@@ -224,6 +226,23 @@ fun LocationPickerMapView(
     modifier: Modifier = Modifier
 ) {
     val markerRef = remember { mutableStateOf<org.maplibre.android.annotations.Marker?>(null) }
+    val mapRef = remember { mutableStateOf<MapLibreMap?>(null) }
+    val iconRef = remember { mutableStateOf<org.maplibre.android.annotations.Icon?>(null) }
+
+    // When selectedLat/Lng is set externally (e.g. from suggestion picker), move pin immediately
+    LaunchedEffect(selectedLat, selectedLng) {
+        val map = mapRef.value ?: return@LaunchedEffect
+        val icon = iconRef.value ?: return@LaunchedEffect
+        markerRef.value?.let { map.removeMarker(it) }
+        if (selectedLat != null && selectedLng != null) {
+            markerRef.value = map.addMarker(
+                MarkerOptions().position(LatLng(selectedLat, selectedLng)).icon(icon)
+            )
+            map.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(selectedLat, selectedLng), 14.0))
+        } else {
+            markerRef.value = null
+        }
+    }
 
     Box(modifier = modifier) {
         AndroidView(
@@ -231,8 +250,8 @@ fun LocationPickerMapView(
                 MapLibre.getInstance(context)
                 MapView(context).apply {
                     getMapAsync { map ->
+                        mapRef.value = map
                         map.setStyle(MAP_STYLE) { _ ->
-                            // Center on existing pin or Istanbul default
                             val initLat = selectedLat ?: DEFAULT_LAT
                             val initLng = selectedLng ?: DEFAULT_LNG
                             val zoom = if (selectedLat != null) 14.0 else DEFAULT_ZOOM
@@ -243,6 +262,7 @@ fun LocationPickerMapView(
 
                             val icon = IconFactory.getInstance(context)
                                 .fromBitmap(createMarkerBitmap())
+                            iconRef.value = icon
 
                             // Place initial marker if coords exist
                             if (selectedLat != null && selectedLng != null) {
@@ -254,9 +274,7 @@ fun LocationPickerMapView(
                             }
 
                             map.addOnMapClickListener { latLng ->
-                                // Remove old marker
                                 markerRef.value?.let { map.removeMarker(it) }
-                                // Add new marker
                                 markerRef.value = map.addMarker(
                                     MarkerOptions()
                                         .position(latLng)

@@ -267,6 +267,7 @@ def create_event(db: Client, user_id: str, body: EventCreateRequest) -> EventDet
             "longitude": loc.longitude,
             "is_primary": loc.is_primary,
             "order_index": loc.order_index,
+            "location_address": loc.location_address,
         }
         for loc in body.locations
     ]
@@ -607,6 +608,7 @@ def update_event(
                 "longitude": loc.longitude,
                 "is_primary": loc.is_primary,
                 "order_index": loc.order_index,
+                "location_address": loc.location_address,
             }
             for loc in body.locations
         ]

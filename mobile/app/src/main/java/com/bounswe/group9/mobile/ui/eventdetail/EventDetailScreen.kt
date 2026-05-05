@@ -495,14 +495,23 @@ private fun FullDetailContent(
 
             // Locations
             event.locations.sortedBy { it.order_index }.forEach { loc ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.LocationOn, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(verticalAlignment = Alignment.Top) {
+                    Icon(Icons.Default.LocationOn, contentDescription = null, modifier = Modifier.padding(top = 1.dp).size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.width(6.dp))
-                    Text(
-                        loc.name + if (loc.is_primary) " (Primary)" else "",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Column {
+                        Text(
+                            loc.name + if (loc.is_primary) " (Primary)" else "",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        if (!loc.location_address.isNullOrBlank()) {
+                            Text(
+                                loc.location_address,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
                 }
                 Spacer(Modifier.height(4.dp))
             }

@@ -11,7 +11,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 
 object RetrofitProvider {
 
-    const val BASE_URL = "https://api.thesocialeventmapper.social/"
+    const val BASE_URL = "http://10.0.2.2:8000/"
     private const val REFRESH_COOKIE_NAME = "sem_refresh_token"
 
     // In-memory cookie store to capture refresh token cookie from Set-Cookie header
