@@ -1078,7 +1078,7 @@ private fun VenueMetadataSection(venue: VenueMetadataDto) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         venue.price?.let { InfoRow("Price", it) }
         venue.language?.let { InfoRow("Language", it) }
-        venue.health_requirements?.let { InfoRow("Health Requirements", it) }
+        venue.health_requirements?.let { InfoRow("Special Requirements", it) }
     }
 }
 
