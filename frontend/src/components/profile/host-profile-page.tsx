@@ -5,11 +5,13 @@ import Link from "next/link";
 import { CalendarDays, Mail, Phone, Star } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { JsonLd } from "@/components/json-ld";
 import { StatusBadge } from "@/components/event/status-badge";
 import { Navbar } from "@/components/layout/navbar";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { fetchHostProfile, rateHost, type EventListItem, type HostProfile } from "@/lib/events-api";
+import { buildHostStructuredData } from "@/lib/structured-data";
 import { cn } from "@/lib/utils";
 
 type ProfileTab = "about" | "past" | "upcoming";
@@ -267,8 +269,18 @@ export function HostProfilePage() {
     }
   }
 
+  // JSON-LD structured data for crawlers (issue #243).
+  // Emitted once the profile is loaded; private fields (email/phone) are
+  // gated by the backend's privacy settings before they reach this point,
+  // so forwarding them here is safe.
+  const baseUrl =
+    typeof window !== "undefined" ? window.location.origin : "";
+  const profileStructuredData =
+    profile && baseUrl ? buildHostStructuredData(profile, baseUrl) : null;
+
   return (
     <div className="min-h-screen bg-brand-bg">
+      {profileStructuredData && <JsonLd data={profileStructuredData} />}
       <Navbar />
 
       <main aria-label="Host profile">
