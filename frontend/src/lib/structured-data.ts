@@ -116,11 +116,14 @@ export function buildEventStructuredData(
     base.maximumAttendeeCapacity = fullEvent.attendee_limit;
   }
 
-  // Free-of-charge hint via venue metadata. We only set isAccessibleForFree
-  // when the host explicitly typed something starting with "free" — guessing
-  // would mislead crawlers, so the conservative default is to omit.
-  const price = fullEvent.venue_metadata?.price?.toLowerCase() ?? "";
-  if (price.startsWith("free")) {
+  // Free-of-charge hint via venue metadata. We only flip
+  // isAccessibleForFree on when the host explicitly typed an unambiguous
+  // "free" marker (English or Turkish) — guessing would mislead crawlers,
+  // so the conservative default is to omit. Trim handles trailing
+  // whitespace / "Free " patterns.
+  const price = fullEvent.venue_metadata?.price?.trim().toLowerCase() ?? "";
+  const FREE_MARKERS = ["free", "ücretsiz", "ucretsiz", "bedava"];
+  if (FREE_MARKERS.some((marker) => price === marker || price.startsWith(`${marker} `))) {
     base.isAccessibleForFree = true;
   }
 
@@ -144,8 +147,6 @@ export function buildHostStructuredData(
   host: HostProfile,
   baseUrl: string,
 ): Record<string, unknown> {
-  type WithSameAs = string | undefined;
-
   const data: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "Person",
@@ -169,10 +170,6 @@ export function buildHostStructuredData(
       worstRating: 1,
     };
   }
-
-  // sameAs is left empty — kept on the type to make adding social links
-  // trivial later without changing the consumer signature.
-  void (undefined as WithSameAs);
 
   return data;
 }
