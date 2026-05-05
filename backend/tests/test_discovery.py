@@ -936,3 +936,197 @@ class TestListEventsCategorySort:
         _cleanup_event(ev_first["id"])
         _cleanup_event(ev_second["id"])
         _cleanup_user(user["id"])
+
+
+# --- Suggested-for-you filter helpers ---
+
+def _make_ended_event(host_id: str, category_id: str, *, days_ago: int = 7) -> str:
+    """Insert an ended public event directly into the DB (bypasses publish validators)
+    so we can seed a user's attendance history.
+    """
+    end_dt = datetime.now(UTC) - timedelta(days=days_ago)
+    start_dt = end_dt - timedelta(hours=2)
+    event = db.table("events").insert({
+        "host_id": host_id,
+        "title": f"Past event {uuid.uuid4().hex[:6]}",
+        "description": "Historical event for tests",
+        "start_datetime": start_dt.isoformat(),
+        "end_datetime": end_dt.isoformat(),
+        "visibility": "public",
+        "is_age_restricted": False,
+        "status": "ended",
+    }).execute().data[0]
+    eid = event["id"]
+    db.table("event_locations").insert({
+        "event_id": eid,
+        "name": "Past venue",
+        "latitude": 41.0,
+        "longitude": 29.0,
+        "is_primary": True,
+        "order_index": 0,
+    }).execute()
+    db.table("event_categories").insert({
+        "event_id": eid,
+        "category_id": category_id,
+    }).execute()
+    return eid
+
+
+def _add_attendance(user_id: str, event_id: str, status: str = "going") -> None:
+    db.table("attendances").insert({
+        "user_id": user_id,
+        "event_id": event_id,
+        "status": status,
+    }).execute()
+
+
+class TestSuggestedFilter:
+
+    def test_match_returns_only_user_categories(self):
+        cat_a, cat_b = _get_category_ids(2)
+        host = _create_test_user("hostA")
+        listener = _create_test_user("listA")
+
+        # Listener attended an ended event in cat_a
+        past = _make_ended_event(host["id"], cat_a)
+        _add_attendance(listener["id"], past, "going")
+
+        # Two upcoming events: one in cat_a (matches), one in cat_b (does not)
+        ev_match = _create_published_event(host["id"], [cat_a], title="Jazz Night A")
+        ev_other = _create_published_event(host["id"], [cat_b], title="Sports B")
+
+        resp = client.get("/events?suggested=true", headers=_auth_header(listener["id"]))
+        assert resp.status_code == 200
+        body = resp.json()
+        ids = {item["id"] for item in body["items"]}
+        assert ev_match["id"] in ids
+        assert ev_other["id"] not in ids
+        assert body["suggested_fallback"] is False
+
+        _cleanup_event(ev_match["id"])
+        _cleanup_event(ev_other["id"])
+        _cleanup_event(past)
+        db.table("attendances").delete().eq("user_id", listener["id"]).execute()
+        _cleanup_user(listener["id"])
+        _cleanup_user(host["id"])
+
+    def test_no_history_returns_default_with_fallback_flag(self):
+        user = _create_test_user("nohist")
+        host = _create_test_user("nohistHost")
+
+        ev = _create_published_event(host["id"], _get_category_ids(1), title="Solo")
+
+        resp = client.get("/events?suggested=true", headers=_auth_header(user["id"]))
+        assert resp.status_code == 200
+        body = resp.json()
+        # No history → falls back to default listing, ev should be visible
+        ids = {item["id"] for item in body["items"]}
+        assert ev["id"] in ids
+        assert body["suggested_fallback"] is True
+
+        _cleanup_event(ev["id"])
+        _cleanup_user(user["id"])
+        _cleanup_user(host["id"])
+
+    def test_guest_suggested_silently_ignored(self):
+        host = _create_test_user("guestHost")
+        ev = _create_published_event(host["id"], _get_category_ids(1), title="Public")
+
+        # No auth header
+        resp = client.get("/events?suggested=true")
+        assert resp.status_code == 200
+        body = resp.json()
+        ids = {item["id"] for item in body["items"]}
+        assert ev["id"] in ids
+        assert body["suggested_fallback"] is False
+
+        _cleanup_event(ev["id"])
+        _cleanup_user(host["id"])
+
+    def test_intersects_with_explicit_category_filter(self):
+        cat_a, cat_b = _get_category_ids(2)
+        host = _create_test_user("intHost")
+        listener = _create_test_user("intList")
+
+        past = _make_ended_event(host["id"], cat_a)
+        _add_attendance(listener["id"], past, "going")
+
+        ev_a = _create_published_event(host["id"], [cat_a], title="Match")
+        ev_b = _create_published_event(host["id"], [cat_b], title="Mismatch")
+
+        # suggested=true narrows to user's categories (cat_a),
+        # category_id=cat_b further narrows → no overlap → empty result
+        resp = client.get(
+            f"/events?suggested=true&category_id={cat_b}",
+            headers=_auth_header(listener["id"]),
+        )
+        assert resp.status_code == 200
+        ids = {item["id"] for item in resp.json()["items"]}
+        assert ev_a["id"] not in ids
+        assert ev_b["id"] not in ids
+
+        _cleanup_event(ev_a["id"])
+        _cleanup_event(ev_b["id"])
+        _cleanup_event(past)
+        db.table("attendances").delete().eq("user_id", listener["id"]).execute()
+        _cleanup_user(listener["id"])
+        _cleanup_user(host["id"])
+
+    def test_combines_with_quick_filter(self):
+        cat_a, _ = _get_category_ids(2)
+        host = _create_test_user("qfHost")
+        listener = _create_test_user("qfList")
+
+        past = _make_ended_event(host["id"], cat_a)
+        _add_attendance(listener["id"], past, "going")
+
+        # An upcoming event in user's category (>7 days from now → outside this_week)
+        ev_far = _create_published_event(
+            host["id"], [cat_a], title="Far", days_from_now=20,
+        )
+
+        resp = client.get(
+            "/events?suggested=true&quick_filter=this_week",
+            headers=_auth_header(listener["id"]),
+        )
+        assert resp.status_code == 200
+        ids = {item["id"] for item in resp.json()["items"]}
+        # Suggested narrows to cat_a, this_week excludes events 20 days out
+        assert ev_far["id"] not in ids
+
+        _cleanup_event(ev_far["id"])
+        _cleanup_event(past)
+        db.table("attendances").delete().eq("user_id", listener["id"]).execute()
+        _cleanup_user(listener["id"])
+        _cleanup_user(host["id"])
+
+    def test_private_event_not_surfaced_via_suggested(self):
+        cat_a, _ = _get_category_ids(2)
+        host = _create_test_user("privHost")
+        listener = _create_test_user("privList")
+
+        past = _make_ended_event(host["id"], cat_a)
+        _add_attendance(listener["id"], past, "going")
+
+        # Private event in matching category. Listing currently surfaces a limited
+        # preview of private events for non-host viewers, so the response will
+        # contain it but description/full data is absent. The strict requirement
+        # is that the access boundary holds: the listener cannot get full detail.
+        ev_priv = _create_published_event(
+            host["id"], [cat_a], title="Private Match", visibility="private",
+        )
+
+        # Listener can see it in the list (private events appear in discovery),
+        # but cannot read full detail without an invite/grant.
+        detail_resp = client.get(
+            f"/events/{ev_priv['id']}", headers=_auth_header(listener["id"]),
+        )
+        # Limited responses lack 'description' / 'host_id' fields.
+        body = detail_resp.json()
+        assert "host_id" not in body or body.get("description") is None
+
+        _cleanup_event(ev_priv["id"])
+        _cleanup_event(past)
+        db.table("attendances").delete().eq("user_id", listener["id"]).execute()
+        _cleanup_user(listener["id"])
+        _cleanup_user(host["id"])

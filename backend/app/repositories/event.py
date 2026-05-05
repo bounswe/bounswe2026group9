@@ -303,6 +303,7 @@ def list_events(
     radius_km: float | None = None,
     accessibility: dict[str, bool | None] | None = None,
     sort: str = "start_time",
+    suggested_category_ids: set[str] | None = None,
     page: int = 1,
     page_size: int = 20,
 ) -> tuple[list[dict], int]:
@@ -327,6 +328,18 @@ def list_events(
             .execute()
         )
         ids = {row["event_id"] for row in (cat_result.data or [])}
+        if not ids:
+            return [], 0
+        whitelists.append(ids)
+
+    if suggested_category_ids:
+        sug_result = (
+            db.table("event_categories")
+            .select("event_id")
+            .in_("category_id", list(suggested_category_ids))
+            .execute()
+        )
+        ids = {row["event_id"] for row in (sug_result.data or [])}
         if not ids:
             return [], 0
         whitelists.append(ids)
