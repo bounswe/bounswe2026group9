@@ -940,15 +940,20 @@ private fun LocationStep(uiState: CreateEventUiState, viewModel: CreateEventView
             Spacer(Modifier.height(12.dp))
 
             uiState.locations.forEachIndexed { index, loc ->
+                val canReorder = uiState.locations.size > 1 && !readOnly
                 LocationEntryCard(
                     index = index,
                     entry = loc,
                     isPrimary = index == 0,
                     canDelete = uiState.locations.size > 1 && !readOnly,
+                    canMoveUp = canReorder && index > 0,
+                    canMoveDown = canReorder && index < uiState.locations.size - 1,
                     readOnly = readOnly,
                     onNameChange = { viewModel.onLocationNameChange(index, it) },
                     onSetOnMap = { if (!readOnly) pickingLocationIndex = index },
                     onDelete = { viewModel.removeLocation(index) },
+                    onMoveUp = { viewModel.moveLocation(index, index - 1) },
+                    onMoveDown = { viewModel.moveLocation(index, index + 1) },
                     onToggleSegment = { viewModel.toggleSegmentFields(index) },
                     onShowPicker = { field -> showPickerFor = Pair(index, field) },
                     onSegmentDescriptionChange = { viewModel.onSegmentDescriptionChange(index, it) }
@@ -985,10 +990,14 @@ private fun LocationEntryCard(
     entry: LocationEntry,
     isPrimary: Boolean,
     canDelete: Boolean,
+    canMoveUp: Boolean,
+    canMoveDown: Boolean,
     readOnly: Boolean,
     onNameChange: (String) -> Unit,
     onSetOnMap: () -> Unit,
     onDelete: () -> Unit,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
     onToggleSegment: () -> Unit,
     onShowPicker: (String) -> Unit,
     onSegmentDescriptionChange: (String) -> Unit
@@ -1016,6 +1025,37 @@ private fun LocationEntryCard(
                 fontSize = 14.sp,
                 modifier = Modifier.weight(1f)
             )
+            // Reorder controls — moving a stop instantly re-numbers every card
+            // (issue #160 AC #1). The badge above reads `index + 1`, so reordering
+            // the underlying list updates the displayed numbers in one frame.
+            if (canMoveUp || canMoveDown) {
+                IconButton(
+                    onClick = onMoveUp,
+                    enabled = canMoveUp,
+                    modifier = Modifier.size(32.dp),
+                ) {
+                    Icon(
+                        Icons.Default.KeyboardArrowUp,
+                        contentDescription = "Move stop up",
+                        modifier = Modifier.size(20.dp),
+                        tint = if (canMoveUp) MaterialTheme.colorScheme.onSurface
+                               else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                    )
+                }
+                IconButton(
+                    onClick = onMoveDown,
+                    enabled = canMoveDown,
+                    modifier = Modifier.size(32.dp),
+                ) {
+                    Icon(
+                        Icons.Default.KeyboardArrowDown,
+                        contentDescription = "Move stop down",
+                        modifier = Modifier.size(20.dp),
+                        tint = if (canMoveDown) MaterialTheme.colorScheme.onSurface
+                               else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                    )
+                }
+            }
             if (canDelete) IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
                 Icon(Icons.Default.Delete, contentDescription = "Remove stop", modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error)
             }

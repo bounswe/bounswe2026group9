@@ -255,6 +255,20 @@ class CreateEventViewModel(
         copy(locations = locations.filterIndexed { i, _ -> i != index })
     }
 
+    /**
+     * Reorder a stop within the locations list. Index numbers shown in the UI
+     * are derived from the list position, so a reorder here automatically
+     * re-numbers the stops (issue #160 AC #1).
+     */
+    fun moveLocation(fromIndex: Int, toIndex: Int) = update {
+        if (fromIndex == toIndex) return@update this
+        if (fromIndex !in locations.indices || toIndex !in locations.indices) return@update this
+        val mutable = locations.toMutableList()
+        val moved = mutable.removeAt(fromIndex)
+        mutable.add(toIndex, moved)
+        copy(locations = mutable.toList(), locationError = null)
+    }
+
     fun toggleSegmentFields(index: Int) = update {
         copy(locations = locations.mapIndexed { i, l ->
             if (i == index) l.copy(showSegmentFields = !l.showSegmentFields) else l
