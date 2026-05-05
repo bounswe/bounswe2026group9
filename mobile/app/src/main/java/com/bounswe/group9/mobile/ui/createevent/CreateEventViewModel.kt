@@ -10,9 +10,13 @@ import com.bounswe.group9.mobile.data.remote.EventDetailDto
 import com.bounswe.group9.mobile.data.remote.EventUpdateRequest
 import com.bounswe.group9.mobile.data.remote.EventImageDto
 import com.bounswe.group9.mobile.data.remote.LocationRequest
+import com.bounswe.group9.mobile.data.remote.NominatimClient
+import com.bounswe.group9.mobile.data.remote.NominatimResult
 import com.bounswe.group9.mobile.data.remote.SegmentRequest
 import com.bounswe.group9.mobile.data.remote.VenueMetadataRequest
 import com.bounswe.group9.mobile.data.repository.EventRepository
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -45,7 +49,15 @@ data class LocationEntry(
     val segmentEndDate: String = "",
     val segmentEndTime: String = "",
     val segmentDescription: String = "",
-    val showSegmentFields: Boolean = false
+    val showSegmentFields: Boolean = false,
+    // Issue #271 / #274 — per-stop place-search and address state.
+    // Each stop owns its own autocomplete + reverse-geocode lifecycle so the
+    // multi-stop UI from #293 stays clean.
+    val locationAddress: String? = null,
+    val suggestions: List<com.bounswe.group9.mobile.data.remote.NominatimResult> = emptyList(),
+    val suggestionsLoading: Boolean = false,
+    val showSuggestions: Boolean = false,
+    val addressLookupInFlight: Boolean = false,
 )
 
 data class CreateEventUiState(
@@ -161,6 +173,7 @@ class CreateEventViewModel(
                 name = loc.name,
                 lat = loc.latitude.toString(),
                 lng = loc.longitude.toString(),
+                locationAddress = loc.location_address,
                 segmentStartDate = seg?.let { parseIsoDate(it.start_datetime, isoParser, dateFmt) } ?: "",
                 segmentStartTime = seg?.let { parseIsoTime(it.start_datetime, isoParser, timeFmt) } ?: "",
                 segmentEndDate = seg?.let { parseIsoDate(it.end_datetime, isoParser, dateFmt) } ?: "",
@@ -238,14 +251,116 @@ class CreateEventViewModel(
 
     // ── Multi-location management ────────────────────────────────────────────────
 
-    fun onLocationNameChange(index: Int, name: String) = update {
-        copy(locations = locations.mapIndexed { i, l -> if (i == index) l.copy(name = name) else l }, locationError = null)
+    // Per-stop debounce job tracking so typing in one card doesn't fire
+    // suggest requests for siblings, and reverse-geocode lookups in flight
+    // can be cancelled when the user keeps moving the pin.
+    private val searchJobs: MutableMap<Int, Job> = mutableMapOf()
+    private val reverseGeocodeJobs: MutableMap<Int, Job> = mutableMapOf()
+
+    fun onLocationNameChange(index: Int, name: String) {
+        update {
+            copy(locations = locations.mapIndexed { i, l ->
+                if (i == index) l.copy(name = name) else l
+            }, locationError = null)
+        }
+        // Cancel any in-flight suggest for this stop and schedule a new one.
+        searchJobs[index]?.cancel()
+        if (name.trim().length < 3) {
+            update {
+                copy(locations = locations.mapIndexed { i, l ->
+                    if (i == index) l.copy(
+                        suggestions = emptyList(),
+                        showSuggestions = false,
+                        suggestionsLoading = false,
+                    ) else l
+                })
+            }
+            return
+        }
+        searchJobs[index] = viewModelScope.launch {
+            delay(400)  // debounce — prevents a Nominatim hit per keystroke
+            update {
+                copy(locations = locations.mapIndexed { i, l ->
+                    if (i == index) l.copy(suggestionsLoading = true) else l
+                })
+            }
+            val results = NominatimClient.suggest(name.trim(), limit = 5)
+            update {
+                copy(locations = locations.mapIndexed { i, l ->
+                    if (i == index) l.copy(
+                        suggestions = results,
+                        showSuggestions = results.isNotEmpty(),
+                        suggestionsLoading = false,
+                    ) else l
+                })
+            }
+        }
     }
 
-    fun onLocationPicked(index: Int, lat: Double, lng: Double) = update {
+    /**
+     * The user picked one of the autocomplete suggestions. Fill the stop's
+     * name + coordinates + a sensible default address from the result, hide
+     * the dropdown, and kick off a reverse-geocode for a more precise
+     * short-form address.
+     */
+    fun onSuggestionPicked(index: Int, result: NominatimResult) {
+        searchJobs[index]?.cancel()
+        val displayName = result.shortName.ifBlank { result.displayName.split(",").firstOrNull()?.trim().orEmpty() }
+        val initialAddress = result.displayName.split(",").take(3).joinToString(",").trim()
+        update {
+            copy(locations = locations.mapIndexed { i, l ->
+                if (i == index) l.copy(
+                    name = displayName,
+                    lat = result.lat.toString(),
+                    lng = result.lng.toString(),
+                    locationAddress = initialAddress,
+                    suggestions = emptyList(),
+                    showSuggestions = false,
+                    suggestionsLoading = false,
+                ) else l
+            }, locationError = null)
+        }
+        triggerReverseGeocode(index, result.lat, result.lng)
+    }
+
+    /** Hide the dropdown without changing the name (e.g. user tapped outside). */
+    fun dismissSuggestions(index: Int) = update {
         copy(locations = locations.mapIndexed { i, l ->
-            if (i == index) l.copy(lat = lat.toString(), lng = lng.toString()) else l
-        }, locationError = null)
+            if (i == index) l.copy(showSuggestions = false) else l
+        })
+    }
+
+    fun onLocationPicked(index: Int, lat: Double, lng: Double) {
+        update {
+            copy(locations = locations.mapIndexed { i, l ->
+                if (i == index) l.copy(lat = lat.toString(), lng = lng.toString()) else l
+            }, locationError = null)
+        }
+        // Pin drop → reverse-geocode to populate the human-readable address.
+        triggerReverseGeocode(index, lat, lng)
+    }
+
+    private fun triggerReverseGeocode(index: Int, lat: Double, lng: Double) {
+        reverseGeocodeJobs[index]?.cancel()
+        update {
+            copy(locations = locations.mapIndexed { i, l ->
+                if (i == index) l.copy(addressLookupInFlight = true) else l
+            })
+        }
+        reverseGeocodeJobs[index] = viewModelScope.launch {
+            val addr = NominatimClient.reverseGeocode(lat, lng)
+            update {
+                copy(locations = locations.mapIndexed { i, l ->
+                    if (i == index) l.copy(
+                        // Only overwrite address if Nominatim returned something.
+                        // Nullable returns mean the lookup failed; keep whatever
+                        // address was already there (e.g. from suggestion pick).
+                        locationAddress = addr ?: l.locationAddress,
+                        addressLookupInFlight = false,
+                    ) else l
+                })
+            }
+        }
     }
 
     fun addLocation() = update { copy(locations = locations + LocationEntry()) }
@@ -533,7 +648,8 @@ class CreateEventViewModel(
                 latitude = loc.lat.toDoubleOrNull() ?: 0.0,
                 longitude = loc.lng.toDoubleOrNull() ?: 0.0,
                 is_primary = (i == 0),
-                order_index = i
+                order_index = i,
+                location_address = loc.locationAddress?.takeIf { it.isNotBlank() },
             )
         }
 
