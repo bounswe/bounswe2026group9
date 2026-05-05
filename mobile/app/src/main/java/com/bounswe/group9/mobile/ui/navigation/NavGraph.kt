@@ -160,6 +160,9 @@ fun AppNavGraph(
                 onNavigateToHost = { hostId ->
                     navController.navigate(Routes.hostProfile(hostId))
                 },
+                onNavigateToEvent = { targetEventId ->
+                    navController.navigate(Routes.eventDetail(targetEventId))
+                },
                 onNavigateToEdit = { event ->
                     navController.navigate(Routes.editEvent(event.id))
                 },
