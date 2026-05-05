@@ -26,13 +26,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Reorder
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -40,23 +46,30 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import coil.compose.AsyncImage
 import java.util.Date
 import java.util.Locale
 import com.bounswe.group9.mobile.data.remote.EventDetailDto
 import com.bounswe.group9.mobile.ui.discovery.LocationPickerMapView
+import com.bounswe.group9.mobile.ui.discovery.MultiLocationMapView
 import com.bounswe.group9.mobile.ui.theme.BrandDark
 import com.bounswe.group9.mobile.ui.theme.BrandMid
 import com.bounswe.group9.mobile.ui.theme.BrandSurfaceLight
@@ -791,108 +804,532 @@ private fun ScheduleStep(uiState: CreateEventUiState, viewModel: CreateEventView
 
 // ── Step 2: Location ──────────────────────────────────────────────────────────
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun LocationStep(uiState: CreateEventUiState, viewModel: CreateEventViewModel) {
     val readOnly = uiState.eventAlreadyStarted
-    val selectedLat = uiState.locationLat.toDoubleOrNull()
-    val selectedLng = uiState.locationLng.toDoubleOrNull()
+    var pickingLocationIndex by remember { mutableStateOf(-1) }
+    val dateFmt: java.text.SimpleDateFormat = remember { java.text.SimpleDateFormat("yyyy-MM-dd", Locale.US) }
+    fun parseMs(d: String): Long? = try { dateFmt.parse(d)?.time } catch (_: Exception) { null }
+    fun parseHour(t: String) = t.split(":").getOrNull(0)?.toIntOrNull() ?: 9
+    fun parseMin(t: String) = t.split(":").getOrNull(1)?.toIntOrNull() ?: 0
 
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        if (uiState.eventAlreadyStarted) {
-            FeedbackBanner(
-                "This event has already started — location cannot be changed.",
-                FeedbackTone.Error
-            )
-        }
+    // Tracks which (locationIndex, field) picker to show: field = startDate|startTime|endDate|endTime
+    var showPickerFor by remember { mutableStateOf<Pair<Int, String>?>(null) }
 
-        // Place name field
-        StepCard {
-            FieldLabel("Place name", helper = "Give your venue a recognisable name.")
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                value = uiState.locationName,
-                onValueChange = { if (!readOnly) viewModel.onLocationNameChange(it) },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Place name") },
-                placeholder = { Text("e.g. Grand Arena, Istanbul") },
-                singleLine = true,
-                enabled = !readOnly,
-                isError = uiState.locationError != null
-            )
-            uiState.locationError?.let {
-                Spacer(Modifier.height(4.dp))
-                Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-            }
-        }
-
-        // Map picker card
-        StepCard {
-            FieldLabel(
-                "Pin on map",
-                helper = if (readOnly) "Location is locked for started events."
-                         else "Tap anywhere on the map to set the venue coordinates."
-            )
-            Spacer(Modifier.height(10.dp))
-
-            // The map — fixed height so it sits inside the scroll layout nicely
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(320.dp)
-                    .clip(RoundedCornerShape(12.dp))
-            ) {
-                LocationPickerMapView(
-                    selectedLat = selectedLat,
-                    selectedLng = selectedLng,
-                    onLocationPicked = { lat, lng ->
-                        if (!readOnly) viewModel.onLocationPicked(lat, lng)
+    showPickerFor?.let { (idx, field) ->
+        val loc = uiState.locations.getOrNull(idx) ?: return@let
+        when (field) {
+            "startDate" -> {
+                val state = rememberDatePickerState(initialSelectedDateMillis = parseMs(loc.segmentStartDate))
+                DatePickerDialog(
+                    onDismissRequest = { showPickerFor = null },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            state.selectedDateMillis?.let { viewModel.onSegmentStartDateChange(idx, dateFmt.format(Date(it))) }
+                            showPickerFor = null
+                        }) { Text("OK") }
                     },
-                    modifier = Modifier.fillMaxSize()
-                )
-
-                // Lock overlay when readOnly
-                if (readOnly) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.35f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Surface(
-                            shape = RoundedCornerShape(20.dp),
-                            color = Color.Black.copy(alpha = 0.6f)
-                        ) {
-                            Text(
-                                "🔒 Location locked",
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                color = Color.White,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    }
-                }
+                    dismissButton = { TextButton(onClick = { showPickerFor = null }) { Text("Cancel") } }
+                ) { DatePicker(state = state) }
             }
+            "startTime" -> {
+                val state = rememberTimePickerState(initialHour = parseHour(loc.segmentStartTime), initialMinute = parseMin(loc.segmentStartTime))
+                AlertDialog(
+                    onDismissRequest = { showPickerFor = null },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            viewModel.onSegmentStartTimeChange(idx, String.format("%02d:%02d", state.hour, state.minute))
+                            showPickerFor = null
+                        }) { Text("OK") }
+                    },
+                    dismissButton = { TextButton(onClick = { showPickerFor = null }) { Text("Cancel") } },
+                    text = { TimePicker(state = state) }
+                )
+            }
+            "endDate" -> {
+                val state = rememberDatePickerState(initialSelectedDateMillis = parseMs(loc.segmentEndDate))
+                DatePickerDialog(
+                    onDismissRequest = { showPickerFor = null },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            state.selectedDateMillis?.let { viewModel.onSegmentEndDateChange(idx, dateFmt.format(Date(it))) }
+                            showPickerFor = null
+                        }) { Text("OK") }
+                    },
+                    dismissButton = { TextButton(onClick = { showPickerFor = null }) { Text("Cancel") } }
+                ) { DatePicker(state = state) }
+            }
+            "endTime" -> {
+                val state = rememberTimePickerState(initialHour = parseHour(loc.segmentEndTime), initialMinute = parseMin(loc.segmentEndTime))
+                AlertDialog(
+                    onDismissRequest = { showPickerFor = null },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            viewModel.onSegmentEndTimeChange(idx, String.format("%02d:%02d", state.hour, state.minute))
+                            showPickerFor = null
+                        }) { Text("OK") }
+                    },
+                    dismissButton = { TextButton(onClick = { showPickerFor = null }) { Text("Cancel") } },
+                    text = { TimePicker(state = state) }
+                )
+            }
+        }
+    }
 
-            // Coordinate summary row
-            if (selectedLat != null && selectedLng != null) {
-                Spacer(Modifier.height(10.dp))
-                Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFF0EDE9)) {
-                    Text(
-                        "📍 ${uiState.locationName.ifBlank { "Location" }} — ${"%.5f".format(selectedLat)}, ${"%.5f".format(selectedLng)}",
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = BrandDark,
-                        fontWeight = FontWeight.Medium
+    // Map picker bottom sheet
+    if (pickingLocationIndex >= 0) {
+        val pickedIdx = pickingLocationIndex
+        val loc = uiState.locations.getOrNull(pickedIdx)
+        ModalBottomSheet(onDismissRequest = { pickingLocationIndex = -1 }) {
+            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                Text(
+                    "Stop ${pickedIdx + 1}${if (pickedIdx == 0) " (Primary)" else ""} — tap to pin",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(380.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                ) {
+                    LocationPickerMapView(
+                        selectedLat = loc?.lat?.toDoubleOrNull(),
+                        selectedLng = loc?.lng?.toDoubleOrNull(),
+                        onLocationPicked = { lat, lng -> viewModel.onLocationPicked(pickedIdx, lat, lng) },
+                        modifier = Modifier.fillMaxSize()
                     )
                 }
-            } else if (!readOnly) {
+                Spacer(Modifier.height(12.dp))
+                Button(
+                    onClick = { pickingLocationIndex = -1 },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = BrandDark)
+                ) { Text("Confirm location") }
+                Spacer(Modifier.height(32.dp))
+            }
+        }
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        if (readOnly) {
+            FeedbackBanner("This event has already started — location cannot be changed.", FeedbackTone.Error)
+        }
+
+        // Route preview map (shown when at least one valid coordinate exists)
+        val hasValidCoords = uiState.locations.any { it.lat.toDoubleOrNull() != null && it.lng.toDoubleOrNull() != null }
+        if (hasValidCoords) {
+            StepCard {
+                FieldLabel("Route preview", helper = "Shows all stops connected in order.")
                 Spacer(Modifier.height(8.dp))
-                Text(
-                    "No location pinned yet — tap the map above.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF9C9390)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                ) {
+                    MultiLocationMapView(
+                        locations = uiState.locations,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+            }
+        }
+
+        // Location stops list
+        StepCard {
+            FieldLabel(
+                "Stops",
+                helper = if (readOnly) "Locations locked for started events." else "Stop 1 is the primary venue. Add more stops to create a route."
+            )
+            Spacer(Modifier.height(12.dp))
+
+            // Drag-and-drop reorder state (issue #160 AC #1).
+            // - draggedIndex: which row is being dragged, null when idle.
+            // - dragOffsetY: cumulative vertical drag distance (px) for that row.
+            // - itemHeights: per-index measured height so we can convert
+            //   dragOffsetY into a target index regardless of card expansion
+            //   (segment-fields expand changes per-row height significantly).
+            var draggedIndex by remember { mutableStateOf<Int?>(null) }
+            var dragOffsetY by remember { mutableStateOf(0f) }
+            val itemHeights = remember { mutableStateMapOf<Int, Int>() }
+
+            // Convert the live dragOffsetY into the would-be target index.
+            // We sum heights of items below (when dragging down) or above
+            // (when dragging up) and "cross" into the next row once we've
+            // moved past half its height — feels natural and matches
+            // ItemTouchHelper's default behaviour.
+            fun computeTarget(from: Int, offsetY: Float): Int {
+                if (offsetY > 0f) {
+                    var acc = 0
+                    var idx = from + 1
+                    var target = from
+                    while (idx < uiState.locations.size) {
+                        val h = itemHeights[idx] ?: 0
+                        acc += h
+                        if (offsetY > acc - h / 2f) target = idx
+                        idx++
+                    }
+                    return target
+                } else if (offsetY < 0f) {
+                    var acc = 0
+                    var idx = from - 1
+                    var target = from
+                    while (idx >= 0) {
+                        val h = itemHeights[idx] ?: 0
+                        acc += h
+                        if (-offsetY > acc - h / 2f) target = idx
+                        idx--
+                    }
+                    return target
+                }
+                return from
+            }
+
+            uiState.locations.forEachIndexed { index, loc ->
+                val canReorder = uiState.locations.size > 1 && !readOnly
+                val isDragging = draggedIndex == index
+                LocationEntryCard(
+                    index = index,
+                    entry = loc,
+                    isPrimary = index == 0,
+                    canDelete = uiState.locations.size > 1 && !readOnly,
+                    canMoveUp = canReorder && index > 0,
+                    canMoveDown = canReorder && index < uiState.locations.size - 1,
+                    canReorder = canReorder,
+                    isDragging = isDragging,
+                    dragOffsetY = if (isDragging) dragOffsetY else 0f,
+                    onSizeMeasured = { px -> itemHeights[index] = px },
+                    onDragStart = {
+                        draggedIndex = index
+                        dragOffsetY = 0f
+                    },
+                    onDrag = { dy -> dragOffsetY += dy },
+                    onDragEnd = {
+                        val from = draggedIndex
+                        val target = if (from != null) computeTarget(from, dragOffsetY) else null
+                        if (from != null && target != null && target != from) {
+                            viewModel.moveLocation(from, target)
+                        }
+                        draggedIndex = null
+                        dragOffsetY = 0f
+                    },
+                    onDragCancel = {
+                        draggedIndex = null
+                        dragOffsetY = 0f
+                    },
+                    readOnly = readOnly,
+                    onNameChange = { viewModel.onLocationNameChange(index, it) },
+                    onSetOnMap = { if (!readOnly) pickingLocationIndex = index },
+                    onDelete = { viewModel.removeLocation(index) },
+                    onMoveUp = { viewModel.moveLocation(index, index - 1) },
+                    onMoveDown = { viewModel.moveLocation(index, index + 1) },
+                    onToggleSegment = { viewModel.toggleSegmentFields(index) },
+                    onShowPicker = { field -> showPickerFor = Pair(index, field) },
+                    onSegmentDescriptionChange = { viewModel.onSegmentDescriptionChange(index, it) }
+                )
+                if (index < uiState.locations.size - 1) {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                }
+            }
+
+            uiState.locationError?.let {
+                Spacer(Modifier.height(8.dp))
+                Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            }
+
+            if (!readOnly) {
+                Spacer(Modifier.height(12.dp))
+                OutlinedButton(
+                    onClick = { viewModel.addLocation() },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = BrandDark)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Add another stop")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LocationEntryCard(
+    index: Int,
+    entry: LocationEntry,
+    isPrimary: Boolean,
+    canDelete: Boolean,
+    canMoveUp: Boolean,
+    canMoveDown: Boolean,
+    canReorder: Boolean,
+    isDragging: Boolean,
+    dragOffsetY: Float,
+    onSizeMeasured: (Int) -> Unit,
+    onDragStart: () -> Unit,
+    onDrag: (Float) -> Unit,
+    onDragEnd: () -> Unit,
+    onDragCancel: () -> Unit,
+    readOnly: Boolean,
+    onNameChange: (String) -> Unit,
+    onSetOnMap: () -> Unit,
+    onDelete: () -> Unit,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
+    onToggleSegment: () -> Unit,
+    onShowPicker: (String) -> Unit,
+    onSegmentDescriptionChange: (String) -> Unit
+) {
+    // While dragging:
+    //  - lift the card visually (shadow + raised z so it draws above siblings)
+    //  - translate it by dragOffsetY so the user sees it follow their finger
+    //  - other rows stay put; the actual list reorder happens once on
+    //    drag end (computeTarget in LocationStep) — this is the same UX
+    //    pattern as Android's ItemTouchHelper-based drag-to-reorder.
+    Column(
+        modifier = Modifier
+            .onSizeChanged { onSizeMeasured(it.height) }
+            .zIndex(if (isDragging) 1f else 0f)
+            .offset { IntOffset(0, dragOffsetY.toInt()) }
+            .then(
+                if (isDragging) Modifier.shadow(elevation = 8.dp, shape = MaterialTheme.shapes.medium)
+                else Modifier
+            )
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Surface(
+                shape = CircleShape,
+                color = if (isPrimary) BrandDark else MaterialTheme.colorScheme.surfaceVariant,
+                modifier = Modifier.size(28.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        "${index + 1}",
+                        color = if (isPrimary) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+            Spacer(Modifier.width(8.dp))
+            Text(
+                if (isPrimary) "Stop ${index + 1} · Primary" else "Stop ${index + 1}",
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 14.sp,
+                modifier = Modifier.weight(1f)
+            )
+            // Drag handle — long-press + drag to reorder. The icon-only
+            // hit area starts the gesture; once the user has held it for
+            // ~500 ms the card lifts and follows their finger. Releasing
+            // commits the new position. This is the primary reorder
+            // affordance (issue #160 AC #1: drag-and-drop).
+            if (canReorder) {
+                Icon(
+                    Icons.Default.Reorder,
+                    contentDescription = "Drag to reorder stop",
+                    modifier = Modifier
+                        .size(32.dp)
+                        .padding(6.dp)
+                        .pointerInput(index) {
+                            detectDragGesturesAfterLongPress(
+                                onDragStart = { onDragStart() },
+                                onDragEnd = { onDragEnd() },
+                                onDragCancel = { onDragCancel() },
+                                onDrag = { change, dragAmount ->
+                                    change.consume()
+                                    onDrag(dragAmount.y)
+                                },
+                            )
+                        },
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            // ↑ / ↓ accessibility fallback — gives keyboard / screen-reader
+            // users (and anyone who can't comfortably long-press) the same
+            // reorder capability the drag handle exposes.
+            if (canMoveUp || canMoveDown) {
+                IconButton(
+                    onClick = onMoveUp,
+                    enabled = canMoveUp,
+                    modifier = Modifier.size(32.dp),
+                ) {
+                    Icon(
+                        Icons.Default.KeyboardArrowUp,
+                        contentDescription = "Move stop up",
+                        modifier = Modifier.size(20.dp),
+                        tint = if (canMoveUp) MaterialTheme.colorScheme.onSurface
+                               else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                    )
+                }
+                IconButton(
+                    onClick = onMoveDown,
+                    enabled = canMoveDown,
+                    modifier = Modifier.size(32.dp),
+                ) {
+                    Icon(
+                        Icons.Default.KeyboardArrowDown,
+                        contentDescription = "Move stop down",
+                        modifier = Modifier.size(20.dp),
+                        tint = if (canMoveDown) MaterialTheme.colorScheme.onSurface
+                               else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                    )
+                }
+            }
+            if (canDelete) IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Default.Delete, contentDescription = "Remove stop", modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error)
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        OutlinedTextField(
+            value = entry.name,
+            onValueChange = { if (!readOnly) onNameChange(it) },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Place name") },
+            placeholder = { Text(if (isPrimary) "e.g. Main Venue, Istanbul" else "e.g. After-party venue") },
+            singleLine = true,
+            enabled = !readOnly
+        )
+
+        Spacer(Modifier.height(8.dp))
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            val lat = entry.lat.toDoubleOrNull()
+            val lng = entry.lng.toDoubleOrNull()
+            if (lat != null && lng != null) {
+                Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFF0EDE9), modifier = Modifier.weight(1f)) {
+                    Text(
+                        "📍 ${"%.4f".format(lat)}, ${"%.4f".format(lng)}",
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = BrandDark
+                    )
+                }
+            } else {
+                Text(
+                    "No location pinned",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF9C9390),
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            if (!readOnly) {
+                Spacer(Modifier.width(8.dp))
+                OutlinedButton(
+                    onClick = onSetOnMap,
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                    modifier = Modifier.height(34.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = BrandDark)
+                ) {
+                    Icon(Icons.Default.LocationOn, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Set on map", fontSize = 12.sp)
+                }
+            }
+        }
+
+        if (!readOnly) {
+            Spacer(Modifier.height(6.dp))
+            TextButton(
+                onClick = onToggleSegment,
+                contentPadding = PaddingValues(0.dp),
+                modifier = Modifier.height(30.dp)
+            ) {
+                Icon(
+                    if (entry.showSegmentFields) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = BrandMid
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    if (entry.showSegmentFields) "Hide stop timing" else "Add stop timing",
+                    fontSize = 12.sp,
+                    color = BrandMid
+                )
+            }
+        }
+
+        if (entry.showSegmentFields) {
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = entry.segmentStartDate,
+                    onValueChange = {},
+                    modifier = Modifier.weight(1f),
+                    label = { Text("Start date") },
+                    placeholder = { Text("YYYY-MM-DD") },
+                    singleLine = true,
+                    enabled = !readOnly,
+                    readOnly = true,
+                    trailingIcon = {
+                        if (!readOnly) IconButton(onClick = { onShowPicker("startDate") }) {
+                            Icon(Icons.Default.DateRange, contentDescription = null, tint = BrandMid)
+                        }
+                    }
+                )
+                OutlinedTextField(
+                    value = entry.segmentStartTime,
+                    onValueChange = {},
+                    modifier = Modifier.weight(1f),
+                    label = { Text("Start time") },
+                    placeholder = { Text("HH:MM") },
+                    singleLine = true,
+                    enabled = !readOnly,
+                    readOnly = true,
+                    trailingIcon = {
+                        if (!readOnly) IconButton(onClick = { onShowPicker("startTime") }) {
+                            Icon(Icons.Default.AccessTime, contentDescription = null, tint = BrandMid)
+                        }
+                    }
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = entry.segmentEndDate,
+                    onValueChange = {},
+                    modifier = Modifier.weight(1f),
+                    label = { Text("End date") },
+                    placeholder = { Text("YYYY-MM-DD") },
+                    singleLine = true,
+                    enabled = !readOnly,
+                    readOnly = true,
+                    trailingIcon = {
+                        if (!readOnly) IconButton(onClick = { onShowPicker("endDate") }) {
+                            Icon(Icons.Default.DateRange, contentDescription = null, tint = BrandMid)
+                        }
+                    }
+                )
+                OutlinedTextField(
+                    value = entry.segmentEndTime,
+                    onValueChange = {},
+                    modifier = Modifier.weight(1f),
+                    label = { Text("End time") },
+                    placeholder = { Text("HH:MM") },
+                    singleLine = true,
+                    enabled = !readOnly,
+                    readOnly = true,
+                    trailingIcon = {
+                        if (!readOnly) IconButton(onClick = { onShowPicker("endTime") }) {
+                            Icon(Icons.Default.AccessTime, contentDescription = null, tint = BrandMid)
+                        }
+                    }
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = entry.segmentDescription,
+                onValueChange = { if (!readOnly) onSegmentDescriptionChange(it) },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Stop description (optional)") },
+                placeholder = { Text("e.g. Meet at the main entrance") },
+                maxLines = 2,
+                enabled = !readOnly
+            )
         }
     }
 }
@@ -1177,8 +1614,15 @@ private fun ReviewStep(uiState: CreateEventUiState, viewModel: CreateEventViewMo
 
         ReviewCard(title = "Location", onEdit = { viewModel.goToStep(2) },
             isComplete = uiState.stepCompleted(2)) {
-            Text(uiState.locationName.ifBlank { "No location" }, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-            if (uiState.locationLat.isNotBlank()) Text("${uiState.locationLat}, ${uiState.locationLng}", style = MaterialTheme.typography.bodySmall, color = Color(0xFF78716C))
+            val primary = uiState.locations.firstOrNull()
+            Text(primary?.name?.ifBlank { "No location" } ?: "No location", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+            if (primary?.lat?.isNotBlank() == true) {
+                Text("${primary.lat}, ${primary.lng}", style = MaterialTheme.typography.bodySmall, color = Color(0xFF78716C))
+            }
+            val stopCount = uiState.locations.size
+            if (stopCount > 1) {
+                Text("+ ${stopCount - 1} more stop${if (stopCount - 1 == 1) "" else "s"}", style = MaterialTheme.typography.bodySmall, color = BrandMid)
+            }
         }
 
         ReviewCard(title = "Media", onEdit = { viewModel.goToStep(3) },
