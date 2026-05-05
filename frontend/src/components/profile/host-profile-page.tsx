@@ -271,6 +271,7 @@ export function HostProfilePage() {
     <div className="min-h-screen bg-brand-bg">
       <Navbar />
 
+      <main aria-label="Host profile">
       {loading ? (
         <div className="mx-auto flex max-w-[1280px] flex-col gap-8 px-4 pb-20 sm:px-6 lg:px-8">
           <div className="h-52 animate-pulse rounded-[32px] bg-brand-dark/20" />
@@ -535,6 +536,7 @@ export function HostProfilePage() {
           </section>
         </>
       )}
+      </main>
     </div>
   );
 }

@@ -61,18 +61,23 @@ export function ListView({
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="border-brand-mid-alpha flex items-center justify-center gap-2 border-t px-4 py-4 sm:px-6 lg:px-8">
+        <nav
+          aria-label="Pagination"
+          className="border-brand-mid-alpha flex items-center justify-center gap-2 border-t px-4 py-4 sm:px-6 lg:px-8"
+        >
           <button
+            type="button"
             onClick={() => onPageChange(page - 1)}
             disabled={page <= 1}
+            aria-label="Previous page"
             className={cn(
-              "flex size-8 items-center justify-center rounded-lg border transition-colors",
+              "flex size-8 items-center justify-center rounded-lg border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-mid/60 focus-visible:ring-offset-2",
               page <= 1
                 ? "border-brand-mid-alpha text-brand-dark/30 cursor-not-allowed"
                 : "border-brand-mid-alpha text-brand-dark hover:bg-brand-mid-alpha",
             )}
           >
-            <ChevronLeft className="size-4" />
+            <ChevronLeft className="size-4" aria-hidden="true" />
           </button>
 
           {/* Page numbers */}
@@ -83,7 +88,7 @@ export function ListView({
             if (!isNearby) {
               if (p === 2 || p === totalPages - 1) {
                 return (
-                  <span key={p} className="text-brand-mid text-sm">
+                  <span key={p} aria-hidden="true" className="text-brand-mid text-sm">
                     ...
                   </span>
                 );
@@ -94,9 +99,12 @@ export function ListView({
             return (
               <button
                 key={p}
+                type="button"
                 onClick={() => onPageChange(p)}
+                aria-label={`Go to page ${p}`}
+                aria-current={isCurrentPage ? "page" : undefined}
                 className={cn(
-                  "flex size-8 items-center justify-center rounded-lg border text-sm font-semibold transition-colors",
+                  "flex size-8 items-center justify-center rounded-lg border text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-mid/60 focus-visible:ring-offset-2",
                   isCurrentPage
                     ? "bg-brand-dark border-brand-dark text-white"
                     : "border-brand-mid-alpha text-brand-dark hover:bg-brand-mid-alpha",
@@ -108,18 +116,20 @@ export function ListView({
           })}
 
           <button
+            type="button"
             onClick={() => onPageChange(page + 1)}
             disabled={page >= totalPages}
+            aria-label="Next page"
             className={cn(
-              "flex size-8 items-center justify-center rounded-lg border transition-colors",
+              "flex size-8 items-center justify-center rounded-lg border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-mid/60 focus-visible:ring-offset-2",
               page >= totalPages
                 ? "border-brand-mid-alpha text-brand-dark/30 cursor-not-allowed"
                 : "border-brand-mid-alpha text-brand-dark hover:bg-brand-mid-alpha",
             )}
           >
-            <ChevronRight className="size-4" />
+            <ChevronRight className="size-4" aria-hidden="true" />
           </button>
-        </div>
+        </nav>
       )}
     </div>
   );
