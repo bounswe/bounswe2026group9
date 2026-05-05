@@ -135,11 +135,30 @@ fun DiscoveryScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
+            // Empty-history hint for the Suggested filter (issue #277). Shown above the listing
+            // whenever the chip is on AND the server signalled it had no history to bias by.
+            if (uiState.suggestedActive && uiState.suggestedFallback) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer
+                ) {
+                    Text(
+                        "Attend events to get personalised suggestions. Showing default results.",
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                }
+            }
+            Box(modifier = Modifier.fillMaxSize().weight(1f)) {
             when {
                 uiState.isLoading -> {
                     LazyColumn(
@@ -205,6 +224,7 @@ fun DiscoveryScreen(
                     }
                 }
             }
+            }
         }
     }
 
@@ -228,6 +248,7 @@ fun DiscoveryScreen(
                 onSeatingToggle = viewModel::onSeatingToggle,
                 onCaptionsToggle = viewModel::onCaptionsToggle,
                 onQuietFriendlyToggle = viewModel::onQuietFriendlyToggle,
+                onSuggestedToggle = viewModel::onSuggestedToggle,
                 onProximitySortToggle = {
                     if (uiState.proximitySort) {
                         viewModel.disableProximitySort()
@@ -484,12 +505,14 @@ private fun FilterSheetContent(
     onSeatingToggle: () -> Unit,
     onCaptionsToggle: () -> Unit,
     onQuietFriendlyToggle: () -> Unit,
+    onSuggestedToggle: () -> Unit,
     onProximitySortToggle: () -> Unit,
     onClear: () -> Unit,
     onApply: () -> Unit
 ) {
     val hasAnyFilter = uiState.selectedQuickFilter != null || uiState.selectedCategoryId != null ||
-        uiState.bookmarkedOnly || uiState.goingOnly || uiState.hasAccessibilityFilter || uiState.proximitySort
+        uiState.bookmarkedOnly || uiState.goingOnly || uiState.hasAccessibilityFilter ||
+        uiState.proximitySort || uiState.suggestedActive
 
     Column(modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)) {
         // Header
@@ -534,6 +557,7 @@ private fun FilterSheetContent(
                     }
                 }
                 if (isLoggedIn) {
+                    FilterPill("✨ Suggested for you", uiState.suggestedActive, onSuggestedToggle)
                     FilterPill("🔖 Bookmarked", uiState.bookmarkedOnly, onBookmarkedToggle)
                     FilterPill("✓ Going", uiState.goingOnly, onGoingToggle)
                 }
