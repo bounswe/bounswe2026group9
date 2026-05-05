@@ -61,15 +61,22 @@ export function ImageCarousel({ images, title }: ImageCarouselProps) {
             <ChevronRight className="size-5" aria-hidden="true" />
           </button>
 
-          {/* Dots — current dot announces selected state. */}
-          <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5" role="tablist" aria-label="Photo selector">
+          {/* Dots — toggle pattern (button + aria-pressed) rather than the
+              tab/tablist/tabpanel pattern, because there is only one
+              always-visible <img> rather than separate tab panels. The
+              previous role="tab" + aria-controls="carousel-photo-${i}"
+              referenced ids that did not exist (orphan reference); each
+              dot now describes "press to jump to photo N" with state. */}
+          <div
+            role="group"
+            aria-label="Photo selector"
+            className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5"
+          >
             {images.map((_, i) => (
               <button
                 key={i}
                 type="button"
-                role="tab"
-                aria-selected={i === index}
-                aria-controls={`carousel-photo-${i}`}
+                aria-pressed={i === index}
                 onClick={() => setIndex(i)}
                 className={cn(
                   "size-2 rounded-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80",

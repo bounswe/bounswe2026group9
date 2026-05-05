@@ -97,7 +97,15 @@ export function LocationMapModal({
         </div>
         <div
           ref={mapContainerRef}
-          role="application"
+          // role="img" rather than role="application": application is only
+          // appropriate when the widget owns its own complete keyboard
+          // interaction model. MapLibre's default keyboard handlers cover
+          // basic pan/zoom but not full marker-level navigation, and
+          // role="application" forces screen readers to surrender all of
+          // their navigation shortcuts to the widget. role="img" with a
+          // descriptive label is the safer WAI-ARIA recommendation for
+          // static map renders that don't yet have dedicated keyboard UX.
+          role="img"
           aria-label={`Map showing ${locationName}`}
           className="h-[400px] w-full"
         />
