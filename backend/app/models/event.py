@@ -13,6 +13,7 @@ class LocationRequest(AppBaseModel):
     longitude: float = Field(ge=-180, le=180)
     is_primary: bool = True
     order_index: int = 0
+    location_address: str | None = None
 
 
 class LocationResponse(AppBaseModel):
@@ -22,6 +23,7 @@ class LocationResponse(AppBaseModel):
     longitude: float
     is_primary: bool
     order_index: int
+    location_address: str | None = None
 
 
 class VenueMetadataRequest(AppBaseModel):

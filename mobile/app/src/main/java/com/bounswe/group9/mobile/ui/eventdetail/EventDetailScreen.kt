@@ -508,23 +508,48 @@ private fun FullDetailContent(
             Spacer(Modifier.height(12.dp))
 
             // Locations
+            // Combine main's numbered-badge layout for multi-stop events with
+            // this PR's reverse-geocoded address shown beneath the venue name.
             event.locations.sortedBy { it.order_index }.forEachIndexed { i, loc ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.Top) {
                     if (event.locations.size > 1) {
-                        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.size(20.dp)) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            modifier = Modifier.padding(top = 1.dp).size(20.dp),
+                        ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Text("${i + 1}", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(
+                                    "${i + 1}",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
                             }
                         }
                     } else {
-                        Icon(Icons.Default.LocationOn, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Icon(
+                            Icons.Default.LocationOn,
+                            contentDescription = null,
+                            modifier = Modifier.padding(top = 1.dp).size(18.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                     Spacer(Modifier.width(6.dp))
-                    Text(
-                        loc.name + if (loc.is_primary && event.locations.size > 1) " (Primary)" else "",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Column {
+                        Text(
+                            loc.name + if (loc.is_primary && event.locations.size > 1) " (Primary)" else "",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        if (!loc.location_address.isNullOrBlank()) {
+                            Text(
+                                loc.location_address,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            )
+                        }
+                    }
                 }
                 Spacer(Modifier.height(4.dp))
             }

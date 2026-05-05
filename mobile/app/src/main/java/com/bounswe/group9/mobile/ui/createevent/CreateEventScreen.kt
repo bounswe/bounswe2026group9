@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Reorder
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -1026,6 +1027,8 @@ private fun LocationStep(uiState: CreateEventUiState, viewModel: CreateEventView
                     onDelete = { viewModel.removeLocation(index) },
                     onMoveUp = { viewModel.moveLocation(index, index - 1) },
                     onMoveDown = { viewModel.moveLocation(index, index + 1) },
+                    onSuggestionPicked = { result -> viewModel.onSuggestionPicked(index, result) },
+                    onDismissSuggestions = { viewModel.dismissSuggestions(index) },
                     onToggleSegment = { viewModel.toggleSegmentFields(index) },
                     onShowPicker = { field -> showPickerFor = Pair(index, field) },
                     onSegmentDescriptionChange = { viewModel.onSegmentDescriptionChange(index, it) }
@@ -1078,6 +1081,8 @@ private fun LocationEntryCard(
     onDelete: () -> Unit,
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
+    onSuggestionPicked: (com.bounswe.group9.mobile.data.remote.NominatimResult) -> Unit,
+    onDismissSuggestions: () -> Unit,
     onToggleSegment: () -> Unit,
     onShowPicker: (String) -> Unit,
     onSegmentDescriptionChange: (String) -> Unit
@@ -1189,10 +1194,79 @@ private fun LocationEntryCard(
             onValueChange = { if (!readOnly) onNameChange(it) },
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Place name") },
-            placeholder = { Text(if (isPrimary) "e.g. Main Venue, Istanbul" else "e.g. After-party venue") },
+            placeholder = { Text(if (isPrimary) "Search for a place — e.g. Kadıköy, Istanbul" else "e.g. After-party venue") },
+            leadingIcon = {
+                if (entry.suggestionsLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = BrandDark,
+                    )
+                } else {
+                    Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp))
+                }
+            },
+            trailingIcon = {
+                if (entry.showSuggestions) {
+                    IconButton(onClick = { onDismissSuggestions() }, modifier = Modifier.size(28.dp)) {
+                        Icon(Icons.Default.Close, contentDescription = "Dismiss suggestions", modifier = Modifier.size(16.dp))
+                    }
+                }
+            },
             singleLine = true,
-            enabled = !readOnly
+            enabled = !readOnly,
         )
+
+        // Issue #271 — autocomplete dropdown anchored to this stop's name
+        // field. Tapping a suggestion pulls in its name, lat/lng, and a
+        // short-form address; the dropdown hides itself afterwards.
+        if (entry.showSuggestions && entry.suggestions.isNotEmpty()) {
+            Spacer(Modifier.height(4.dp))
+            Card(
+                shape = RoundedCornerShape(8.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column {
+                    entry.suggestions.forEachIndexed { sIdx, result ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(enabled = !readOnly) { onSuggestionPicked(result) }
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                Icons.Default.LocationOn,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    result.shortName.ifBlank { result.displayName.split(",").firstOrNull()?.trim().orEmpty() },
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Text(
+                                    result.displayName.take(70),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
+                        if (sIdx < entry.suggestions.lastIndex) {
+                            HorizontalDivider(thickness = 0.5.dp)
+                        }
+                    }
+                }
+            }
+        }
 
         Spacer(Modifier.height(8.dp))
 
@@ -1200,13 +1274,38 @@ private fun LocationEntryCard(
             val lat = entry.lat.toDoubleOrNull()
             val lng = entry.lng.toDoubleOrNull()
             if (lat != null && lng != null) {
-                Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFF0EDE9), modifier = Modifier.weight(1f)) {
-                    Text(
-                        "📍 ${"%.4f".format(lat)}, ${"%.4f".format(lng)}",
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = BrandDark
-                    )
+                // Stack the coordinate chip on top of the resolved/looking-up
+                // address so multi-line address text doesn't push the "Set on
+                // map" button awkwardly. (Issue #274)
+                Column(modifier = Modifier.weight(1f)) {
+                    Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFF0EDE9)) {
+                        Text(
+                            "📍 ${"%.4f".format(lat)}, ${"%.4f".format(lng)}",
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = BrandDark,
+                        )
+                    }
+                    when {
+                        entry.addressLookupInFlight -> {
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                "Looking up address…",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        !entry.locationAddress.isNullOrBlank() -> {
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                entry.locationAddress,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
                 }
             } else {
                 Text(

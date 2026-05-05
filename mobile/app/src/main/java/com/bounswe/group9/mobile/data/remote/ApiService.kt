@@ -49,7 +49,8 @@ data class EventLocationDto(
     val latitude: Double,
     val longitude: Double,
     val is_primary: Boolean,
-    val order_index: Int
+    val order_index: Int,
+    val location_address: String? = null
 )
 
 data class EventListItemDto(
@@ -251,7 +252,8 @@ data class LocationRequest(
     val latitude: Double,
     val longitude: Double,
     val is_primary: Boolean = true,
-    val order_index: Int = 0
+    val order_index: Int = 0,
+    val location_address: String? = null
 )
 
 data class SegmentRequest(
