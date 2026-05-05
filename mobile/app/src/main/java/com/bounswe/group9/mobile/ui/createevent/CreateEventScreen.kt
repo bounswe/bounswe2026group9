@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Reorder
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -45,18 +46,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import coil.compose.AsyncImage
 import java.util.Date
 import java.util.Locale
@@ -939,8 +946,51 @@ private fun LocationStep(uiState: CreateEventUiState, viewModel: CreateEventView
             )
             Spacer(Modifier.height(12.dp))
 
+            // Drag-and-drop reorder state (issue #160 AC #1).
+            // - draggedIndex: which row is being dragged, null when idle.
+            // - dragOffsetY: cumulative vertical drag distance (px) for that row.
+            // - itemHeights: per-index measured height so we can convert
+            //   dragOffsetY into a target index regardless of card expansion
+            //   (segment-fields expand changes per-row height significantly).
+            var draggedIndex by remember { mutableStateOf<Int?>(null) }
+            var dragOffsetY by remember { mutableStateOf(0f) }
+            val itemHeights = remember { mutableStateMapOf<Int, Int>() }
+
+            // Convert the live dragOffsetY into the would-be target index.
+            // We sum heights of items below (when dragging down) or above
+            // (when dragging up) and "cross" into the next row once we've
+            // moved past half its height — feels natural and matches
+            // ItemTouchHelper's default behaviour.
+            fun computeTarget(from: Int, offsetY: Float): Int {
+                if (offsetY > 0f) {
+                    var acc = 0
+                    var idx = from + 1
+                    var target = from
+                    while (idx < uiState.locations.size) {
+                        val h = itemHeights[idx] ?: 0
+                        acc += h
+                        if (offsetY > acc - h / 2f) target = idx
+                        idx++
+                    }
+                    return target
+                } else if (offsetY < 0f) {
+                    var acc = 0
+                    var idx = from - 1
+                    var target = from
+                    while (idx >= 0) {
+                        val h = itemHeights[idx] ?: 0
+                        acc += h
+                        if (-offsetY > acc - h / 2f) target = idx
+                        idx--
+                    }
+                    return target
+                }
+                return from
+            }
+
             uiState.locations.forEachIndexed { index, loc ->
                 val canReorder = uiState.locations.size > 1 && !readOnly
+                val isDragging = draggedIndex == index
                 LocationEntryCard(
                     index = index,
                     entry = loc,
@@ -948,6 +998,28 @@ private fun LocationStep(uiState: CreateEventUiState, viewModel: CreateEventView
                     canDelete = uiState.locations.size > 1 && !readOnly,
                     canMoveUp = canReorder && index > 0,
                     canMoveDown = canReorder && index < uiState.locations.size - 1,
+                    canReorder = canReorder,
+                    isDragging = isDragging,
+                    dragOffsetY = if (isDragging) dragOffsetY else 0f,
+                    onSizeMeasured = { px -> itemHeights[index] = px },
+                    onDragStart = {
+                        draggedIndex = index
+                        dragOffsetY = 0f
+                    },
+                    onDrag = { dy -> dragOffsetY += dy },
+                    onDragEnd = {
+                        val from = draggedIndex
+                        val target = if (from != null) computeTarget(from, dragOffsetY) else null
+                        if (from != null && target != null && target != from) {
+                            viewModel.moveLocation(from, target)
+                        }
+                        draggedIndex = null
+                        dragOffsetY = 0f
+                    },
+                    onDragCancel = {
+                        draggedIndex = null
+                        dragOffsetY = 0f
+                    },
                     readOnly = readOnly,
                     onNameChange = { viewModel.onLocationNameChange(index, it) },
                     onSetOnMap = { if (!readOnly) pickingLocationIndex = index },
@@ -992,6 +1064,14 @@ private fun LocationEntryCard(
     canDelete: Boolean,
     canMoveUp: Boolean,
     canMoveDown: Boolean,
+    canReorder: Boolean,
+    isDragging: Boolean,
+    dragOffsetY: Float,
+    onSizeMeasured: (Int) -> Unit,
+    onDragStart: () -> Unit,
+    onDrag: (Float) -> Unit,
+    onDragEnd: () -> Unit,
+    onDragCancel: () -> Unit,
     readOnly: Boolean,
     onNameChange: (String) -> Unit,
     onSetOnMap: () -> Unit,
@@ -1002,7 +1082,22 @@ private fun LocationEntryCard(
     onShowPicker: (String) -> Unit,
     onSegmentDescriptionChange: (String) -> Unit
 ) {
-    Column {
+    // While dragging:
+    //  - lift the card visually (shadow + raised z so it draws above siblings)
+    //  - translate it by dragOffsetY so the user sees it follow their finger
+    //  - other rows stay put; the actual list reorder happens once on
+    //    drag end (computeTarget in LocationStep) — this is the same UX
+    //    pattern as Android's ItemTouchHelper-based drag-to-reorder.
+    Column(
+        modifier = Modifier
+            .onSizeChanged { onSizeMeasured(it.height) }
+            .zIndex(if (isDragging) 1f else 0f)
+            .offset { IntOffset(0, dragOffsetY.toInt()) }
+            .then(
+                if (isDragging) Modifier.shadow(elevation = 8.dp, shape = MaterialTheme.shapes.medium)
+                else Modifier
+            )
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Surface(
                 shape = CircleShape,
@@ -1025,9 +1120,35 @@ private fun LocationEntryCard(
                 fontSize = 14.sp,
                 modifier = Modifier.weight(1f)
             )
-            // Reorder controls — moving a stop instantly re-numbers every card
-            // (issue #160 AC #1). The badge above reads `index + 1`, so reordering
-            // the underlying list updates the displayed numbers in one frame.
+            // Drag handle — long-press + drag to reorder. The icon-only
+            // hit area starts the gesture; once the user has held it for
+            // ~500 ms the card lifts and follows their finger. Releasing
+            // commits the new position. This is the primary reorder
+            // affordance (issue #160 AC #1: drag-and-drop).
+            if (canReorder) {
+                Icon(
+                    Icons.Default.Reorder,
+                    contentDescription = "Drag to reorder stop",
+                    modifier = Modifier
+                        .size(32.dp)
+                        .padding(6.dp)
+                        .pointerInput(index) {
+                            detectDragGesturesAfterLongPress(
+                                onDragStart = { onDragStart() },
+                                onDragEnd = { onDragEnd() },
+                                onDragCancel = { onDragCancel() },
+                                onDrag = { change, dragAmount ->
+                                    change.consume()
+                                    onDrag(dragAmount.y)
+                                },
+                            )
+                        },
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            // ↑ / ↓ accessibility fallback — gives keyboard / screen-reader
+            // users (and anyone who can't comfortably long-press) the same
+            // reorder capability the drag handle exposes.
             if (canMoveUp || canMoveDown) {
                 IconButton(
                     onClick = onMoveUp,
