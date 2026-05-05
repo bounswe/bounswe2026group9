@@ -257,6 +257,25 @@ class TestRecommendationEmitter:
 
         assert _get_recs(listener["id"]) == []
 
+    def test_duplicate_notification_not_emitted(self):
+        cat_a, _ = _two_category_ids()
+        host = _create_user()
+        listener = _create_user()
+
+        past = _insert_ended_event(host["id"], cat_a)
+        _add_attendance(listener["id"], past, "going")
+
+        _cleanup_notifications(listener["id"])
+        new_event = _create_published_event(host["id"], [cat_a])
+
+        # First run should produce exactly 1 notification
+        recs_after_first = _get_recs(listener["id"])
+        assert len(recs_after_first) == 1
+
+        # Second run (emitter called again for same event) must not produce a duplicate
+        emit_event_recommendations(db, new_event, host["id"])
+        assert len(_get_recs(listener["id"])) == 1
+
     def test_attendance_on_non_ended_event_does_not_match(self):
         cat_a, _ = _two_category_ids()
         host = _create_user()

@@ -30,6 +30,10 @@ MAX_RECOMMENDATIONS_PER_DAY = 3
 # How far back we look for the user's attendance history when scoring matches.
 ATTENDANCE_LOOKBACK_DAYS = 90
 
+# PostgREST encodes .in_() as a URL query param; keep chunks small enough to
+# stay well under the ~8 KB URL limit (36 chars per UUID + overhead).
+_IN_CHUNK_SIZE = 100
+
 
 def emit_event_recommendations(db: Client, event_id: str, host_id: str) -> int:
     """Insert event_recommended notifications for users whose history matches.
@@ -56,6 +60,10 @@ def emit_event_recommendations(db: Client, event_id: str, host_id: str) -> int:
         return 0
 
     candidate_ids = _drop_users_already_engaged(db, candidate_ids, event_id)
+    if not candidate_ids:
+        return 0
+
+    candidate_ids = _drop_users_already_notified(db, candidate_ids, event_id)
     if not candidate_ids:
         return 0
 
@@ -107,17 +115,22 @@ def _find_candidates(
     if not overlap_event_ids:
         return set()
 
-    # Step 2: filter to ended events within the lookback window
+    # Step 2: filter to ended events within the lookback window.
+    # Chunk to avoid PostgREST URL-length limits on large .in_() lists.
     cutoff = (datetime.now(UTC) - timedelta(days=ATTENDANCE_LOOKBACK_DAYS)).isoformat()
-    ended_rows = (
-        db.table("events")
-        .select("id")
-        .in_("id", list(overlap_event_ids))
-        .eq("status", "ended")
-        .gte("end_datetime", cutoff)
-        .execute()
-    )
-    ended_event_ids = [row["id"] for row in (ended_rows.data or [])]
+    overlap_list = list(overlap_event_ids)
+    ended_event_ids: list[str] = []
+    for i in range(0, len(overlap_list), _IN_CHUNK_SIZE):
+        chunk = overlap_list[i:i + _IN_CHUNK_SIZE]
+        rows = (
+            db.table("events")
+            .select("id")
+            .in_("id", chunk)
+            .eq("status", "ended")
+            .gte("end_datetime", cutoff)
+            .execute()
+        )
+        ended_event_ids.extend(row["id"] for row in (rows.data or []))
     if not ended_event_ids:
         return set()
 
@@ -163,6 +176,24 @@ def _drop_users_over_daily_cap(db: Client, user_ids: set[str]) -> set[str]:
         db, list(user_ids), "event_recommended", cutoff,
     )
     return {uid for uid in user_ids if counts.get(uid, 0) < MAX_RECOMMENDATIONS_PER_DAY}
+
+
+def _drop_users_already_notified(
+    db: Client, user_ids: set[str], event_id: str,
+) -> set[str]:
+    """Skip users who already have an event_recommended notification for this event."""
+    if not user_ids:
+        return user_ids
+    result = (
+        db.table("notifications")
+        .select("user_id")
+        .eq("event_id", event_id)
+        .eq("type", "event_recommended")
+        .in_("user_id", list(user_ids))
+        .execute()
+    )
+    already_notified = {row["user_id"] for row in (result.data or [])}
+    return user_ids - already_notified
 
 
 def _build_message(db: Client, category_ids: list[str], event_title: str) -> str:
