@@ -1,5 +1,6 @@
 """Event service — business logic, validation, orchestration."""
 
+import math
 from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException, status
@@ -15,6 +16,12 @@ from app.models.event import (
     SegmentRequest,
     SegmentResponse,
 )
+from app.models.geojson import (
+    EventGeoJSONProperties,
+    GeoJSONFeature,
+    GeoJSONFeatureCollection,
+    GeoJSONPoint,
+)
 from app.repositories import attendance as attendance_repo
 from app.repositories import bookmark as bookmark_repo
 from app.repositories import event as event_repo
@@ -22,6 +29,17 @@ from app.repositories import image as image_repo
 from app.repositories import invite as invite_repo
 from app.repositories import user as user_repo
 from app.services.rate_limit import is_rate_limit_exempt_email
+
+
+def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    """Great-circle distance in kilometres between two (lat, lng) points."""
+    r = 6371.0
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlam = math.radians(lng2 - lng1)
+    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlam / 2) ** 2
+    return 2 * r * math.asin(math.sqrt(a))
+
 
 # --- Validators ---
 
@@ -249,6 +267,7 @@ def create_event(db: Client, user_id: str, body: EventCreateRequest) -> EventDet
             "longitude": loc.longitude,
             "is_primary": loc.is_primary,
             "order_index": loc.order_index,
+            "location_address": loc.location_address,
         }
         for loc in body.locations
     ]
@@ -589,6 +608,7 @@ def update_event(
                 "longitude": loc.longitude,
                 "is_primary": loc.is_primary,
                 "order_index": loc.order_index,
+                "location_address": loc.location_address,
             }
             for loc in body.locations
         ]
@@ -750,15 +770,88 @@ def list_events(
     user_id: str | None = None,
     search: str | None = None,
     category_id: str | None = None,
-    temporal_filter: str | None = None,
+    quick_filter: str | None = None,
+    start_after: datetime | None = None,
+    end_before: datetime | None = None,
+    near_lat: float | None = None,
+    near_lng: float | None = None,
+    radius_km: float | None = None,
+    use_default_area: bool = False,
+    accessibility: dict[str, bool | None] | None = None,
+    sort: str | None = None,
     page: int = 1,
     page_size: int = 20,
 ) -> EventListResponse:
+    # Resolve default-area fallback when client opts in and didn't pass coords.
+    if use_default_area and near_lat is None and near_lng is None and user_id:
+        result = (
+            db.table("users")
+            .select("default_location_lat,default_location_lng")
+            .eq("id", user_id)
+            .execute()
+        )
+        row = result.data[0] if result.data else {}
+        if row.get("default_location_lat") is None or row.get("default_location_lng") is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="No default area set on profile",
+            )
+        near_lat = row["default_location_lat"]
+        near_lng = row["default_location_lng"]
+
+    has_location = near_lat is not None and near_lng is not None
+    if sort == "distance" and not has_location:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="sort=distance requires near_lat/near_lng or use_default_area",
+        )
+    # sort=category fetches the full filtered candidate set into memory and
+    # ranks in Python (PostgREST cannot order by an aggregated joined column
+    # in a single round-trip). To keep memory bounded on large datasets, we
+    # require the request to narrow the candidate set first — same shape of
+    # constraint as sort=distance requiring a location.
+    if sort == "category":
+        accessibility_active = any(
+            v is True for v in (accessibility or {}).values()
+        )
+        has_search = bool(search and search.strip())
+        has_window = (
+            quick_filter is not None
+            or start_after is not None
+            or end_before is not None
+        )
+        if not (
+            has_search
+            or category_id is not None
+            or has_window
+            or accessibility_active
+            or has_location
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    "sort=category requires a narrowing filter: search, "
+                    "category_id, quick_filter, custom window, accessibility, "
+                    "or a location."
+                ),
+            )
+    if sort is None:
+        sort = "distance" if has_location else "start_time"
+
+    effective_radius_km = radius_km if radius_km is not None else (50.0 if has_location else None)
+
     events, total = event_repo.list_events(
         db,
         search=search,
         category_id=category_id,
-        temporal_filter=temporal_filter,
+        quick_filter=quick_filter,
+        start_after=start_after,
+        end_before=end_before,
+        near_lat=near_lat,
+        near_lng=near_lng,
+        radius_km=effective_radius_km,
+        accessibility=accessibility or {},
+        sort=sort,
         page=page,
         page_size=page_size,
     )
@@ -766,6 +859,36 @@ def list_events(
     total_pages = (total + page_size - 1) // page_size if total > 0 else 0
     if not events:
         return EventListResponse(items=[], total=total, page=page, page_size=page_size, total_pages=total_pages)
+
+    # For sort in {distance, category} the repo returned the full filtered set;
+    # rank in Python and slice to the requested page.
+    if sort in ("distance", "category"):
+        if sort == "distance":
+            full_event_ids = [e["id"] for e in events]
+            locations_by_event = event_repo.get_primary_locations_for_events(db, full_event_ids)
+
+            def _distance_key(ev: dict) -> tuple[float, str]:
+                loc = locations_by_event.get(ev["id"])
+                if not loc or loc.get("latitude") is None or loc.get("longitude") is None:
+                    return (float("inf"), ev["id"])
+                return (_haversine_km(near_lat, near_lng, loc["latitude"], loc["longitude"]), ev["id"])
+
+            events.sort(key=_distance_key)
+        else:  # category
+            full_event_ids = [e["id"] for e in events]
+            categories_by_event_full = event_repo.get_categories_for_events(db, full_event_ids)
+
+            def _category_key(ev: dict) -> tuple[str, str, str]:
+                cats = categories_by_event_full.get(ev["id"]) or []
+                primary = min((c.get("name", "") for c in cats), default="￿")
+                return (primary, ev["start_datetime"], ev["id"])
+
+            events.sort(key=_category_key)
+
+        offset = (page - 1) * page_size
+        events = events[offset:offset + page_size]
+        if not events:
+            return EventListResponse(items=[], total=total, page=page, page_size=page_size, total_pages=total_pages)
 
     event_ids = [e["id"] for e in events]
     locations_by_event = event_repo.get_primary_locations_for_events(db, event_ids)
@@ -827,3 +950,156 @@ def list_events(
         ))
 
     return EventListResponse(items=items, total=total, page=page, page_size=page_size, total_pages=total_pages)
+
+
+def list_events_geojson(
+    db: Client,
+    **kwargs,
+) -> GeoJSONFeatureCollection:
+    """Fetch events using the same filters as list_events and format as GeoJSON.
+
+    This forces page=1 and page_size=2000 to return a comprehensive set of points
+    for the map view without requiring the client to iterate pages.
+    """
+    kwargs["page"] = 1
+    kwargs["page_size"] = 2000
+
+    list_response = list_events(db, **kwargs)
+
+    features: list[GeoJSONFeature] = []
+    for item in list_response.items:
+        # GeoJSON only maps events that have a location
+        if not item.primary_location:
+            continue
+
+        point = GeoJSONPoint(
+            coordinates=[item.primary_location.longitude, item.primary_location.latitude]
+        )
+
+        primary_category = item.categories[0].name if item.categories else None
+
+        properties = EventGeoJSONProperties(
+            id=item.id,
+            host_id=item.host_id,
+            title=item.title,
+            start_datetime=item.start_datetime.isoformat() if isinstance(item.start_datetime, datetime) else str(item.start_datetime),
+            status=item.status,
+            visibility=item.visibility,
+            primary_category=primary_category,
+            attendee_count=item.attendee_count,
+            attendee_limit=item.attendee_limit,
+            is_bookmarked=item.is_bookmarked,
+            attendance_status=item.attendance_status,
+            going_count=item.going_count,
+            bookmark_count=item.bookmark_count,
+            primary_image_url=item.primary_image_url,
+        )
+
+        features.append(GeoJSONFeature(geometry=point, properties=properties))
+
+    return GeoJSONFeatureCollection(features=features)
+
+
+def get_similar_events(
+    db: Client,
+    event_id: str,
+    user_id: str | None = None,
+    limit: int = 5,
+) -> list[EventListItemResponse]:
+    """Return up to `limit` scored similar public published/updated future events."""
+    source = event_repo.get_event_by_id(db, event_id)
+    if not source:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
+
+    source_categories = event_repo.get_event_categories(db, event_id)
+    source_cat_ids = {c["id"] for c in source_categories}
+
+    source_locs = db.table("event_locations").select("latitude,longitude").eq("event_id", event_id).eq("is_primary", True).execute()
+    source_lat = source_lng = None
+    if source_locs.data:
+        source_lat = source_locs.data[0].get("latitude")
+        source_lng = source_locs.data[0].get("longitude")
+
+    candidates = event_repo.get_similar_candidates(db, event_id, limit=30)
+    if not candidates:
+        return []
+
+    candidate_ids = [c["id"] for c in candidates]
+    cats_by_event = event_repo.get_categories_for_events(db, candidate_ids)
+    locs_by_event = event_repo.get_primary_locations_for_events(db, candidate_ids)
+
+    scored = []
+    for cand in candidates:
+        cid = cand["id"]
+        cand_cat_ids = {c["id"] for c in cats_by_event.get(cid, [])}
+        overlap = len(source_cat_ids & cand_cat_ids)
+        host_match = 1 if cand["host_id"] == source["host_id"] else 0
+
+        proximity_bonus = 0
+        if source_lat is not None and source_lng is not None:
+            loc = locs_by_event.get(cid)
+            if loc and loc.get("latitude") is not None and loc.get("longitude") is not None:
+                dist = _haversine_km(source_lat, source_lng, loc["latitude"], loc["longitude"])
+                if dist <= 50:
+                    proximity_bonus = 1
+
+        score = overlap * 3 + host_match * 2 + proximity_bonus
+        scored.append((score, cand))
+
+    scored.sort(key=lambda x: (-x[0], x[1]["start_datetime"], x[1]["id"]))
+    top = [c for _, c in scored[:limit]]
+    top_ids = [c["id"] for c in top]
+
+    locations_by_event = event_repo.get_primary_locations_for_events(db, top_ids)
+    images_by_event = event_repo.get_primary_images_for_events(db, top_ids)
+    bookmark_counts = bookmark_repo.get_bookmark_counts_for_events(db, top_ids)
+
+    # Mirror list_events: private-aware redaction + access state batch lookups.
+    is_bookmarked_map: set[str] = set()
+    access_request_status_map: dict[str, str] = {}
+    access_granted_event_ids: set[str] = set()
+    if user_id:
+        is_bookmarked_map = bookmark_repo.get_bookmark_status_for_events(db, user_id, top_ids)
+        access_request_status_map = invite_repo.get_access_request_status_for_events(
+            db, user_id, top_ids,
+        )
+        access_granted_event_ids = invite_repo.get_access_granted_event_ids(
+            db, user_id, top_ids,
+        )
+
+    items = []
+    for event in top:
+        eid = event["id"]
+        is_private = event["visibility"] == "private"
+        # Hide description for private events and for guests viewing public
+        # events — same teaser rule Discovery uses (`list_events`).
+        show_preview_details = user_id is not None and not is_private
+        items.append(EventListItemResponse(
+            id=eid,
+            host_id=event["host_id"],
+            title=event["title"],
+            description=event["description"] if show_preview_details else None,
+            start_datetime=event["start_datetime"],
+            end_datetime=event["end_datetime"],
+            visibility=event["visibility"],
+            is_age_restricted=event["is_age_restricted"],
+            attendee_limit=event["attendee_limit"],
+            attendee_count=event["attendee_count"],
+            status=event["status"],
+            is_bookmarked=(eid in is_bookmarked_map) if user_id else None,
+            access_request_status=access_request_status_map.get(eid) if user_id else None,
+            has_access=(
+                True
+                if user_id and event["host_id"] == user_id
+                else eid in access_granted_event_ids
+            ) if user_id else None,
+            going_count=event["attendee_count"],
+            bookmark_count=bookmark_counts.get(eid, 0),
+            is_full=(event["attendee_count"] >= event["attendee_limit"]) if event["attendee_limit"] is not None else None,
+            categories=cats_by_event.get(eid, []),
+            # Location visible to all (needed for map view, even private events) — Discovery parity.
+            primary_location=locations_by_event.get(eid),
+            primary_image_url=images_by_event.get(eid),
+        ))
+
+    return items

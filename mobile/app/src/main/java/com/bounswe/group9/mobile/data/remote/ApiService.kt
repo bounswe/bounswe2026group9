@@ -49,7 +49,8 @@ data class EventLocationDto(
     val latitude: Double,
     val longitude: Double,
     val is_primary: Boolean,
-    val order_index: Int
+    val order_index: Int,
+    val location_address: String? = null
 )
 
 data class EventListItemDto(
@@ -251,7 +252,16 @@ data class LocationRequest(
     val latitude: Double,
     val longitude: Double,
     val is_primary: Boolean = true,
-    val order_index: Int = 0
+    val order_index: Int = 0,
+    val location_address: String? = null
+)
+
+data class SegmentRequest(
+    val location_index: Int,
+    val order_index: Int,
+    val start_datetime: String,
+    val end_datetime: String,
+    val description: String? = null
 )
 
 data class VenueMetadataRequest(
@@ -275,6 +285,7 @@ data class EventCreateRequest(
     val status: String = "draft",      // "draft" | "published"
     val category_ids: List<String>,
     val locations: List<LocationRequest>,
+    val segments: List<SegmentRequest>? = null,
     val venue_metadata: VenueMetadataRequest? = null
 )
 
@@ -289,6 +300,7 @@ data class EventUpdateRequest(
     val clear_attendee_limit: Boolean = false,
     val category_ids: List<String>? = null,
     val locations: List<LocationRequest>? = null,
+    val segments: List<SegmentRequest>? = null,
     val venue_metadata: VenueMetadataRequest? = null
 )
 
@@ -311,7 +323,20 @@ interface ApiService {
         @Header("Authorization") token: String? = null,
         @Query("search") search: String? = null,
         @Query("category_id") categoryId: String? = null,
-        @Query("temporal_filter") temporalFilter: String? = null,
+        @Query("quick_filter") quickFilter: String? = null,
+        @Query("start_after") startAfter: String? = null,
+        @Query("end_before") endBefore: String? = null,
+        @Query("near_lat") nearLat: Double? = null,
+        @Query("near_lng") nearLng: Double? = null,
+        @Query("radius_km") radiusKm: Double? = null,
+        @Query("use_default_area") useDefaultArea: Boolean? = null,
+        @Query("wheelchair") wheelchair: Boolean? = null,
+        @Query("accessible_restroom") accessibleRestroom: Boolean? = null,
+        @Query("elevator") elevator: Boolean? = null,
+        @Query("seating") seating: Boolean? = null,
+        @Query("captions") captions: Boolean? = null,
+        @Query("quiet_friendly") quietFriendly: Boolean? = null,
+        @Query("sort") sort: String? = null,
         @Query("page") page: Int = 1,
         @Query("page_size") pageSize: Int = 20
     ): EventListResponse
@@ -321,6 +346,12 @@ interface ApiService {
         @Path("event_id") eventId: String,
         @Header("Authorization") token: String? = null
     ): Response<JsonObject>
+
+    @GET("events/{event_id}/similar")
+    suspend fun getSimilarEvents(
+        @Path("event_id") eventId: String,
+        @Header("Authorization") token: String? = null
+    ): Response<List<EventListItemDto>>
 
     // ── Event CRUD ──
 

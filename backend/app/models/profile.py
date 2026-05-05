@@ -2,12 +2,13 @@
 
 from datetime import date
 
-from pydantic import BaseModel, EmailStr
+from pydantic import EmailStr
 
+from app.models.base import AppBaseModel
 from app.models.event import EventListItemResponse
 
 
-class ProfileUpdateRequest(BaseModel):
+class ProfileUpdateRequest(AppBaseModel):
     date_of_birth: date | None = None
     phone_number: str | None = None
     email_visibility: str | None = None
@@ -17,7 +18,7 @@ class ProfileUpdateRequest(BaseModel):
     default_location_lng: float | None = None
 
 
-class HostProfileResponse(BaseModel):
+class HostProfileResponse(AppBaseModel):
     id: str
     username: str
     email: EmailStr | None = None

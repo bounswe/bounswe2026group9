@@ -9,7 +9,7 @@ _EVENT_COLS = (
     "visibility,is_age_restricted,attendee_limit,attendee_count,"
     "status,created_at,updated_at"
 )
-_LOCATION_COLS = "id,event_id,name,latitude,longitude,is_primary,order_index"
+_LOCATION_COLS = "id,event_id,name,latitude,longitude,is_primary,order_index,location_address"
 _IMAGE_COLS = "id,event_id,image_url,upload_date"
 _VENUE_COLS = (
     "id,event_id,price,language,health_requirements,wheelchair_access,accessible_restroom,"
@@ -245,20 +245,80 @@ def get_valid_category_ids(db: Client, category_ids: list[str]) -> set[str]:
 
 # --- Discovery ---
 
+# Accessibility filter mapping: API canonical name → DB column.
+# `captions` deliberately maps to the existing `captions_support` column.
+# Sign-language interpretation is a separate accessibility feature; modelling
+# it as a column is a follow-up (would require a venue_metadata migration +
+# create-event UI). The previous `sign_language` API name was misleading
+# because it claimed support that the underlying column does not guarantee.
+_ACCESSIBILITY_COLS = (
+    "wheelchair_access",
+    "accessible_restroom",
+    "elevator",
+    "seating",
+    "captions",
+    "quiet_friendly",
+)
+_ACCESSIBILITY_DB_MAP = {
+    "wheelchair_access": "wheelchair_access",
+    "accessible_restroom": "accessible_restroom",
+    "elevator": "elevator_available",
+    "seating": "seating_available",
+    "captions": "captions_support",
+    "quiet_friendly": "quiet_friendly",
+}
+
+
+def _bounding_box(lat: float, lng: float, radius_km: float) -> tuple[float, float, float, float]:
+    """Return (lat_min, lat_max, lng_min, lng_max) for a degree-approximation bounding box."""
+    # 1 degree latitude ≈ 111.32 km. Longitude scales with cos(latitude).
+    import math
+
+    lat_delta = radius_km / 111.32
+    cos_lat = max(math.cos(math.radians(lat)), 0.01)
+    lng_delta = radius_km / (111.32 * cos_lat)
+    return lat - lat_delta, lat + lat_delta, lng - lng_delta, lng + lng_delta
+
+
+def _weekend_window(now: datetime) -> tuple[datetime, datetime]:
+    """Return (saturday_00:00, monday_00:00) for the upcoming weekend in UTC."""
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    # Monday=0 ... Saturday=5, Sunday=6
+    days_until_saturday = (5 - today_start.weekday()) % 7
+    saturday = today_start + timedelta(days=days_until_saturday)
+    monday = saturday + timedelta(days=2)
+    return saturday, monday
+
+
 def list_events(
     db: Client,
     *,
     search: str | None = None,
     category_id: str | None = None,
-    temporal_filter: str | None = None,
+    quick_filter: str | None = None,
+    start_after: datetime | None = None,
+    end_before: datetime | None = None,
+    near_lat: float | None = None,
+    near_lng: float | None = None,
+    radius_km: float | None = None,
+    accessibility: dict[str, bool | None] | None = None,
+    sort: str = "start_time",
     page: int = 1,
     page_size: int = 20,
 ) -> tuple[list[dict], int]:
-    """Return (events, total_count) for all published/updated events (public + private)."""
-    now = datetime.now(UTC)
+    """Return (events, total_count) honouring all discovery filters.
 
-    # Resolve category event IDs upfront (shared by both count and data queries)
-    category_event_ids: list[str] | None = None
+    For sort in {"distance", "category"} the repo returns the FULL filtered
+    candidate set (without DB-side pagination) so the service can sort by a
+    Python-computed key and slice. For sort="start_time" pagination happens
+    at the database for cheaper reads.
+    """
+    now = datetime.now(UTC)
+    accessibility = accessibility or {}
+
+    # Whitelist event IDs from related tables ── intersected at the end.
+    whitelists: list[set[str]] = []
+
     if category_id:
         cat_result = (
             db.table("event_categories")
@@ -266,44 +326,116 @@ def list_events(
             .eq("category_id", category_id)
             .execute()
         )
-        category_event_ids = [row["event_id"] for row in (cat_result.data or [])]
-        if not category_event_ids:
+        ids = {row["event_id"] for row in (cat_result.data or [])}
+        if not ids:
+            return [], 0
+        whitelists.append(ids)
+
+    accessibility_required = {k: v for k, v in accessibility.items() if v is True}
+    if accessibility_required:
+        venue_q = db.table("venue_metadata").select("event_id")
+        for canonical, db_col in _ACCESSIBILITY_DB_MAP.items():
+            if accessibility_required.get(canonical):
+                venue_q = venue_q.eq(db_col, True)
+        venue_result = venue_q.execute()
+        ids = {row["event_id"] for row in (venue_result.data or [])}
+        if not ids:
+            return [], 0
+        whitelists.append(ids)
+
+    if near_lat is not None and near_lng is not None and radius_km is not None:
+        lat_min, lat_max, lng_min, lng_max = _bounding_box(near_lat, near_lng, radius_km)
+        loc_result = (
+            db.table("event_locations")
+            .select("event_id")
+            .eq("is_primary", True)
+            .gte("latitude", lat_min)
+            .lte("latitude", lat_max)
+            .gte("longitude", lng_min)
+            .lte("longitude", lng_max)
+            .execute()
+        )
+        ids = {row["event_id"] for row in (loc_result.data or [])}
+        if not ids:
+            return [], 0
+        whitelists.append(ids)
+
+    if search:
+        text_result = db.rpc("search_events_text", {"search_term": search}).execute()
+        text_ids = {row["event_id"] for row in (text_result.data or [])}
+        if text_ids:
+            whitelists.append(text_ids)
+        else:
             return [], 0
 
+    final_whitelist: list[str] | None = None
+    if whitelists:
+        intersection = set.intersection(*whitelists)
+        if not intersection:
+            return [], 0
+        final_whitelist = list(intersection)
+
+    is_past = quick_filter == "past"
+
     def _apply_filters(q):
-        q = q.in_("status", ["published", "updated"])
-        q = q.gte("end_datetime", now.isoformat())  # Exclude events whose end time has passed
-        if search:
-            safe = search.replace("%", r"\%").replace("_", r"\_")
-            q = q.or_(f"title.ilike.%{safe}%,description.ilike.%{safe}%")
-        if category_event_ids is not None:
-            q = q.in_("id", category_event_ids)
-        if temporal_filter == "upcoming":
-            q = q.gte("start_datetime", now.isoformat())
-        elif temporal_filter == "today":
+        if is_past:
+            q = q.in_("status", ["ended", "cancelled", "updated", "published"])
+            q = q.lt("end_datetime", now.isoformat())
+        else:
+            q = q.in_("status", ["published", "updated"])
+            q = q.gte("end_datetime", now.isoformat())
+
+        if final_whitelist is not None:
+            q = q.in_("id", final_whitelist)
+
+        if quick_filter == "now":
+            q = q.lte("start_datetime", now.isoformat()).gte("end_datetime", now.isoformat())
+        elif quick_filter == "today":
             today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
             tomorrow = today_start + timedelta(days=1)
             q = q.gte("start_datetime", today_start.isoformat()).lt("start_datetime", tomorrow.isoformat())
-        elif temporal_filter == "this_week":
+        elif quick_filter == "this_week":
             today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
             week_end = today_start + timedelta(days=7)
             q = q.gte("start_datetime", today_start.isoformat()).lt("start_datetime", week_end.isoformat())
+        elif quick_filter == "weekend":
+            sat, mon = _weekend_window(now)
+            q = q.gte("start_datetime", sat.isoformat()).lt("start_datetime", mon.isoformat())
+        elif quick_filter == "upcoming":
+            q = q.gte("start_datetime", now.isoformat())
+
+        if start_after is not None:
+            q = q.gte("start_datetime", start_after.isoformat())
+        if end_before is not None:
+            q = q.lte("end_datetime", end_before.isoformat())
+
         return q
 
-    # Count query: fetch only IDs to avoid transferring all columns just for counting
     count_result = _apply_filters(db.table("events").select("id", count="exact")).execute()
     total = count_result.count or 0
+    if total == 0:
+        return [], 0
 
-    offset = (page - 1) * page_size
-    if offset >= total:
-        return [], total
+    if sort == "start_time":
+        offset = (page - 1) * page_size
+        if offset >= total:
+            return [], total
+        order_desc = is_past  # past events: most recent first
+        result = (
+            _apply_filters(db.table("events").select(_EVENT_COLS))
+            .order("start_datetime", desc=order_desc)
+            .order("id")
+            .range(offset, offset + page_size - 1)
+            .execute()
+        )
+        return result.data or [], total
 
-    # Data query: fetch full rows, sorted deterministically
+    # Distance / category sort: fetch full candidate set so the service layer
+    # can sort by a Python-computed key and slice for pagination.
     result = (
         _apply_filters(db.table("events").select(_EVENT_COLS))
         .order("start_datetime")
         .order("id")
-        .range(offset, offset + page_size - 1)
         .execute()
     )
     return result.data or [], total
@@ -356,3 +488,26 @@ def get_primary_images_for_events(db: Client, event_ids: list[str]) -> dict[str,
         if eid not in images:
             images[eid] = row["image_url"]
     return images
+
+
+def get_similar_candidates(db: Client, event_id: str, limit: int = 30) -> list[dict]:
+    """Return published/updated future events (public + private) excluding the source.
+
+    Private events are included to match Discovery's behaviour: they appear in
+    the list with a teaser (no description) so the viewer can still tap through
+    and request access. The service layer applies the same private-aware
+    redaction as list_events when building the response.
+    """
+    now = datetime.now(UTC)
+    result = (
+        db.table("events")
+        .select(_EVENT_COLS)
+        .in_("status", ["published", "updated"])
+        .gte("end_datetime", now.isoformat())
+        .neq("id", event_id)
+        .order("start_datetime")
+        .order("id")
+        .limit(limit)
+        .execute()
+    )
+    return result.data or []

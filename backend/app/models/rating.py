@@ -4,10 +4,12 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
+
+from app.models.base import AppBaseModel
 
 
-class RatingRequest(BaseModel):
+class RatingRequest(AppBaseModel):
     score: Decimal = Field(ge=1.00, le=5.00, max_digits=3, decimal_places=2)
     review_text: str | None = Field(default=None, max_length=1000)
 
@@ -21,7 +23,7 @@ class RatingRequest(BaseModel):
     )
 
 
-class RatingResponse(BaseModel):
+class RatingResponse(AppBaseModel):
     id: UUID
     rater_id: UUID
     host_id: UUID
@@ -30,7 +32,7 @@ class RatingResponse(BaseModel):
     created_at: datetime
 
 
-class ReviewListItemResponse(BaseModel):
+class ReviewListItemResponse(AppBaseModel):
     """Single review row for the host's reviews-list endpoint.
 
     `review_text` is None for star-only ratings; the frontend renders a
@@ -45,7 +47,7 @@ class ReviewListItemResponse(BaseModel):
     created_at: datetime
 
 
-class ReviewListResponse(BaseModel):
+class ReviewListResponse(AppBaseModel):
     """Paginated reviews-by-host result, ordered newest-first."""
     items: list[ReviewListItemResponse]
     total: int

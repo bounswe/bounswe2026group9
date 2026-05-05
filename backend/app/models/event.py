@@ -1,28 +1,32 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from app.models.base import AppBaseModel
 
 # --- Nested Schemas ---
 
-class LocationRequest(BaseModel):
+class LocationRequest(AppBaseModel):
     name: str = Field(min_length=1, max_length=200)
     latitude: float = Field(ge=-90, le=90)
     longitude: float = Field(ge=-180, le=180)
     is_primary: bool = True
     order_index: int = 0
+    location_address: str | None = None
 
 
-class LocationResponse(BaseModel):
+class LocationResponse(AppBaseModel):
     id: UUID
     name: str
     latitude: float
     longitude: float
     is_primary: bool
     order_index: int
+    location_address: str | None = None
 
 
-class VenueMetadataRequest(BaseModel):
+class VenueMetadataRequest(AppBaseModel):
     price: str | None = None
     language: str | None = None
     health_requirements: str | None = None
@@ -34,7 +38,7 @@ class VenueMetadataRequest(BaseModel):
     quiet_friendly: bool = False
 
 
-class VenueMetadataResponse(BaseModel):
+class VenueMetadataResponse(AppBaseModel):
     id: UUID
     price: str | None = None
     language: str | None = None
@@ -47,18 +51,18 @@ class VenueMetadataResponse(BaseModel):
     quiet_friendly: bool
 
 
-class EquipmentRequest(BaseModel):
+class EquipmentRequest(AppBaseModel):
     item_name: str = Field(min_length=1, max_length=200)
     is_required: bool = True
 
 
-class EquipmentResponse(BaseModel):
+class EquipmentResponse(AppBaseModel):
     id: UUID
     item_name: str
     is_required: bool
 
 
-class SegmentRequest(BaseModel):
+class SegmentRequest(AppBaseModel):
     """Single itinerary segment for an event.
 
     location_index references a position in the request's locations[] array
@@ -72,7 +76,7 @@ class SegmentRequest(BaseModel):
     description: str | None = Field(default=None, max_length=1000)
 
 
-class SegmentResponse(BaseModel):
+class SegmentResponse(AppBaseModel):
     id: UUID
     location_id: UUID
     order_index: int
@@ -81,31 +85,31 @@ class SegmentResponse(BaseModel):
     description: str | None = None
 
 
-class CategoryResponse(BaseModel):
+class CategoryResponse(AppBaseModel):
     id: UUID
     name: str
     is_predefined: bool
     is_approved: bool
 
 
-class CategoryCreateRequest(BaseModel):
+class CategoryCreateRequest(AppBaseModel):
     name: str = Field(min_length=1, max_length=100)
 
 
-class EventImageResponse(BaseModel):
+class EventImageResponse(AppBaseModel):
     id: UUID
     image_url: str
     upload_date: datetime
 
 
-class AttendeeSummaryResponse(BaseModel):
+class AttendeeSummaryResponse(AppBaseModel):
     id: UUID
     username: str
 
 
 # --- Event Request Schemas ---
 
-class EventCreateRequest(BaseModel):
+class EventCreateRequest(AppBaseModel):
     title: str = Field(min_length=1, max_length=200)
     description: str = Field(min_length=1)
     start_datetime: datetime
@@ -121,7 +125,7 @@ class EventCreateRequest(BaseModel):
     segments: list[SegmentRequest] | None = None
 
 
-class EventUpdateRequest(BaseModel):
+class EventUpdateRequest(AppBaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=200)
     description: str | None = Field(default=None, min_length=1)
     start_datetime: datetime | None = None
@@ -139,7 +143,7 @@ class EventUpdateRequest(BaseModel):
 
 # --- Event Response Schemas ---
 
-class EventDetailResponse(BaseModel):
+class EventDetailResponse(AppBaseModel):
     id: UUID
     host_id: UUID
     host_username: str = ""
@@ -169,11 +173,11 @@ class EventDetailResponse(BaseModel):
     segments: list[SegmentResponse] = []
 
 
-class StatusChangeRequest(BaseModel):
+class StatusChangeRequest(AppBaseModel):
     status: str = Field(pattern="^(published|cancelled|ended)$")
 
 
-class EventLimitedResponse(BaseModel):
+class EventLimitedResponse(AppBaseModel):
     """Limited preview for guests and unauthorized private event viewers."""
     id: UUID
     title: str
@@ -187,7 +191,7 @@ class EventLimitedResponse(BaseModel):
     categories: list[CategoryResponse] = []
 
 
-class EventListItemResponse(BaseModel):
+class EventListItemResponse(AppBaseModel):
     """Single event card for discovery listing.
 
     description is None for:
@@ -218,7 +222,7 @@ class EventListItemResponse(BaseModel):
     primary_image_url: str | None = None
 
 
-class EventListResponse(BaseModel):
+class EventListResponse(AppBaseModel):
     """Paginated event discovery result."""
     items: list[EventListItemResponse]
     total: int

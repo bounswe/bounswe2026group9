@@ -4,6 +4,12 @@ from starlette.responses import RedirectResponse
 from app.config import settings
 from app.database import get_supabase
 from app.middleware.auth import get_current_user_id
+from app.models.errors import (
+    AUTH_RESPONSES,
+    CONFLICT_RESPONSE,
+    NOT_FOUND_RESPONSE,
+    RATE_LIMIT_RESPONSE,
+)
 from app.models.user import (
     AuthResponse,
     MessageResponse,
@@ -77,7 +83,18 @@ def _user_response(user: dict) -> UserResponse:
 
 # --- Register ---
 
-@router.post("/register", status_code=201)
+@router.post(
+    "/register",
+    status_code=201,
+    response_model=AuthResponse,
+    summary="Register a new user",
+    description=(
+        "Creates a local-auth user, sets the refresh-token cookie, and "
+        "returns an access token. A verification email is sent in the "
+        "background; `email_sent=false` means SMTP is unconfigured."
+    ),
+    responses={**CONFLICT_RESPONSE, **RATE_LIMIT_RESPONSE},
+)
 @limiter.limit("5/minute")
 def register(request: Request, body: UserRegisterRequest, response: Response, background_tasks: BackgroundTasks):
     db = get_supabase()
@@ -120,7 +137,17 @@ def register(request: Request, body: UserRegisterRequest, response: Response, ba
 
 # --- Login ---
 
-@router.post("/login", response_model=AuthResponse)
+@router.post(
+    "/login",
+    response_model=AuthResponse,
+    summary="Log in with email + password",
+    description=(
+        "Returns an access token and sets the `sem_refresh_token` HttpOnly "
+        "cookie. Repeated failures lock the account; Google-only accounts "
+        "must use `/auth/google`."
+    ),
+    responses={**AUTH_RESPONSES, **RATE_LIMIT_RESPONSE},
+)
 @limiter.limit("10/minute")
 def login(request: Request, body: UserLoginRequest, response: Response):
     db = get_supabase()
@@ -170,7 +197,16 @@ def login(request: Request, body: UserLoginRequest, response: Response):
 
 # --- Refresh ---
 
-@router.post("/refresh", response_model=AuthResponse)
+@router.post(
+    "/refresh",
+    response_model=AuthResponse,
+    summary="Rotate access + refresh tokens",
+    description=(
+        "Reads the refresh token from the body or the `sem_refresh_token` "
+        "cookie, rotates it, and returns a fresh access token."
+    ),
+    responses={**AUTH_RESPONSES},
+)
 def refresh(request: Request, response: Response, body: RefreshTokenRequest = None):
     # Get token from body or cookie
     token = None
@@ -207,7 +243,12 @@ def refresh(request: Request, response: Response, body: RefreshTokenRequest = No
 
 # --- Logout ---
 
-@router.post("/logout", response_model=MessageResponse)
+@router.post(
+    "/logout",
+    response_model=MessageResponse,
+    summary="Log out",
+    description="Revokes the refresh token and clears the cookie. Idempotent.",
+)
 def logout(request: Request, response: Response, body: RefreshTokenRequest = None):
     token = None
     if body and body.refresh_token:
@@ -224,7 +265,12 @@ def logout(request: Request, response: Response, body: RefreshTokenRequest = Non
 
 # --- Me ---
 
-@router.get("/me", response_model=UserResponse)
+@router.get(
+    "/me",
+    response_model=UserResponse,
+    summary="Authenticated user's profile",
+    responses={**AUTH_RESPONSES, **NOT_FOUND_RESPONSE},
+)
 def me(user_id: str = Depends(get_current_user_id)):
     db = get_supabase()
     result = db.table("users").select(USER_SAFE_COLS).eq("id", user_id).execute()
@@ -235,7 +281,12 @@ def me(user_id: str = Depends(get_current_user_id)):
 
 # --- Email Verification ---
 
-@router.get("/verify-email", response_model=MessageResponse)
+@router.get(
+    "/verify-email",
+    response_model=MessageResponse,
+    summary="Verify email via token",
+    description="Token is delivered in the verification email link.",
+)
 def verify_email(token: str):
     user_id = validate_verification_token(token)
     if not user_id:
@@ -246,7 +297,12 @@ def verify_email(token: str):
     return MessageResponse(message="Email verified successfully")
 
 
-@router.post("/resend-verification", response_model=MessageResponse)
+@router.post(
+    "/resend-verification",
+    response_model=MessageResponse,
+    summary="Resend verification email",
+    responses={**AUTH_RESPONSES, **RATE_LIMIT_RESPONSE},
+)
 @limiter.limit("3/minute")
 def resend_verification(request: Request, background_tasks: BackgroundTasks, user_id: str = Depends(get_current_user_id)):
     db = get_supabase()
@@ -269,7 +325,14 @@ def resend_verification(request: Request, background_tasks: BackgroundTasks, use
 OAUTH_STATE_COOKIE = "oauth_state"
 
 
-@router.get("/google")
+@router.get(
+    "/google",
+    summary="Start Google OAuth flow",
+    description=(
+        "Redirects the browser to Google's consent screen. `mode` is "
+        "either `login` or `signup` and is round-tripped through state."
+    ),
+)
 def google_auth(mode: str = "login"):
     """Redirect to Google OAuth. mode: 'signup' or 'login'."""
     state = generate_oauth_state()
@@ -287,7 +350,15 @@ def google_auth(mode: str = "login"):
     return redirect
 
 
-@router.get("/google/callback")
+@router.get(
+    "/google/callback",
+    summary="Google OAuth callback",
+    description=(
+        "Validates the state cookie, exchanges the code for Google tokens, "
+        "links or creates the local user, sets the refresh-token cookie, "
+        "and redirects to the frontend `/auth/callback` page."
+    ),
+)
 def google_callback(
     code: str,
     state: str,
