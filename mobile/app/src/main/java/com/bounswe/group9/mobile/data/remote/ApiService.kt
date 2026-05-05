@@ -322,6 +322,12 @@ interface ApiService {
         @Header("Authorization") token: String? = null
     ): Response<JsonObject>
 
+    @GET("events/{event_id}/similar")
+    suspend fun getSimilarEvents(
+        @Path("event_id") eventId: String,
+        @Header("Authorization") token: String? = null
+    ): Response<List<EventListItemDto>>
+
     // ── Event CRUD ──
 
     @POST("events")

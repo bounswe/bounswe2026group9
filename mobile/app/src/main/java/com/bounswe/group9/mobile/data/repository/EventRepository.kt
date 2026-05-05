@@ -4,6 +4,7 @@ import android.util.Log
 import com.bounswe.group9.mobile.data.remote.AttendanceRequest
 import com.bounswe.group9.mobile.data.remote.CategoryDto
 import com.bounswe.group9.mobile.data.remote.EventDetailDto
+import com.bounswe.group9.mobile.data.remote.EventListItemDto
 import com.bounswe.group9.mobile.data.remote.EventLimitedDto
 import com.bounswe.group9.mobile.data.remote.EventListResponse
 import com.bounswe.group9.mobile.data.remote.RetrofitProvider
@@ -75,6 +76,25 @@ class EventRepository {
             }
         } catch (e: Exception) {
             Log.e("EventRepository", "getEventDetail failed: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getSimilarEvents(
+        eventId: String,
+        token: String? = null
+    ): Result<List<EventListItemDto>> {
+        return try {
+            val authHeader = token?.let { "Bearer $it" }
+            val response = RetrofitProvider.apiService.getSimilarEvents(eventId, authHeader)
+            if (!response.isSuccessful) {
+                val body = response.errorBody()?.string() ?: "Unknown error"
+                Log.e("EventRepository", "getSimilarEvents HTTP ${response.code()}: $body")
+                return Result.failure(Exception("${response.code()}: $body"))
+            }
+            Result.success(response.body() ?: emptyList())
+        } catch (e: Exception) {
+            Log.e("EventRepository", "getSimilarEvents failed: ${e.message}", e)
             Result.failure(e)
         }
     }
