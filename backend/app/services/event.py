@@ -996,3 +996,108 @@ def list_events_geojson(
         features.append(GeoJSONFeature(geometry=point, properties=properties))
 
     return GeoJSONFeatureCollection(features=features)
+
+
+def get_similar_events(
+    db: Client,
+    event_id: str,
+    user_id: str | None = None,
+    limit: int = 5,
+) -> list[EventListItemResponse]:
+    """Return up to `limit` scored similar public published/updated future events."""
+    source = event_repo.get_event_by_id(db, event_id)
+    if not source:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
+
+    source_categories = event_repo.get_event_categories(db, event_id)
+    source_cat_ids = {c["id"] for c in source_categories}
+
+    source_locs = db.table("event_locations").select("latitude,longitude").eq("event_id", event_id).eq("is_primary", True).execute()
+    source_lat = source_lng = None
+    if source_locs.data:
+        source_lat = source_locs.data[0].get("latitude")
+        source_lng = source_locs.data[0].get("longitude")
+
+    candidates = event_repo.get_similar_candidates(db, event_id, limit=30)
+    if not candidates:
+        return []
+
+    candidate_ids = [c["id"] for c in candidates]
+    cats_by_event = event_repo.get_categories_for_events(db, candidate_ids)
+    locs_by_event = event_repo.get_primary_locations_for_events(db, candidate_ids)
+
+    scored = []
+    for cand in candidates:
+        cid = cand["id"]
+        cand_cat_ids = {c["id"] for c in cats_by_event.get(cid, [])}
+        overlap = len(source_cat_ids & cand_cat_ids)
+        host_match = 1 if cand["host_id"] == source["host_id"] else 0
+
+        proximity_bonus = 0
+        if source_lat is not None and source_lng is not None:
+            loc = locs_by_event.get(cid)
+            if loc and loc.get("latitude") is not None and loc.get("longitude") is not None:
+                dist = _haversine_km(source_lat, source_lng, loc["latitude"], loc["longitude"])
+                if dist <= 50:
+                    proximity_bonus = 1
+
+        score = overlap * 3 + host_match * 2 + proximity_bonus
+        scored.append((score, cand))
+
+    scored.sort(key=lambda x: (-x[0], x[1]["start_datetime"], x[1]["id"]))
+    top = [c for _, c in scored[:limit]]
+    top_ids = [c["id"] for c in top]
+
+    locations_by_event = event_repo.get_primary_locations_for_events(db, top_ids)
+    images_by_event = event_repo.get_primary_images_for_events(db, top_ids)
+    bookmark_counts = bookmark_repo.get_bookmark_counts_for_events(db, top_ids)
+
+    # Mirror list_events: private-aware redaction + access state batch lookups.
+    is_bookmarked_map: set[str] = set()
+    access_request_status_map: dict[str, str] = {}
+    access_granted_event_ids: set[str] = set()
+    if user_id:
+        is_bookmarked_map = bookmark_repo.get_bookmark_status_for_events(db, user_id, top_ids)
+        access_request_status_map = invite_repo.get_access_request_status_for_events(
+            db, user_id, top_ids,
+        )
+        access_granted_event_ids = invite_repo.get_access_granted_event_ids(
+            db, user_id, top_ids,
+        )
+
+    items = []
+    for event in top:
+        eid = event["id"]
+        is_private = event["visibility"] == "private"
+        # Hide description for private events and for guests viewing public
+        # events — same teaser rule Discovery uses (`list_events`).
+        show_preview_details = user_id is not None and not is_private
+        items.append(EventListItemResponse(
+            id=eid,
+            host_id=event["host_id"],
+            title=event["title"],
+            description=event["description"] if show_preview_details else None,
+            start_datetime=event["start_datetime"],
+            end_datetime=event["end_datetime"],
+            visibility=event["visibility"],
+            is_age_restricted=event["is_age_restricted"],
+            attendee_limit=event["attendee_limit"],
+            attendee_count=event["attendee_count"],
+            status=event["status"],
+            is_bookmarked=(eid in is_bookmarked_map) if user_id else None,
+            access_request_status=access_request_status_map.get(eid) if user_id else None,
+            has_access=(
+                True
+                if user_id and event["host_id"] == user_id
+                else eid in access_granted_event_ids
+            ) if user_id else None,
+            going_count=event["attendee_count"],
+            bookmark_count=bookmark_counts.get(eid, 0),
+            is_full=(event["attendee_count"] >= event["attendee_limit"]) if event["attendee_limit"] is not None else None,
+            categories=cats_by_event.get(eid, []),
+            # Location visible to all (needed for map view, even private events) — Discovery parity.
+            primary_location=locations_by_event.get(eid),
+            primary_image_url=images_by_event.get(eid),
+        ))
+
+    return items

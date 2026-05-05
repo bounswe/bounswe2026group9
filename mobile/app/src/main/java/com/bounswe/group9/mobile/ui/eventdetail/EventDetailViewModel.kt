@@ -6,6 +6,7 @@ import com.bounswe.group9.mobile.data.remote.AccessRequestResponseDto
 import com.bounswe.group9.mobile.data.remote.CommentDto
 import com.bounswe.group9.mobile.data.remote.EventDetailDto
 import com.bounswe.group9.mobile.data.remote.EventLimitedDto
+import com.bounswe.group9.mobile.data.remote.EventListItemDto
 import com.bounswe.group9.mobile.data.remote.InviteResponseDto
 import com.bounswe.group9.mobile.data.repository.EventDetailError
 import com.bounswe.group9.mobile.data.repository.EventDetailResult
@@ -49,7 +50,10 @@ data class EventDetailUiState(
     val accessRequests: List<AccessRequestResponseDto> = emptyList(),
     val isLoadingInviteSection: Boolean = false,
     val isCreatingInvite: Boolean = false,
-    val inviteSectionError: String? = null
+    val inviteSectionError: String? = null,
+    // Similar events
+    val similarEvents: List<EventListItemDto> = emptyList(),
+    val similarEventsLoading: Boolean = false
 ) {
     val isLimited: Boolean get() = limitedPreview != null && fullDetail == null
     val hasData: Boolean get() = fullDetail != null || limitedPreview != null
@@ -85,6 +89,7 @@ class EventDetailViewModel(
                         loadComments(reset = true)
                         if (token != null) loadInviteSection()
                         loadHostUsername(r.detail.host_id)
+                        loadSimilarEvents(eventId)
                     }
                     is EventDetailResult.Limited -> {
                         // Age-restricted limited preview: check user age before showing
@@ -503,6 +508,23 @@ class EventDetailViewModel(
                         isHostActionLoading = false,
                         actionError = e.message
                     )
+                }
+            )
+        }
+    }
+
+    private fun loadSimilarEvents(eventId: String) {
+        _uiState.value = _uiState.value.copy(similarEventsLoading = true)
+        viewModelScope.launch {
+            repository.getSimilarEvents(eventId, currentToken).fold(
+                onSuccess = { items ->
+                    _uiState.value = _uiState.value.copy(
+                        similarEvents = items,
+                        similarEventsLoading = false
+                    )
+                },
+                onFailure = {
+                    _uiState.value = _uiState.value.copy(similarEventsLoading = false)
                 }
             )
         }

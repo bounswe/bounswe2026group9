@@ -483,3 +483,26 @@ def get_primary_images_for_events(db: Client, event_ids: list[str]) -> dict[str,
         if eid not in images:
             images[eid] = row["image_url"]
     return images
+
+
+def get_similar_candidates(db: Client, event_id: str, limit: int = 30) -> list[dict]:
+    """Return published/updated future events (public + private) excluding the source.
+
+    Private events are included to match Discovery's behaviour: they appear in
+    the list with a teaser (no description) so the viewer can still tap through
+    and request access. The service layer applies the same private-aware
+    redaction as list_events when building the response.
+    """
+    now = datetime.now(UTC)
+    result = (
+        db.table("events")
+        .select(_EVENT_COLS)
+        .in_("status", ["published", "updated"])
+        .gte("end_datetime", now.isoformat())
+        .neq("id", event_id)
+        .order("start_datetime")
+        .order("id")
+        .limit(limit)
+        .execute()
+    )
+    return result.data or []

@@ -6,6 +6,8 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -48,12 +50,14 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.bounswe.group9.mobile.data.remote.AccessRequestResponseDto
 import com.bounswe.group9.mobile.data.remote.EventDetailDto
+import com.bounswe.group9.mobile.data.remote.EventListItemDto
 import com.bounswe.group9.mobile.data.remote.EventLimitedDto
 import com.bounswe.group9.mobile.data.remote.EquipmentDto
 import com.bounswe.group9.mobile.data.remote.EventLocationDto
 import com.bounswe.group9.mobile.data.remote.InviteResponseDto
 import com.bounswe.group9.mobile.data.remote.SegmentDto
 import com.bounswe.group9.mobile.data.remote.VenueMetadataDto
+import com.bounswe.group9.mobile.ui.common.formatEventDate
 import com.bounswe.group9.mobile.ui.discovery.EventDetailMapView
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -68,6 +72,7 @@ fun EventDetailScreen(
     currentUserId: String? = null,
     onBack: () -> Unit,
     onNavigateToHost: (String) -> Unit = {},
+    onNavigateToEvent: (String) -> Unit = {},
     onNavigateToEdit: (EventDetailDto) -> Unit = {},
     onDeleteSuccess: () -> Unit = {}
 ) {
@@ -187,7 +192,8 @@ fun EventDetailScreen(
                     token = token,
                     currentUserId = currentUserId,
                     isHost = isHost,
-                    onNavigateToHost = onNavigateToHost
+                    onNavigateToHost = onNavigateToHost,
+                    onNavigateToEvent = onNavigateToEvent
                 )
                 uiState.limitedPreview != null -> LimitedPreviewContent(
                     event = uiState.limitedPreview!!,
@@ -458,7 +464,8 @@ private fun FullDetailContent(
     token: String?,
     currentUserId: String?,
     isHost: Boolean,
-    onNavigateToHost: (String) -> Unit
+    onNavigateToHost: (String) -> Unit,
+    onNavigateToEvent: (String) -> Unit = {}
 ) {
     Column(
         Modifier
@@ -672,6 +679,16 @@ private fun FullDetailContent(
                 onRetry = { viewModel.loadMoreComments() },
                 onNavigateToProfile = onNavigateToHost
             )
+
+            // Similar events
+            if (uiState.similarEvents.isNotEmpty() || uiState.similarEventsLoading) {
+                Spacer(Modifier.height(16.dp))
+                SimilarEventsSection(
+                    events = uiState.similarEvents,
+                    isLoading = uiState.similarEventsLoading,
+                    onEventClick = onNavigateToEvent
+                )
+            }
 
             Spacer(Modifier.height(32.dp))
         }
@@ -1226,6 +1243,90 @@ private fun InfoRow(label: String, value: String) {
     Row {
         Text("$label: ", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
         Text(value, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+@Composable
+private fun SimilarEventsSection(
+    events: List<EventListItemDto>,
+    isLoading: Boolean,
+    onEventClick: (String) -> Unit
+) {
+    SectionHeader("Similar Events")
+    if (isLoading && events.isEmpty()) {
+        Box(Modifier.fillMaxWidth().height(140.dp), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+        }
+        return
+    }
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(end = 4.dp)
+    ) {
+        items(events) { event ->
+            SimilarEventCard(event = event, onClick = { onEventClick(event.id) })
+        }
+    }
+}
+
+@Composable
+private fun SimilarEventCard(
+    event: EventListItemDto,
+    onClick: () -> Unit
+) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.width(180.dp).height(200.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Column {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(90.dp)
+                    .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f))
+            ) {
+                if (event.primary_image_url != null) {
+                    AsyncImage(
+                        model = event.primary_image_url,
+                        contentDescription = event.title,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+            }
+            Column(Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+                Text(
+                    event.title,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 13.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    formatEventDate(event.start_datetime),
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.tertiary,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (event.categories.isNotEmpty()) {
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        event.categories.first().name,
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
     }
 }
 
