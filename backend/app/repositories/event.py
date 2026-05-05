@@ -486,7 +486,13 @@ def get_primary_images_for_events(db: Client, event_ids: list[str]) -> dict[str,
 
 
 def get_similar_candidates(db: Client, event_id: str, limit: int = 30) -> list[dict]:
-    """Return published/updated future public events excluding the source event."""
+    """Return published/updated future events (public + private) excluding the source.
+
+    Private events are included to match Discovery's behaviour: they appear in
+    the list with a teaser (no description) so the viewer can still tap through
+    and request access. The service layer applies the same private-aware
+    redaction as list_events when building the response.
+    """
     now = datetime.now(UTC)
     result = (
         db.table("events")
@@ -494,7 +500,6 @@ def get_similar_candidates(db: Client, event_id: str, limit: int = 30) -> list[d
         .in_("status", ["published", "updated"])
         .gte("end_datetime", now.isoformat())
         .neq("id", event_id)
-        .eq("visibility", "public")
         .order("start_datetime")
         .order("id")
         .limit(limit)

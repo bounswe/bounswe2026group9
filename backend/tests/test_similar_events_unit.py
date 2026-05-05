@@ -94,6 +94,12 @@ def _mock_db_for(source: dict, candidates: list[dict]):
         patch("app.services.event.event_repo.get_primary_images_for_events", return_value={}),
         patch("app.services.event.bookmark_repo.get_bookmark_counts_for_events", return_value={}),
         patch("app.services.event.bookmark_repo.get_bookmark_status_for_events", return_value=set()),
+        # Discovery-parity: similar events surfaces private listings with a
+        # teaser; the access-state batch lookups must be mocked even when
+        # tests don't pass user_id (the service only calls them when user_id
+        # is set, so default empties keep guest-flow tests intact).
+        patch("app.services.event.invite_repo.get_access_request_status_for_events", return_value={}),
+        patch("app.services.event.invite_repo.get_access_granted_event_ids", return_value=set()),
     ):
         yield db
 
@@ -180,3 +186,59 @@ class TestGetSimilarEvents:
                 result = get_similar_events(db, source["id"], user_id=user_id)
 
         assert result[0].is_bookmarked is True
+
+    def test_private_candidate_appears_with_redacted_description(self):
+        # Discovery parity: private events show up in the list with a teaser
+        # (no description) so the viewer can tap through and request access,
+        # rather than being filtered out entirely.
+        source = _event(cat_ids=[CAT1])
+        private_cand = _event(cat_ids=[CAT1])
+        private_cand["visibility"] = "private"
+        private_cand["description"] = "secret guest list"
+        user_id = str(uuid4())
+
+        with _mock_db_for(source, [private_cand]) as db:
+            result = get_similar_events(db, source["id"], user_id=user_id)
+
+        # Private candidate is surfaced (not filtered out)
+        assert len(result) == 1
+        assert str(result[0].id) == private_cand["id"]
+        # ...but description is redacted
+        assert result[0].description is None
+        # visibility flag is preserved so the client can render a "private" badge
+        assert result[0].visibility == "private"
+
+    def test_private_candidate_visible_to_guest_with_teaser(self):
+        # Same redaction applies for unauthenticated viewers.
+        source = _event(cat_ids=[CAT1])
+        private_cand = _event(cat_ids=[CAT1])
+        private_cand["visibility"] = "private"
+        private_cand["description"] = "secret guest list"
+
+        with _mock_db_for(source, [private_cand]) as db:
+            result = get_similar_events(db, source["id"], user_id=None)
+
+        assert len(result) == 1
+        assert result[0].description is None
+        # Guests have no notion of access state — `has_access` and
+        # `access_request_status` remain None for them.
+        assert result[0].has_access is None
+        assert result[0].access_request_status is None
+
+    def test_authed_user_with_access_grant_sees_has_access_true(self):
+        # An authenticated user with a granted access record on a private
+        # candidate should see has_access=True so the UI can route them
+        # straight into the event without prompting a request.
+        source = _event(cat_ids=[CAT1])
+        private_cand = _event(cat_ids=[CAT1])
+        private_cand["visibility"] = "private"
+        user_id = str(uuid4())
+
+        with _mock_db_for(source, [private_cand]) as db:
+            with patch(
+                "app.services.event.invite_repo.get_access_granted_event_ids",
+                return_value={private_cand["id"]},
+            ):
+                result = get_similar_events(db, source["id"], user_id=user_id)
+
+        assert result[0].has_access is True

@@ -1052,18 +1052,31 @@ def get_similar_events(
     images_by_event = event_repo.get_primary_images_for_events(db, top_ids)
     bookmark_counts = bookmark_repo.get_bookmark_counts_for_events(db, top_ids)
 
+    # Mirror list_events: private-aware redaction + access state batch lookups.
     is_bookmarked_map: set[str] = set()
+    access_request_status_map: dict[str, str] = {}
+    access_granted_event_ids: set[str] = set()
     if user_id:
         is_bookmarked_map = bookmark_repo.get_bookmark_status_for_events(db, user_id, top_ids)
+        access_request_status_map = invite_repo.get_access_request_status_for_events(
+            db, user_id, top_ids,
+        )
+        access_granted_event_ids = invite_repo.get_access_granted_event_ids(
+            db, user_id, top_ids,
+        )
 
     items = []
     for event in top:
         eid = event["id"]
+        is_private = event["visibility"] == "private"
+        # Hide description for private events and for guests viewing public
+        # events — same teaser rule Discovery uses (`list_events`).
+        show_preview_details = user_id is not None and not is_private
         items.append(EventListItemResponse(
             id=eid,
             host_id=event["host_id"],
             title=event["title"],
-            description=event["description"],
+            description=event["description"] if show_preview_details else None,
             start_datetime=event["start_datetime"],
             end_datetime=event["end_datetime"],
             visibility=event["visibility"],
@@ -1072,10 +1085,17 @@ def get_similar_events(
             attendee_count=event["attendee_count"],
             status=event["status"],
             is_bookmarked=(eid in is_bookmarked_map) if user_id else None,
+            access_request_status=access_request_status_map.get(eid) if user_id else None,
+            has_access=(
+                True
+                if user_id and event["host_id"] == user_id
+                else eid in access_granted_event_ids
+            ) if user_id else None,
             going_count=event["attendee_count"],
             bookmark_count=bookmark_counts.get(eid, 0),
             is_full=(event["attendee_count"] >= event["attendee_limit"]) if event["attendee_limit"] is not None else None,
             categories=cats_by_event.get(eid, []),
+            # Location visible to all (needed for map view, even private events) — Discovery parity.
             primary_location=locations_by_event.get(eid),
             primary_image_url=images_by_event.get(eid),
         ))
