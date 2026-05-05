@@ -128,8 +128,8 @@ def list_events_endpoint(
         description=(
             "Sort order. Defaults to distance when location is provided, otherwise start_time. "
             "sort=distance requires a location (near_lat/near_lng or use_default_area). "
-            "sort=category requires a narrowing filter — search, category_id, quick_filter, "
-            "custom window, accessibility, or location — to keep the in-memory candidate set bounded."
+            "sort=category may be used on its own; the service materialises the full filtered "
+            "candidate set and ranks in Python within the NFR-01 budget."
         ),
     ),
     page: int = Query(default=1, ge=1),
