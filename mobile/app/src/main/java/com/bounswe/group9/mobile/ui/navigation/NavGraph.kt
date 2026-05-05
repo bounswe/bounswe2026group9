@@ -22,6 +22,8 @@ import androidx.navigation.navDeepLink
 import com.bounswe.group9.mobile.data.local.SessionManager
 import com.bounswe.group9.mobile.ui.auth.AuthViewModel
 import com.bounswe.group9.mobile.ui.auth.LoginScreen
+import com.bounswe.group9.mobile.ui.checkin.HostAttendeeListScreen
+import com.bounswe.group9.mobile.ui.checkin.HostScanScreen
 import com.bounswe.group9.mobile.ui.createevent.CreateEventScreen
 import com.bounswe.group9.mobile.ui.createevent.CreateEventViewModel
 import com.bounswe.group9.mobile.ui.discovery.DiscoveryScreen
@@ -47,10 +49,14 @@ object Routes {
     const val INVITE_ACCEPT = "inviteAccept/{eventId}/{inviteToken}"
     const val CREATE_EVENT = "createEvent"
     const val EDIT_EVENT = "editEvent/{eventId}"
+    const val HOST_SCAN = "hostScan/{eventId}"
+    const val HOST_ATTENDEES = "hostAttendees/{eventId}"
     fun eventDetail(eventId: String) = "eventDetail/$eventId"
     fun hostProfile(userId: String) = "hostProfile/$userId"
     fun inviteAccept(eventId: String, inviteToken: String) = "inviteAccept/$eventId/$inviteToken"
     fun editEvent(eventId: String) = "editEvent/$eventId"
+    fun hostScan(eventId: String) = "hostScan/$eventId"
+    fun hostAttendees(eventId: String) = "hostAttendees/$eventId"
 }
 
 @Composable
@@ -171,6 +177,40 @@ fun AppNavGraph(
                         popUpTo(Routes.DISCOVERY) { inclusive = true }
                     }
                     discoveryViewModel.refresh()
+                },
+                onNavigateToScan = { id ->
+                    navController.navigate(Routes.hostScan(id))
+                },
+                onNavigateToAttendees = { id ->
+                    navController.navigate(Routes.hostAttendees(id))
+                }
+            )
+        }
+        composable(
+            route = Routes.HOST_SCAN,
+            arguments = listOf(navArgument("eventId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val scanEventId = backStackEntry.arguments?.getString("eventId") ?: return@composable
+            HostScanScreen(
+                eventId = scanEventId,
+                authToken = token,
+                onBack = { navController.popBackStack() },
+                onOpenAttendeeList = {
+                    navController.navigate(Routes.hostAttendees(scanEventId))
+                }
+            )
+        }
+        composable(
+            route = Routes.HOST_ATTENDEES,
+            arguments = listOf(navArgument("eventId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val rosterEventId = backStackEntry.arguments?.getString("eventId") ?: return@composable
+            HostAttendeeListScreen(
+                eventId = rosterEventId,
+                authToken = token,
+                onBack = { navController.popBackStack() },
+                onNavigateToProfile = { profileUserId ->
+                    navController.navigate(Routes.hostProfile(profileUserId))
                 }
             )
         }
