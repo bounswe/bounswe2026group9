@@ -75,3 +75,17 @@ def has_attended_ended_event_by_host(db: Client, user_id: str, host_id: str) -> 
         .execute()
     )
     return bool(result.data)
+
+
+def find_users_going_on_events(db: Client, event_ids: list[str]) -> set[str]:
+    """Return user_ids that have status='going' on any of event_ids."""
+    if not event_ids:
+        return set()
+    result = (
+        db.table("attendances")
+        .select("user_id")
+        .in_("event_id", event_ids)
+        .eq("status", "going")
+        .execute()
+    )
+    return {row["user_id"] for row in (result.data or [])}

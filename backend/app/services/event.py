@@ -712,6 +712,16 @@ def change_event_status(
 
     event_repo.update_event_status(db, event_id, new_status)
 
+    # Emit recommendation notifications when an event becomes published
+    if current == "draft" and new_status == "published":
+        try:
+            from app.services.recommendation_emitter import emit_event_recommendations
+            emit_event_recommendations(db, event_id, user_id)
+        except Exception:
+            # Recommendations are best-effort: never fail the publish on emitter error
+            import logging
+            logging.getLogger(__name__).exception("emit_event_recommendations failed")
+
     # Emit notification on cancellation
     if new_status == "cancelled":
         from app.services.notification_emitter import emit_event_notification
