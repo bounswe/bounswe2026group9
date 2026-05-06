@@ -228,10 +228,16 @@ private fun formatCheckInTime(iso: String): String {
     val display = SimpleDateFormat("MMM d, HH:mm", Locale.getDefault()).apply {
         timeZone = TimeZone.getDefault()
     }
+    // Pydantic emits microseconds (6 digits, e.g. ".409953Z").
+    // Java SSS only handles 3; extra digits are mis-parsed as milliseconds and
+    // shift the displayed time by minutes. Truncate to exactly 3 digits first.
+    val normalized = iso.replace(Regex("""\.\d+""")) { m ->
+        ".${m.value.drop(1).take(3).padEnd(3, '0')}"
+    }
     val patterns = listOf("yyyy-MM-dd'T'HH:mm:ss.SSSXXX", "yyyy-MM-dd'T'HH:mm:ssXXX")
     for (pattern in patterns) {
         try {
-            val date = SimpleDateFormat(pattern, Locale.getDefault()).parse(iso)
+            val date = SimpleDateFormat(pattern, Locale.getDefault()).parse(normalized)
             if (date != null) return display.format(date)
         } catch (_: Exception) { }
     }
