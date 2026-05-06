@@ -133,14 +133,32 @@ data class HostProfileDto(
     val can_rate: Boolean = false
 )
 
-data class RatingRequest(val score: Double)
+data class RatingRequest(val score: Double, val review_text: String? = null)
 
 data class RatingResponseDto(
     val id: String,
     val rater_id: String,
     val host_id: String,
     val score: Double,
+    val review_text: String? = null,
     val created_at: String
+)
+
+data class ReviewListItemDto(
+    val id: String,
+    val rater_id: String,
+    val rater_username: String,
+    val score: Double,
+    val review_text: String? = null,
+    val created_at: String
+)
+
+data class ReviewListResponseDto(
+    val items: List<ReviewListItemDto>,
+    val total: Int,
+    val page: Int,
+    val page_size: Int,
+    val total_pages: Int
 )
 
 // ── Notifications ─────────────────────────────────────────────────────────────
@@ -464,6 +482,13 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Body body: RatingRequest
     ): RatingResponseDto
+
+    @GET("users/{host_id}/reviews")
+    suspend fun listHostReviews(
+        @Path("host_id") hostId: String,
+        @Query("page") page: Int = 1,
+        @Query("page_size") pageSize: Int = 20
+    ): ReviewListResponseDto
 
     // ── Profile Update ──
 

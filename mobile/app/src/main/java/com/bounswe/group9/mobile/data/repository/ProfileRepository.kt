@@ -7,6 +7,7 @@ import com.bounswe.group9.mobile.data.remote.MyProfileDto
 import com.bounswe.group9.mobile.data.remote.ProfileUpdateRequestDto
 import com.bounswe.group9.mobile.data.remote.RatingRequest
 import com.bounswe.group9.mobile.data.remote.RetrofitProvider
+import com.bounswe.group9.mobile.data.remote.ReviewListResponseDto
 import com.google.gson.Gson
 
 class ProfileRepository {
@@ -68,9 +69,9 @@ class ProfileRepository {
         }
     }
 
-    suspend fun rateHost(token: String, hostId: String, score: Double): Result<Unit> {
+    suspend fun rateHost(token: String, hostId: String, score: Double, reviewText: String?): Result<Unit> {
         return try {
-            RetrofitProvider.apiService.rateHost(hostId, "Bearer $token", RatingRequest(score))
+            RetrofitProvider.apiService.rateHost(hostId, "Bearer $token", RatingRequest(score, reviewText?.ifBlank { null }))
             Result.success(Unit)
         } catch (e: retrofit2.HttpException) {
             val body = e.response()?.errorBody()?.string() ?: "Unknown error"
@@ -78,6 +79,20 @@ class ProfileRepository {
             Result.failure(Exception(parseErrorMessage(body, e.code())))
         } catch (e: Exception) {
             Log.e("ProfileRepository", "rateHost failed: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun listHostReviews(hostId: String, page: Int = 1, pageSize: Int = 20): Result<ReviewListResponseDto> {
+        return try {
+            val result = RetrofitProvider.apiService.listHostReviews(hostId, page, pageSize)
+            Result.success(result)
+        } catch (e: retrofit2.HttpException) {
+            val body = e.response()?.errorBody()?.string() ?: "Unknown error"
+            Log.e("ProfileRepository", "listHostReviews HTTP ${e.code()}: $body")
+            Result.failure(Exception(parseErrorMessage(body, e.code())))
+        } catch (e: Exception) {
+            Log.e("ProfileRepository", "listHostReviews failed: ${e.message}", e)
             Result.failure(e)
         }
     }
