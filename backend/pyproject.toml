@@ -21,3 +21,34 @@ known-first-party = ["app"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# `-ra` keeps the existing summary format. Coverage is enabled by default so
+# every local + CI run reports it. The floor (`--cov-fail-under`) starts
+# loose; tighten it once a calibration run on `main` records the baseline so
+# we never gate on a number we haven't measured.
+# `-n auto` is intentionally NOT set here — only the integration-sharded CI
+# job opts in via the `--n` workflow flag, so single-file local runs stay
+# linear and easier to debug.
+addopts = "-ra --cov=app --cov-branch --cov-report=term-missing --cov-report=xml --cov-fail-under=0"
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+source = ["app"]
+branch = true
+# Bring out paths that aren't worth measuring against (FastAPI bootstrap
+# glue, sql migrations as data files, etc.). Tests themselves are excluded
+# automatically via `source` above.
+omit = [
+    "app/database.py",  # thin Supabase singleton, exercised indirectly everywhere
+    "app/main.py",      # FastAPI app object + middleware wiring
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+precision = 1
+exclude_also = [
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+    "@(abc\\.)?abstractmethod",
+]
