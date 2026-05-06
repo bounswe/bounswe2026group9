@@ -158,6 +158,32 @@ class ProfileRepoProtocol(Protocol):
     ) -> list[dict]: ...
 
 
+class ImageRepoProtocol(Protocol):
+    """Surface used by `services.image`. The `BUCKET_NAME` constant is
+    accessed off the live module by `delete_event_image` to extract the
+    storage path; tests assign that attribute on the mock."""
+
+    BUCKET_NAME: str
+
+    def count_event_images(self, db: Client, event_id: str) -> int: ...
+
+    def insert_event_image(
+        self, db: Client, event_id: str, image_url: str
+    ) -> dict | None: ...
+
+    def get_all_event_images(self, db: Client, event_id: str) -> list[dict]: ...
+
+    def get_event_image(self, db: Client, image_id: str) -> dict | None: ...
+
+    def delete_event_image(self, db: Client, image_id: str) -> None: ...
+
+    def upload_to_storage(
+        self, db: Client, path: str, file_bytes: bytes, content_type: str
+    ) -> str: ...
+
+    def delete_from_storage(self, db: Client, path: str) -> None: ...
+
+
 class CommentRepoProtocol(Protocol):
     """Surface used by `services.comment`. Note: comment repo carries its own
     user lookup helpers — `get_users_by_ids` returns a dict here (vs. a list
