@@ -2,17 +2,40 @@
 
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { CalendarDays, Mail, Phone, Star } from "lucide-react";
-import { useEffect, useState } from "react";
+import { CalendarDays, ChevronLeft, ChevronRight, Mail, MessageSquare, Phone, Star } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 
 import { StatusBadge } from "@/components/event/status-badge";
 import { Navbar } from "@/components/layout/navbar";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
-import { fetchHostProfile, rateHost, type EventListItem, type HostProfile } from "@/lib/events-api";
+import {
+  fetchHostProfile,
+  fetchHostReviews,
+  rateHost,
+  type EventListItem,
+  type HostProfile,
+  type HostReview,
+} from "@/lib/events-api";
+import { getProfileHref } from "@/lib/profile-route";
 import { cn } from "@/lib/utils";
 
-type ProfileTab = "about" | "past" | "upcoming";
+type ProfileTab = "about" | "past" | "upcoming" | "reviews";
+
+const REVIEW_TEXT_MAX = 1000;
+const REVIEW_PAGE_SIZE = 10;
+
+function formatReviewDate(datetime: string) {
+  return new Date(datetime).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function reviewerInitials(username: string) {
+  return username.slice(0, 2).toUpperCase();
+}
 
 function initials(username: string) {
   return username
@@ -215,9 +238,17 @@ export function HostProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ProfileTab>("upcoming");
   const [selectedScore, setSelectedScore] = useState(0);
+  const [reviewText, setReviewText] = useState("");
   const [ratingError, setRatingError] = useState<string | null>(null);
   const [ratingSuccess, setRatingSuccess] = useState<string | null>(null);
   const [isSubmittingRating, setIsSubmittingRating] = useState(false);
+
+  const [reviews, setReviews] = useState<HostReview[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewsError, setReviewsError] = useState<string | null>(null);
+  const [reviewsPage, setReviewsPage] = useState(1);
+  const [reviewsTotal, setReviewsTotal] = useState(0);
+  const [reviewsTotalPages, setReviewsTotalPages] = useState(1);
 
   useEffect(() => {
     if (!id || !isInitialized) {
@@ -245,6 +276,33 @@ export function HostProfilePage() {
   const upcomingEvents = visibleHostedEvents.filter((event) => !isPastEvent(event));
   const pastEvents = visibleHostedEvents.filter((event) => isPastEvent(event));
 
+  const loadReviews = useCallback(
+    async (hostId: string, page: number) => {
+      setReviewsLoading(true);
+      setReviewsError(null);
+      try {
+        const res = await fetchHostReviews(hostId, page, REVIEW_PAGE_SIZE);
+        setReviews(res.items);
+        setReviewsTotal(res.total);
+        setReviewsTotalPages(Math.max(res.total_pages, 1));
+        setReviewsPage(res.page);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "We could not load reviews.";
+        setReviewsError(message);
+      } finally {
+        setReviewsLoading(false);
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!profile?.id) {
+      return;
+    }
+    void loadReviews(profile.id, 1);
+  }, [profile?.id, loadReviews]);
+
   async function handleRatingSubmit() {
     if (!profile || !selectedScore) {
       return;
@@ -255,16 +313,24 @@ export function HostProfilePage() {
     setRatingSuccess(null);
 
     try {
-      await rateHost(profile.id, selectedScore);
+      await rateHost(profile.id, selectedScore, reviewText);
       const refreshed = await fetchHostProfile(profile.id);
       setProfile(refreshed);
+      setReviewText("");
       setRatingSuccess("Thanks, your rating has been saved.");
+      void loadReviews(profile.id, 1);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "We could not save your rating.";
       setRatingError(message);
     } finally {
       setIsSubmittingRating(false);
     }
+  }
+
+  function handleReviewsPageChange(next: number) {
+    if (!profile?.id) return;
+    if (next < 1 || next > reviewsTotalPages) return;
+    void loadReviews(profile.id, next);
   }
 
   return (
@@ -375,6 +441,7 @@ export function HostProfilePage() {
                   {([
                     { key: "upcoming", label: "Upcoming Events" },
                     { key: "past", label: "Past Events" },
+                    { key: "reviews", label: `Reviews${reviewsTotal > 0 ? ` (${reviewsTotal})` : ""}` },
                     { key: "about", label: "About" },
                   ] as const).map((tab) => (
                     <button
@@ -417,6 +484,115 @@ export function HostProfilePage() {
                   ) : (
                     <EmptyTabState message="Past hosted events will show up here once this host has completed or cancelled events." />
                   )
+                ) : null}
+
+                {activeTab === "reviews" ? (
+                  <div className="rounded-[28px] border border-brand-mid/12 bg-white p-6 shadow-[0_22px_60px_-42px_rgba(73,54,40,0.45)] sm:p-8">
+                    <div className="flex items-center justify-between flex-wrap gap-3 mb-5">
+                      <h2 className="font-heading text-2xl font-semibold text-brand-dark">
+                        Reviews
+                      </h2>
+                      <p className="text-sm text-brand-mid">
+                        {reviewsTotal === 0
+                          ? "No reviews yet"
+                          : `${reviewsTotal} review${reviewsTotal === 1 ? "" : "s"}`}
+                      </p>
+                    </div>
+
+                    {reviewsLoading ? (
+                      <div className="space-y-4">
+                        {[1, 2, 3].map((i) => (
+                          <div key={i} className="flex gap-3 animate-pulse">
+                            <div className="size-10 rounded-full bg-brand-mid-alpha shrink-0" />
+                            <div className="flex-1 space-y-2 pt-1">
+                              <div className="h-3 w-1/3 rounded bg-brand-mid-alpha" />
+                              <div className="h-3 w-full rounded bg-brand-mid-alpha opacity-60" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : reviewsError ? (
+                      <p className="text-sm text-danger">{reviewsError}</p>
+                    ) : reviews.length === 0 ? (
+                      <div className="rounded-[20px] border border-brand-mid/15 bg-brand-bg/60 px-5 py-10 text-center">
+                        <MessageSquare className="size-8 text-brand-mid/50 mx-auto mb-3" />
+                        <p className="text-sm font-semibold text-brand-dark">No reviews yet</p>
+                        <p className="mt-1 text-xs text-brand-mid">
+                          Reviews from attendees of this host&apos;s ended events will appear here.
+                        </p>
+                      </div>
+                    ) : (
+                      <ul className="divide-y divide-brand-mid/15">
+                        {reviews.map((review) => (
+                          <li key={review.id} className="py-4 first:pt-0 last:pb-0">
+                            <div className="flex items-start gap-3">
+                              <Link
+                                href={getProfileHref(review.rater_id, user?.id ?? null)}
+                                aria-label={`View ${review.rater_username}'s profile`}
+                                className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-mid text-white text-[12px] font-bold transition-transform hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-dark focus-visible:ring-offset-1"
+                              >
+                                {reviewerInitials(review.rater_username)}
+                              </Link>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                                  <Link
+                                    href={getProfileHref(review.rater_id, user?.id ?? null)}
+                                    className="text-sm font-bold text-brand-dark hover:underline focus:outline-none focus-visible:underline"
+                                  >
+                                    {review.rater_username}
+                                  </Link>
+                                  <span className="text-[12px] text-brand-mid">
+                                    · {formatReviewDate(review.created_at)}
+                                  </span>
+                                </div>
+                                <div className="mt-1.5">
+                                  <RatingStars selected={Math.round(Number(review.score))} disabled />
+                                </div>
+                                {review.review_text ? (
+                                  <p className="mt-2 text-[14px] leading-[1.6] text-brand-dark whitespace-pre-wrap break-words">
+                                    {review.review_text}
+                                  </p>
+                                ) : (
+                                  <p className="mt-2 text-[13px] italic text-brand-mid">
+                                    No written review.
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+
+                    {reviewsTotalPages > 1 && (
+                      <nav
+                        aria-label="Reviews pagination"
+                        className="mt-6 flex items-center justify-between border-t border-brand-mid/15 pt-4"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => handleReviewsPageChange(reviewsPage - 1)}
+                          disabled={reviewsPage <= 1 || reviewsLoading}
+                          className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold text-brand-dark transition-colors hover:bg-brand-mid-alpha disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                          <ChevronLeft className="size-3.5" />
+                          Previous
+                        </button>
+                        <span className="text-xs font-medium text-brand-mid">
+                          Page {reviewsPage} of {reviewsTotalPages}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleReviewsPageChange(reviewsPage + 1)}
+                          disabled={reviewsPage >= reviewsTotalPages || reviewsLoading}
+                          className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold text-brand-dark transition-colors hover:bg-brand-mid-alpha disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                          Next
+                          <ChevronRight className="size-3.5" />
+                        </button>
+                      </nav>
+                    )}
+                  </div>
                 ) : null}
 
                 {activeTab === "about" ? (
@@ -482,6 +658,38 @@ export function HostProfilePage() {
                         {selectedScore > 0
                           ? `Selected score: ${selectedScore} out of 5`
                           : "Choose a score from 1 to 5 stars"}
+                      </p>
+                    </div>
+
+                    <div className="mt-4">
+                      <label
+                        htmlFor="host-review-text"
+                        className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-mid"
+                      >
+                        Write a review (optional)
+                      </label>
+                      <textarea
+                        id="host-review-text"
+                        value={reviewText}
+                        onChange={(e) => {
+                          const next = e.target.value.slice(0, REVIEW_TEXT_MAX);
+                          setReviewText(next);
+                          setRatingError(null);
+                          setRatingSuccess(null);
+                        }}
+                        disabled={isSubmittingRating}
+                        maxLength={REVIEW_TEXT_MAX}
+                        rows={4}
+                        aria-describedby="host-review-text-counter"
+                        placeholder="Share what stood out about this host…"
+                        className="mt-1.5 w-full resize-y rounded-[14px] border border-brand-mid/25 bg-white px-3 py-2.5 text-[14px] leading-[1.55] text-brand-dark placeholder:text-brand-mid/60 outline-none focus:border-brand-mid focus:ring-2 focus:ring-brand-dark/20 disabled:cursor-not-allowed disabled:opacity-60"
+                      />
+                      <p
+                        id="host-review-text-counter"
+                        aria-live="polite"
+                        className="mt-1 text-right text-[11px] font-medium text-brand-mid"
+                      >
+                        {reviewText.length} / {REVIEW_TEXT_MAX}
                       </p>
                     </div>
 
