@@ -229,3 +229,7 @@ class EventListResponse(AppBaseModel):
     page: int
     page_size: int
     total_pages: int
+    # True when ?suggested=true was requested but the user has no past attendance
+    # history to bias the listing on. UI can render a "Attend events to get
+    # personalised suggestions" hint. Always False when ?suggested wasn't set.
+    suggested_fallback: bool = False
