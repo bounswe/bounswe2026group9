@@ -19,10 +19,13 @@ jobs:
         working-directory: backend
 
     env:
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-      JWT_SECRET: ${{ secrets.JWT_SECRET }}
-      JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
+      # CI runs against a dedicated test Supabase project so prod data is
+      # never polluted by integration tests. The deploy workflow keeps using
+      # the unprefixed prod secrets — only this workflow points at TEST_*.
+      SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.TEST_SUPABASE_KEY }}
+      JWT_SECRET: ${{ secrets.TEST_JWT_SECRET }}
+      JWT_REFRESH_SECRET: ${{ secrets.TEST_JWT_REFRESH_SECRET }}
       ENVIRONMENT: development
       TEST_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}
 
@@ -48,10 +51,13 @@ jobs:
         working-directory: backend
 
     env:
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-      JWT_SECRET: ${{ secrets.JWT_SECRET }}
-      JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
+      # CI runs against a dedicated test Supabase project so prod data is
+      # never polluted by integration tests. The deploy workflow keeps using
+      # the unprefixed prod secrets — only this workflow points at TEST_*.
+      SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.TEST_SUPABASE_KEY }}
+      JWT_SECRET: ${{ secrets.TEST_JWT_SECRET }}
+      JWT_REFRESH_SECRET: ${{ secrets.TEST_JWT_REFRESH_SECRET }}
       ENVIRONMENT: development
       TEST_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}
 
@@ -108,10 +114,13 @@ jobs:
         working-directory: backend
 
     env:
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-      JWT_SECRET: ${{ secrets.JWT_SECRET }}
-      JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
+      # CI runs against a dedicated test Supabase project so prod data is
+      # never polluted by integration tests. The deploy workflow keeps using
+      # the unprefixed prod secrets — only this workflow points at TEST_*.
+      SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.TEST_SUPABASE_KEY }}
+      JWT_SECRET: ${{ secrets.TEST_JWT_SECRET }}
+      JWT_REFRESH_SECRET: ${{ secrets.TEST_JWT_REFRESH_SECRET }}
       ENVIRONMENT: development
       TEST_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.shard }}
 
