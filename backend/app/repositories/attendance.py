@@ -96,3 +96,36 @@ def find_users_going_on_events(db: Client, event_ids: list[str]) -> set[str]:
         )
         users.update(row["user_id"] for row in (result.data or []))
     return users
+
+
+def get_attended_ended_event_categories(db: Client, user_id: str) -> set[str]:
+    """Return the set of category_ids for events the user attended (status='going')
+    on events whose status='ended'. Used to bias the Discovery listing.
+
+    Returns empty set if the user has no qualifying attendance history.
+    """
+    # Step 1: ended events the user was 'going' to
+    att_rows = (
+        db.table("attendances")
+        .select("event_id, events!inner(status)")
+        .eq("user_id", user_id)
+        .eq("status", "going")
+        .eq("events.status", "ended")
+        .execute()
+    )
+    event_ids = [row["event_id"] for row in (att_rows.data or [])]
+    if not event_ids:
+        return set()
+
+    # Step 2: collect category_ids for those events — chunk to avoid URL limits.
+    categories: set[str] = set()
+    for i in range(0, len(event_ids), _IN_CHUNK_SIZE):
+        chunk = event_ids[i:i + _IN_CHUNK_SIZE]
+        cat_rows = (
+            db.table("event_categories")
+            .select("category_id")
+            .in_("event_id", chunk)
+            .execute()
+        )
+        categories.update(row["category_id"] for row in (cat_rows.data or []))
+    return categories

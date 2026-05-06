@@ -134,6 +134,15 @@ def list_events_endpoint(
             "custom window, accessibility, or location — to keep the in-memory candidate set bounded."
         ),
     ),
+    suggested: bool = Query(
+        default=False,
+        description=(
+            "Bias the listing toward categories the authenticated user attended on past "
+            "ended events. Silently ignored for guests. When the user has no attendance "
+            "history, the response sets suggested_fallback=true and returns the default "
+            "listing (so the UI can render an empty-history hint)."
+        ),
+    ),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     user_id: str | None = Depends(_optional_user_id),
@@ -186,6 +195,7 @@ def list_events_endpoint(
             "quiet_friendly": quiet_friendly,
         },
         sort=sort,
+        suggested=suggested,
         page=page,
         page_size=page_size,
     )

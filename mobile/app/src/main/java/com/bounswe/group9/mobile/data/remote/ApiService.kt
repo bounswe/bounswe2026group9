@@ -81,6 +81,11 @@ data class EventListResponse(
     val page: Int,
     val page_size: Int,
     val total_pages: Int,
+    /**
+     * True when the caller asked for `suggested=true` but the server fell back to default
+     * ordering (no past attendance / no category match). Lets the UI show a hint.
+     * Older backends omit the field; Gson defaults it to false.
+     */
     val suggested_fallback: Boolean = false
 )
 
@@ -338,6 +343,7 @@ interface ApiService {
         @Query("captions") captions: Boolean? = null,
         @Query("quiet_friendly") quietFriendly: Boolean? = null,
         @Query("sort") sort: String? = null,
+        @Query("suggested") suggested: Boolean? = null,
         @Query("page") page: Int = 1,
         @Query("page_size") pageSize: Int = 20
     ): EventListResponse

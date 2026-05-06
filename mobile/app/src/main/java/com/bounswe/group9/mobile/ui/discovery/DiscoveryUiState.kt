@@ -23,6 +23,11 @@ data class DiscoveryUiState(
     val proximitySort: Boolean = false,
     val nearLat: Double? = null,
     val nearLng: Double? = null,
+    // "Suggested for you" — biases listing toward categories the user has previously attended.
+    // Auth-only; chip is hidden for guests.
+    val suggestedActive: Boolean = false,
+    /** Server flag: true when the user has no past-attendance history so the response fell back to default ordering. */
+    val suggestedFallback: Boolean = false,
     val isLoading: Boolean = false,
     val isLoadingMore: Boolean = false,
     val errorMessage: String? = null,

@@ -65,6 +65,18 @@ class DiscoveryViewModel(
         )
     }
 
+    fun onSuggestedToggle() {
+        // Auth-only — guard at the call site as well, but defensive here too.
+        if (token == null) return
+        // State-only toggle, like the other quick-filter chips. The user applies the
+        // change via the "Apply" button (applyFilters), which triggers loadEvents.
+        // Always clear stale fallback flag — the next response will repopulate it.
+        _uiState.value = _uiState.value.copy(
+            suggestedActive = !_uiState.value.suggestedActive,
+            suggestedFallback = false
+        )
+    }
+
     // Accessibility toggles
     fun onWheelchairToggle() {
         _uiState.value = _uiState.value.copy(wheelchair = !_uiState.value.wheelchair)
@@ -164,7 +176,9 @@ class DiscoveryViewModel(
             quietFriendly = false,
             proximitySort = false,
             nearLat = null,
-            nearLng = null
+            nearLng = null,
+            suggestedActive = false,
+            suggestedFallback = false
         )
         loadEvents(reset = true)
     }
@@ -183,6 +197,7 @@ class DiscoveryViewModel(
         if (s.captions) count++
         if (s.quietFriendly) count++
         if (s.proximitySort) count++
+        if (s.suggestedActive) count++
         return count
     }
 
@@ -210,6 +225,8 @@ class DiscoveryViewModel(
                 sort = if (state.proximitySort && state.nearLat != null) "distance" else null,
                 nearLat = state.nearLat,
                 nearLng = state.nearLng,
+                // Suggested only goes to the wire when the chip is on AND the user is signed in.
+                suggested = if (state.suggestedActive && token != null) true else null,
                 page = page
             ).fold(
                 onSuccess = { response ->
@@ -221,7 +238,9 @@ class DiscoveryViewModel(
                         totalPages = response.total_pages,
                         isLoading = false,
                         isLoadingMore = false,
-                        errorMessage = null
+                        errorMessage = null,
+                        // Only meaningful when the user actually asked for suggested.
+                        suggestedFallback = if (state.suggestedActive) response.suggested_fallback else false
                     )
                 },
                 onFailure = { e ->

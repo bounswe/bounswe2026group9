@@ -49,8 +49,8 @@
     <ID>ConstructorParameterNaming:ApiService.kt$EventListItemDto$val primary_image_url: String?</ID>
     <ID>ConstructorParameterNaming:ApiService.kt$EventListItemDto$val primary_location: EventLocationDto?</ID>
     <ID>ConstructorParameterNaming:ApiService.kt$EventListItemDto$val start_datetime: String</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$EventListResponse$/** * True when the caller asked for `suggested=true` but the server fell back to default * ordering (no past attendance / no category match). Lets the UI show a hint. * Older backends omit the field; Gson defaults it to false. */ val suggested_fallback: Boolean = false</ID>
     <ID>ConstructorParameterNaming:ApiService.kt$EventListResponse$val page_size: Int</ID>
-    <ID>ConstructorParameterNaming:ApiService.kt$EventListResponse$val suggested_fallback: Boolean = false</ID>
     <ID>ConstructorParameterNaming:ApiService.kt$EventListResponse$val total_pages: Int</ID>
     <ID>ConstructorParameterNaming:ApiService.kt$EventLocationDto$val is_primary: Boolean</ID>
     <ID>ConstructorParameterNaming:ApiService.kt$EventLocationDto$val location_address: String? = null</ID>
