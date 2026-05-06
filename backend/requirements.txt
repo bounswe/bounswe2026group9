@@ -11,4 +11,7 @@ Pillow==11.1.0
 python-multipart==0.0.20
 slowapi==0.1.9
 pytest==8.3.4
+pytest-cov==5.0.0
+pytest-xdist==3.6.1
+pytest-asyncio==0.24.0
 ruff==0.8.6

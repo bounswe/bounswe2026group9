@@ -76,6 +76,14 @@ jobs:
       - name: Run fast unit tests
         run: pytest tests/test_*_unit.py -v -ra
 
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-unit-fast
+          path: backend/coverage.xml
+          retention-days: 14
+
   integration-sharded:
     needs:
       - lint
@@ -138,4 +146,15 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run integration shard
-        run: pytest -v -ra --durations=15 --durations-min=1.0 ${{ matrix.pytest_args }}
+        # `-n auto` parallelises tests across CPUs inside the shard. Tests are
+        # already process-safe — every fixture mints a unique identity via
+        # `build_test_identity` so cross-worker collisions don't happen.
+        run: pytest -v -ra -n auto --durations=15 --durations-min=1.0 ${{ matrix.pytest_args }}
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.shard }}
+          path: backend/coverage.xml
+          retention-days: 14
