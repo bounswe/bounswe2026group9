@@ -49,6 +49,107 @@ class BookmarkRepoProtocol(Protocol):
     ) -> dict[str, bool]: ...
 
 
+class CategoryRepoProtocol(Protocol):
+    """Surface used by `services.category`."""
+
+    def get_all_available(self, db: Client) -> list[dict]: ...
+
+    def search_available(self, db: Client, query: str) -> list[dict]: ...
+
+    def get_by_name(self, db: Client, name: str) -> dict | None: ...
+
+    def insert_category(self, db: Client, data: dict) -> dict | None: ...
+
+
+class NotificationRepoProtocol(Protocol):
+    """Surface used by `services.notification`."""
+
+    def get_notifications_by_user(
+        self, db: Client, user_id: str, *, page: int = 1, page_size: int = 20
+    ) -> tuple[list[dict], int]: ...
+
+    def get_unread_count(self, db: Client, user_id: str) -> int: ...
+
+    def get_notification_by_id(self, db: Client, notification_id: str) -> dict | None: ...
+
+    def mark_notification_as_read(
+        self, db: Client, notification_id: str
+    ) -> dict | None: ...
+
+    def mark_all_notifications_as_read(self, db: Client, user_id: str) -> int: ...
+
+
+class RatingRepoProtocol(Protocol):
+    """Surface used by `services.rating`."""
+
+    def get_rating(self, db: Client, rater_id: str, host_id: str) -> dict | None: ...
+
+    def insert_rating(self, db: Client, data: dict) -> dict: ...
+
+    def update_rating_score(
+        self, db: Client, rating_id: str, score: float, review_text: str | None
+    ) -> dict: ...
+
+    def get_host_rating_stats(self, db: Client, host_id: str) -> dict: ...
+
+
+class AttendanceRepoProtocol(Protocol):
+    """Surface used by `services.attendance`. Tokens excluded — those are
+    a thin layer in the service module itself, not the repository."""
+
+    def get_attendance(self, db: Client, user_id: str, event_id: str) -> dict | None: ...
+
+    def insert_attendance(self, db: Client, data: dict) -> dict: ...
+
+    def update_attendance(
+        self, db: Client, user_id: str, event_id: str, status: str
+    ) -> dict: ...
+
+    def update_attendance_token(
+        self, db: Client, user_id: str, event_id: str, token: str | None
+    ) -> dict: ...
+
+    def delete_attendance(self, db: Client, user_id: str, event_id: str) -> None: ...
+
+    def get_attendance_by_token(self, db: Client, token: str) -> dict | None: ...
+
+    def mark_checked_in(self, db: Client, attendance_id: str) -> dict: ...
+
+    def list_going_attendees_with_checkin(
+        self, db: Client, event_id: str
+    ) -> list[dict]: ...
+
+    def get_going_user_ids_for_event(self, db: Client, event_id: str) -> list[str]: ...
+
+    def get_attendance_status_for_events(
+        self, db: Client, user_id: str, event_ids: list[str]
+    ) -> dict[str, str]: ...
+
+    def has_attended_ended_event_by_host(
+        self, db: Client, user_id: str, host_id: str
+    ) -> bool: ...
+
+    def find_users_going_on_events(
+        self, db: Client, event_ids: list[str]
+    ) -> set[str]: ...
+
+    def get_attended_ended_event_categories(
+        self, db: Client, user_id: str
+    ) -> set[str]: ...
+
+
+class UserRepoProtocol(Protocol):
+    """Surface used by services that look up user records by id."""
+
+    def get_user_by_id(self, db: Client, user_id: str) -> dict | None: ...
+
+    def get_user_email_by_id(self, db: Client, user_id: str) -> str | None: ...
+
+    def get_user_date_of_birth(self, db: Client, user_id: str) -> str | None: ...
+
+    def get_users_by_ids(self, db: Client, user_ids: list[str]) -> list[dict]: ...
+
+
 class EventRepoProtocol(Protocol):
     """Surface of `repositories.event` consumed by other services.
 
