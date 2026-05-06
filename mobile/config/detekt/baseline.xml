@@ -115,6 +115,12 @@
     <ID>ConstructorParameterNaming:ApiService.kt$VenueMetadataRequest$val quiet_friendly: Boolean = false</ID>
     <ID>ConstructorParameterNaming:ApiService.kt$VenueMetadataRequest$val seating_available: Boolean = false</ID>
     <ID>ConstructorParameterNaming:ApiService.kt$VenueMetadataRequest$val wheelchair_access: Boolean = false</ID>
+    <ID>ConstructorParameterNaming:CheckInDto.kt$AttendeeQrTokenDto$val expires_at: String? = null</ID>
+    <ID>ConstructorParameterNaming:CheckInDto.kt$AttendeeStatusDto$val checked_in_at: String? = null</ID>
+    <ID>ConstructorParameterNaming:CheckInDto.kt$AttendeeStatusDto$val user_id: String</ID>
+    <ID>ConstructorParameterNaming:CheckInDto.kt$CheckInRequest$val user_id: String? = null</ID>
+    <ID>ConstructorParameterNaming:CheckInDto.kt$CheckInResultDto$val checked_in_at: String</ID>
+    <ID>ConstructorParameterNaming:CheckInDto.kt$CheckInResultDto$val user_id: String</ID>
     <ID>ConstructorParameterNaming:EventDetailDto.kt$EquipmentDto$val is_required: Boolean</ID>
     <ID>ConstructorParameterNaming:EventDetailDto.kt$EquipmentDto$val item_name: String</ID>
     <ID>ConstructorParameterNaming:EventDetailDto.kt$EventDetailDto$val attendance_status: String?</ID>
@@ -161,7 +167,7 @@
     <ID>CyclomaticComplexMethod:CreateEventViewModel.kt$CreateEventViewModel$private fun prefillForEdit(event: EventDetailDto)</ID>
     <ID>CyclomaticComplexMethod:CreateEventViewModel.kt$CreateEventViewModel$private fun validateCurrentStep(): Boolean</ID>
     <ID>CyclomaticComplexMethod:DiscoveryScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun DiscoveryScreen( viewModel: DiscoveryViewModel, token: String?, onEventClick: (String) -&gt; Unit, onLoginClick: () -&gt; Unit = {}, onLogout: () -&gt; Unit = {}, username: String? = null, unreadNotificationCount: Int = 0, onNotificationsClick: () -&gt; Unit = {}, onProfileClick: () -&gt; Unit = {}, onCreateEvent: () -&gt; Unit = {} )</ID>
-    <ID>CyclomaticComplexMethod:EventDetailScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun EventDetailScreen( viewModel: EventDetailViewModel, eventId: String, token: String?, currentUserId: String? = null, onBack: () -&gt; Unit, onNavigateToHost: (String) -&gt; Unit = {}, onNavigateToEvent: (String) -&gt; Unit = {}, onNavigateToEdit: (EventDetailDto) -&gt; Unit = {}, onDeleteSuccess: () -&gt; Unit = {} )</ID>
+    <ID>CyclomaticComplexMethod:EventDetailScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun EventDetailScreen( viewModel: EventDetailViewModel, eventId: String, token: String?, currentUserId: String? = null, onBack: () -&gt; Unit, onNavigateToHost: (String) -&gt; Unit = {}, onNavigateToEvent: (String) -&gt; Unit = {}, onNavigateToEdit: (EventDetailDto) -&gt; Unit = {}, onDeleteSuccess: () -&gt; Unit = {}, onNavigateToScan: (String) -&gt; Unit = {}, onNavigateToAttendees: (String) -&gt; Unit = {} )</ID>
     <ID>CyclomaticComplexMethod:EventDetailScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun FullDetailContent( event: EventDetailDto, uiState: EventDetailUiState, viewModel: EventDetailViewModel, token: String?, currentUserId: String?, isHost: Boolean, onNavigateToHost: (String) -&gt; Unit, onNavigateToEvent: (String) -&gt; Unit = {} )</ID>
     <ID>CyclomaticComplexMethod:HostProfileScreen.kt$@Composable private fun ProfileContent( profile: com.bounswe.group9.mobile.data.remote.HostProfileDto, uiState: HostProfileUiState, isOwnProfile: Boolean, isAuthenticated: Boolean, onRatingChange: (Double) -&gt; Unit, onSubmitRating: () -&gt; Unit, onEventClick: (String) -&gt; Unit )</ID>
     <ID>CyclomaticComplexMethod:NotificationScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun NotificationScreen( viewModel: NotificationViewModel, token: String?, onBack: () -&gt; Unit, onEventClick: (String) -&gt; Unit = {} )</ID>
@@ -175,7 +181,7 @@
     <ID>LongMethod:DiscoveryScreen.kt$@Composable private fun DiscoveryTopBar( search: String, onSearchChange: (String) -&gt; Unit, activeFilterCount: Int, onFilterClick: () -&gt; Unit, username: String?, isLoggedIn: Boolean, onLoginClick: () -&gt; Unit, onLogout: () -&gt; Unit, isMapView: Boolean, onViewToggle: () -&gt; Unit, unreadNotificationCount: Int = 0, onNotificationsClick: () -&gt; Unit = {}, onProfileClick: () -&gt; Unit = {} )</ID>
     <ID>LongMethod:DiscoveryScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun DiscoveryScreen( viewModel: DiscoveryViewModel, token: String?, onEventClick: (String) -&gt; Unit, onLoginClick: () -&gt; Unit = {}, onLogout: () -&gt; Unit = {}, username: String? = null, unreadNotificationCount: Int = 0, onNotificationsClick: () -&gt; Unit = {}, onProfileClick: () -&gt; Unit = {}, onCreateEvent: () -&gt; Unit = {} )</ID>
     <ID>LongMethod:EventDetailScreen.kt$@Composable private fun LimitedPreviewContent( event: EventLimitedDto, token: String?, accessRequestStatus: String?, isRequestingAccess: Boolean, onRequestAccess: () -&gt; Unit )</ID>
-    <ID>LongMethod:EventDetailScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun EventDetailScreen( viewModel: EventDetailViewModel, eventId: String, token: String?, currentUserId: String? = null, onBack: () -&gt; Unit, onNavigateToHost: (String) -&gt; Unit = {}, onNavigateToEvent: (String) -&gt; Unit = {}, onNavigateToEdit: (EventDetailDto) -&gt; Unit = {}, onDeleteSuccess: () -&gt; Unit = {} )</ID>
+    <ID>LongMethod:EventDetailScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun EventDetailScreen( viewModel: EventDetailViewModel, eventId: String, token: String?, currentUserId: String? = null, onBack: () -&gt; Unit, onNavigateToHost: (String) -&gt; Unit = {}, onNavigateToEvent: (String) -&gt; Unit = {}, onNavigateToEdit: (EventDetailDto) -&gt; Unit = {}, onDeleteSuccess: () -&gt; Unit = {}, onNavigateToScan: (String) -&gt; Unit = {}, onNavigateToAttendees: (String) -&gt; Unit = {} )</ID>
     <ID>LongMethod:EventDetailScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun FullDetailContent( event: EventDetailDto, uiState: EventDetailUiState, viewModel: EventDetailViewModel, token: String?, currentUserId: String?, isHost: Boolean, onNavigateToHost: (String) -&gt; Unit, onNavigateToEvent: (String) -&gt; Unit = {} )</ID>
     <ID>LongMethod:HostProfileScreen.kt$@Composable private fun ProfileContent( profile: com.bounswe.group9.mobile.data.remote.HostProfileDto, uiState: HostProfileUiState, isOwnProfile: Boolean, isAuthenticated: Boolean, onRatingChange: (Double) -&gt; Unit, onSubmitRating: () -&gt; Unit, onEventClick: (String) -&gt; Unit )</ID>
     <ID>LongMethod:LoginScreen.kt$@Composable fun LoginScreen(viewModel: AuthViewModel, onLoginSuccess: () -&gt; Unit = {})</ID>
@@ -230,17 +236,20 @@
     <ID>MayBeConst:MapView.kt$private val DEFAULT_LNG = 28.9784</ID>
     <ID>MayBeConst:MapView.kt$private val DEFAULT_ZOOM = 10.0</ID>
     <ID>NestedBlockDepth:AuthRepository.kt$private fun friendlyHttpError(code: Int, body: String): String</ID>
+    <ID>NestedBlockDepth:CheckInRepository.kt$CheckInRepository$private suspend fun postCheckIn(token: String, eventId: String, requestBody: CheckInRequest): CheckInOutcome</ID>
     <ID>NestedBlockDepth:CreateEventViewModel.kt$CreateEventViewModel$private fun validateCurrentStep(): Boolean</ID>
     <ID>NestedBlockDepth:DateUtils.kt$fun formatEventDate(dateStr: String): String</ID>
-    <ID>NewLineAtEndOfFile:ApiService.kt$com.bounswe.group9.mobile.data.remote.ApiService.kt</ID>
     <ID>NewLineAtEndOfFile:AuthUiState.kt$com.bounswe.group9.mobile.ui.auth.AuthUiState.kt</ID>
     <ID>NewLineAtEndOfFile:Color.kt$com.bounswe.group9.mobile.ui.theme.Color.kt</ID>
     <ID>NewLineAtEndOfFile:DiscoveryScreen.kt$com.bounswe.group9.mobile.ui.discovery.DiscoveryScreen.kt</ID>
     <ID>NewLineAtEndOfFile:EventDetailScreen.kt$com.bounswe.group9.mobile.ui.eventdetail.EventDetailScreen.kt</ID>
     <ID>NewLineAtEndOfFile:NavGraph.kt$com.bounswe.group9.mobile.ui.navigation.NavGraph.kt</ID>
     <ID>NewLineAtEndOfFile:Type.kt$com.bounswe.group9.mobile.ui.theme.Type.kt</ID>
+    <ID>TooGenericExceptionCaught:AttendeeQrSheet.kt$e: Exception</ID>
     <ID>TooGenericExceptionCaught:AuthRepository.kt$AuthRepository$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:CheckInRepository.kt$CheckInRepository$e: Exception</ID>
     <ID>TooGenericExceptionCaught:EventRepository.kt$EventRepository$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:HostScanScreen.kt$e: Exception</ID>
     <ID>TooGenericExceptionCaught:NominatimClient.kt$NominatimClient$e: Exception</ID>
     <ID>TooGenericExceptionCaught:ProfileRepository.kt$ProfileRepository$e: Exception</ID>
     <ID>UnusedParameter:CreateEventScreen.kt$context: android.content.Context</ID>

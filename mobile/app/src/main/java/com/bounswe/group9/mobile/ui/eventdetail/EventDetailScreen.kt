@@ -27,6 +27,8 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.QrCode
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -74,7 +76,9 @@ fun EventDetailScreen(
     onNavigateToHost: (String) -> Unit = {},
     onNavigateToEvent: (String) -> Unit = {},
     onNavigateToEdit: (EventDetailDto) -> Unit = {},
-    onDeleteSuccess: () -> Unit = {}
+    onDeleteSuccess: () -> Unit = {},
+    onNavigateToScan: (String) -> Unit = {},
+    onNavigateToAttendees: (String) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -128,7 +132,9 @@ fun EventDetailScreen(
         )
     }
 
-    val isActiveEvent = uiState.fullDetail?.status == "published"
+    // Active = host hasn't ended/cancelled the event yet. "updated" is the post-edit live state,
+    // so attendee actions (bookmark, going, QR) must keep working there too — see issue #234.
+    val isActiveEvent = uiState.fullDetail?.status in listOf("published", "updated")
     val isHost = currentUserId != null && uiState.fullDetail?.host_id == currentUserId
 
     Scaffold(
@@ -153,14 +159,17 @@ fun EventDetailScreen(
                         onEdit = { onNavigateToEdit(detail) },
                         onPublish = { viewModel.publishEvent {} },
                         onCancel = { showCancelDialog = true },
-                        onDelete = { showDeleteDialog = true }
+                        onDelete = { showDeleteDialog = true },
+                        onScanAttendees = { onNavigateToScan(detail.id) },
+                        onOpenAttendeeList = { onNavigateToAttendees(detail.id) }
                     )
                 } else if (isActiveEvent) {
                     ActionBottomBar(
                         event = detail,
                         onToggleBookmark = { viewModel.toggleBookmark() },
                         onGoing = { viewModel.setGoing() },
-                        onRemoveAttendance = { viewModel.removeAttendance() }
+                        onRemoveAttendance = { viewModel.removeAttendance() },
+                        onShowQr = { viewModel.openQrSheet() }
                     )
                 }
             }
@@ -204,6 +213,18 @@ fun EventDetailScreen(
                 )
             }
         }
+    }
+
+    // Attendee QR sheet — only for the Going user, opens on demand
+    if (uiState.qrSheetVisible) {
+        AttendeeQrSheet(
+            eventTitle = uiState.fullDetail?.title.orEmpty(),
+            qrToken = uiState.qrToken,
+            isLoading = uiState.qrLoading,
+            errorMessage = uiState.qrError,
+            onDismiss = { viewModel.closeQrSheet() },
+            onRetry = { viewModel.retryQr() }
+        )
     }
 }
 
@@ -1416,11 +1437,14 @@ private fun ActionBottomBar(
     event: EventDetailDto,
     onToggleBookmark: () -> Unit,
     onGoing: () -> Unit,
-    onRemoveAttendance: () -> Unit
+    onRemoveAttendance: () -> Unit,
+    onShowQr: () -> Unit
 ) {
     val isBookmarked = event.is_bookmarked == true
     val attendanceStatus = event.attendance_status
     val isFull = event.is_full == true
+    val isGoing = attendanceStatus == "going"
+    val isEnded = event.status == "ended"
 
     Surface(
         tonalElevation = 3.dp,
@@ -1449,8 +1473,17 @@ private fun ActionBottomBar(
                 Text(if (isBookmarked) "Saved" else "Bookmark", fontSize = 13.sp)
             }
 
+            // Show QR — only when the user is Going and the event hasn't ended
+            if (isGoing && !isEnded) {
+                OutlinedButton(onClick = onShowQr) {
+                    Icon(Icons.Default.QrCode, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("My QR", fontSize = 13.sp)
+                }
+            }
+
             // Going button
-            if (attendanceStatus == "going") {
+            if (isGoing) {
                 Button(
                     onClick = onRemoveAttendance,
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
@@ -1486,9 +1519,12 @@ private fun HostActionBottomBar(
     onEdit: () -> Unit,
     onPublish: () -> Unit,
     onCancel: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onScanAttendees: () -> Unit,
+    onOpenAttendeeList: () -> Unit
 ) {
     val status = event.status.lowercase()
+    val canScan = status == "published" || status == "updated"
 
     Surface(tonalElevation = 3.dp, shadowElevation = 8.dp) {
         Column(
@@ -1499,6 +1535,36 @@ private fun HostActionBottomBar(
         ) {
             if (isLoading) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            }
+
+            // Host scan + attendee list — only when the event is live.
+            if (canScan) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = onScanAttendees,
+                        enabled = !isLoading,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.tertiary
+                        )
+                    ) {
+                        Icon(Icons.Default.QrCodeScanner, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Scan", fontSize = 13.sp)
+                    }
+                    OutlinedButton(
+                        onClick = onOpenAttendeeList,
+                        enabled = !isLoading,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Default.Group, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Attendees", fontSize = 13.sp)
+                    }
+                }
             }
 
             Row(

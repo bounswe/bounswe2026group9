@@ -559,4 +559,25 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Body body: AccessRequestDecisionDto
     ): AccessRequestResponseDto
+
+    // ── Check-in (QR) ──
+
+    @GET("attendances/me/{event_id}/qr")
+    suspend fun getMyAttendeeQr(
+        @Path("event_id") eventId: String,
+        @Header("Authorization") token: String
+    ): Response<AttendeeQrTokenDto>
+
+    @POST("events/{event_id}/check-in")
+    suspend fun postCheckIn(
+        @Path("event_id") eventId: String,
+        @Header("Authorization") token: String,
+        @Body body: CheckInRequest
+    ): Response<CheckInResultDto>
+
+    @GET("events/{event_id}/attendees")
+    suspend fun getEventAttendees(
+        @Path("event_id") eventId: String,
+        @Header("Authorization") token: String
+    ): Response<List<AttendeeStatusDto>>
 }
