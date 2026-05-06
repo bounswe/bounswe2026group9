@@ -1107,7 +1107,7 @@ class TestSuggestedFilter:
 
         # Listener is going on a currently PUBLISHED (not ended) event in cat_a
         active = _create_published_event(host["id"], [cat_a], title="Active")
-        _add_attendance(listener["id"], active, "going")
+        _add_attendance(listener["id"], active["id"], "going")
 
         # New event also in cat_a — but listener's signal comes from a non-ended event,
         # so no history exists and suggested filter should fall back to default listing
@@ -1122,8 +1122,8 @@ class TestSuggestedFilter:
         ids = {item["id"] for item in body["items"]}
         assert ev_new["id"] in ids
 
-        _cleanup_event(active)
-        _cleanup_event(ev_new)
+        _cleanup_event(active["id"])
+        _cleanup_event(ev_new["id"])
         db.table("attendances").delete().eq("user_id", listener["id"]).execute()
         _cleanup_user(listener["id"])
         _cleanup_user(host["id"])
