@@ -44,7 +44,7 @@ Test Reports page after each Final-Milestone review.
 
 | Feature area | Tests | Where |
 |---|---:|---|
-| Auth (ViewModel) | 9 | [`ui/auth/AuthViewModelTest.kt`](app/src/test/java/com/bounswe/group9/mobile/ui/auth/AuthViewModelTest.kt) |
+| Auth (ViewModel) | 11 | [`ui/auth/AuthViewModelTest.kt`](app/src/test/java/com/bounswe/group9/mobile/ui/auth/AuthViewModelTest.kt) |
 | Auth (repository, friendly errors) | 4 | [`data/repository/AuthRepositoryTest.kt`](app/src/test/java/com/bounswe/group9/mobile/data/repository/AuthRepositoryTest.kt) |
 | Auth (HTTP contract) | 2 | [`data/remote/AuthApiContractTest.kt`](app/src/test/java/com/bounswe/group9/mobile/data/remote/AuthApiContractTest.kt) |
 | Auth (Compose UI) | 3 | [`androidTest/.../ui/auth/LoginScreenTest.kt`](app/src/androidTest/java/com/bounswe/group9/mobile/ui/auth/LoginScreenTest.kt) |
@@ -53,13 +53,13 @@ Test Reports page after each Final-Milestone review.
 | Discovery (ViewModel) | 10 | [`ui/discovery/DiscoveryViewModelTest.kt`](app/src/test/java/com/bounswe/group9/mobile/ui/discovery/DiscoveryViewModelTest.kt) |
 | Events (repository, MockWebServer) | 9 | [`data/repository/EventRepositoryTest.kt`](app/src/test/java/com/bounswe/group9/mobile/data/repository/EventRepositoryTest.kt) |
 | Event detail (ViewModel) | 9 | [`ui/eventdetail/EventDetailViewModelTest.kt`](app/src/test/java/com/bounswe/group9/mobile/ui/eventdetail/EventDetailViewModelTest.kt) |
-| Event creation (ViewModel) | 9 | [`ui/createevent/CreateEventViewModelTest.kt`](app/src/test/java/com/bounswe/group9/mobile/ui/createevent/CreateEventViewModelTest.kt) |
+| Event creation (ViewModel) | 11 | [`ui/createevent/CreateEventViewModelTest.kt`](app/src/test/java/com/bounswe/group9/mobile/ui/createevent/CreateEventViewModelTest.kt) |
 | Notifications (ViewModel) | 5 | [`ui/notifications/NotificationViewModelTest.kt`](app/src/test/java/com/bounswe/group9/mobile/ui/notifications/NotificationViewModelTest.kt) |
 | Notifications (HTTP contract) | 2 | [`data/remote/NotificationApiContractTest.kt`](app/src/test/java/com/bounswe/group9/mobile/data/remote/NotificationApiContractTest.kt) |
 | Navigation route templates | 4 | [`ui/navigation/RoutesTest.kt`](app/src/test/java/com/bounswe/group9/mobile/ui/navigation/RoutesTest.kt) |
 | Toolchain smoke | 2 + 1 | [`SmokeUnitTest.kt`](app/src/test/java/com/bounswe/group9/mobile/SmokeUnitTest.kt), [`SmokeUiTest.kt`](app/src/androidTest/java/com/bounswe/group9/mobile/SmokeUiTest.kt) |
 
-**Totals:** 73 unit tests + 4 instrumented tests = **77 automated tests**.
+**Totals:** 77 unit tests + 4 instrumented tests = **81 automated tests**.
 
 Offline / error UX is covered indirectly by:
 

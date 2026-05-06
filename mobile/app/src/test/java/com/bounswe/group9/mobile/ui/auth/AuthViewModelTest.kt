@@ -158,6 +158,37 @@ class AuthViewModelTest {
     }
 
     @Test
+    fun `existing token in session flow flips isLoggedIn on init`() = runTest {
+        // Cold-start "session restore on relaunch": SessionManager already has
+        // a stored token, so AuthViewModel.init's tokenFlow collector should
+        // bring the user back to a logged-in state without prompting login.
+        every { sessionManager.tokenFlow } returns flowOf("existing-tok")
+        every { sessionManager.usernameFlow } returns flowOf("alice")
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        assertTrue(vm.uiState.value.isLoggedIn)
+        assertEquals("alice", vm.uiState.value.username)
+    }
+
+    @Test
+    fun `refreshSession success persists rotated token and stays loggedIn`() = runTest {
+        coEvery { repository.refreshToken(any()) } returns Result.success(
+            AuthResult("fresh-token", UserResponse("u1", "alice", "a@b.com"))
+        )
+        val vm = viewModel()
+
+        vm.refreshSession()
+        advanceUntilIdle()
+
+        assertTrue(vm.uiState.value.isLoggedIn)
+        assertEquals("alice", vm.uiState.value.username)
+        coVerify { sessionManager.saveToken("fresh-token") }
+        coVerify { sessionManager.saveUserId("u1") }
+    }
+
+    @Test
     fun `logout clears session and resets ui state`() = runTest {
         val vm = viewModel()
         vm.onEmailChange("a@b.com")

@@ -139,6 +139,54 @@ class CreateEventViewModelTest {
     }
 
     @Test
+    fun `saveProgress with no persisted event creates a draft via the repository`() = runTest {
+        val createdDetail = com.bounswe.group9.mobile.data.remote.EventDetailDto(
+            id = "evt-1", host_id = "h1", host_username = null,
+            title = "T", description = "D",
+            start_datetime = "2026-06-01T10:00:00+00:00",
+            end_datetime = "2026-06-01T12:00:00+00:00",
+            visibility = "public", is_age_restricted = false,
+            attendee_limit = null, attendee_count = 0, status = "draft",
+            created_at = "2026-01-01T00:00:00Z", updated_at = "2026-01-01T00:00:00Z",
+            is_bookmarked = null, attendance_status = null,
+            going_count = 0, bookmark_count = 0, is_full = false,
+            locations = emptyList(), categories = emptyList(),
+            images = emptyList(), venue_metadata = null,
+            equipment_requirements = emptyList(), segments = null
+        )
+        coEvery { repository.createEvent(any(), any()) } returns Result.success(createdDetail)
+
+        val vm = viewModel()
+        vm.init(token = "tok")
+        advanceUntilIdle()
+        vm.onTitleChange("Concert")
+        vm.onDescriptionChange("Best night ever")
+        vm.toggleCategory("c1")
+
+        vm.saveProgress()
+        advanceUntilIdle()
+
+        assertEquals("evt-1", vm.uiState.value.persistedEventId)
+        assertEquals("Draft saved.", vm.uiState.value.feedbackMessage)
+    }
+
+    @Test
+    fun `addImageUri appends to selectedImageUris and removeImageUri removes it`() {
+        val vm = viewModel()
+        // android.net.Uri is an Android framework class — mocked by default in
+        // unit tests. Use MockK proxies as opaque list values.
+        val a = mockk<android.net.Uri>()
+        val b = mockk<android.net.Uri>()
+
+        vm.addImageUri(a)
+        vm.addImageUri(b)
+        assertEquals(listOf(a, b), vm.uiState.value.selectedImageUris)
+
+        vm.removeImageUri(a)
+        assertEquals(listOf(b), vm.uiState.value.selectedImageUris)
+    }
+
+    @Test
     fun `stepCompleted reflects required-field state`() {
         val vm = viewModel()
         // All steps incomplete on a fresh form.
