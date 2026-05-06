@@ -13,6 +13,7 @@ class LocationRequest(AppBaseModel):
     longitude: float = Field(ge=-180, le=180)
     is_primary: bool = True
     order_index: int = 0
+    location_address: str | None = None
 
 
 class LocationResponse(AppBaseModel):
@@ -22,6 +23,7 @@ class LocationResponse(AppBaseModel):
     longitude: float
     is_primary: bool
     order_index: int
+    location_address: str | None = None
 
 
 class VenueMetadataRequest(AppBaseModel):
@@ -227,3 +229,7 @@ class EventListResponse(AppBaseModel):
     page: int
     page_size: int
     total_pages: int
+    # True when ?suggested=true was requested but the user has no past attendance
+    # history to bias the listing on. UI can render a "Attend events to get
+    # personalised suggestions" hint. Always False when ?suggested wasn't set.
+    suggested_fallback: bool = False

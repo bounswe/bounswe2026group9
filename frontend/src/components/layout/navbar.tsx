@@ -242,13 +242,14 @@ export function Navbar({
               onSubmit={handleSearchSubmit}
               className="flex w-full max-w-2xl items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3 py-2 transition-colors focus-within:border-white/30 focus-within:bg-white/15 sm:px-4"
             >
-              <Search className="size-4 shrink-0 text-white/50" />
+              <Search className="size-4 shrink-0 text-white/50" aria-hidden="true" />
               <input
                 ref={inputRef}
                 type="search"
                 value={currentSearch}
                 onChange={handleSearchChange}
                 placeholder="Search events, categories, places..."
+                aria-label="Search events"
                 className="w-full min-w-0 bg-transparent text-sm text-white placeholder:text-white/45 outline-none"
               />
             </form>
@@ -297,10 +298,11 @@ export function ActionBar({ view, onViewChange, activeFilterCount, onToggleFilte
         )}
       </button>
 
-      <div className="border-brand-mid-alpha flex min-w-0 items-center gap-1 overflow-x-auto rounded-xl border bg-white/35 p-1 shadow-brand-floating">
+      <div role="group" aria-label="View mode" className="border-brand-mid-alpha flex min-w-0 items-center gap-1 overflow-x-auto rounded-xl border bg-white/35 p-1 shadow-brand-floating">
         <button
           type="button"
           onClick={() => onViewChange("map")}
+          aria-pressed={view === "map"}
           className={cn(
             "flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors",
             toggleButtonClassName,
@@ -310,7 +312,7 @@ export function ActionBar({ view, onViewChange, activeFilterCount, onToggleFilte
           )}
         >
           {/* Map icon inline to avoid lucide dep inside navbar */}
-          <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+          <svg aria-hidden="true" className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
             <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" />
             <line x1="9" y1="3" x2="9" y2="18" />
             <line x1="15" y1="6" x2="15" y2="21" />
@@ -321,6 +323,7 @@ export function ActionBar({ view, onViewChange, activeFilterCount, onToggleFilte
         <button
           type="button"
           onClick={() => onViewChange("list")}
+          aria-pressed={view === "list"}
           className={cn(
             "flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors",
             toggleButtonClassName,
@@ -329,7 +332,7 @@ export function ActionBar({ view, onViewChange, activeFilterCount, onToggleFilte
               : "text-brand-dark hover:bg-brand-mid-alpha/80",
           )}
         >
-          <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+          <svg aria-hidden="true" className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
             <line x1="8" y1="6" x2="21" y2="6" />
             <line x1="8" y1="12" x2="21" y2="12" />
             <line x1="8" y1="18" x2="21" y2="18" />

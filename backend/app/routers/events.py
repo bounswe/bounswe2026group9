@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query, UploadFile
 
 from app.database import get_supabase
 from app.middleware.auth import get_current_user_id
+from app.models.attendance import AttendeeStatusItem, CheckInRequest, CheckInResultResponse
 from app.models.errors import (
     AUTH_RESPONSES,
     CONFLICT_RESPONSE,
@@ -18,18 +19,21 @@ from app.models.event import (
     EventDetailResponse,
     EventImageResponse,
     EventLimitedResponse,
+    EventListItemResponse,
     EventListResponse,
     EventUpdateRequest,
     StatusChangeRequest,
 )
 from app.models.geojson import GeoJSONFeatureCollection
 from app.models.user import MessageResponse
+from app.services.attendance import check_in, list_event_attendees
 from app.services.auth import decode_access_token
 from app.services.event import (
     change_event_status,
     create_event,
     delete_event,
     get_event_detail,
+    get_similar_events,
     update_event,
 )
 from app.services.event import (
@@ -132,6 +136,15 @@ def list_events_endpoint(
             "candidate set and ranks in Python within the NFR-01 budget."
         ),
     ),
+    suggested: bool = Query(
+        default=False,
+        description=(
+            "Bias the listing toward categories the authenticated user attended on past "
+            "ended events. Silently ignored for guests. When the user has no attendance "
+            "history, the response sets suggested_fallback=true and returns the default "
+            "listing (so the UI can render an empty-history hint)."
+        ),
+    ),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     user_id: str | None = Depends(_optional_user_id),
@@ -184,6 +197,7 @@ def list_events_endpoint(
             "quiet_friendly": quiet_friendly,
         },
         sort=sort,
+        suggested=suggested,
         page=page,
         page_size=page_size,
     )
@@ -404,3 +418,68 @@ def delete_image_endpoint(
     db = get_supabase()
     delete_image_svc(db, str(event_id), str(image_id), user_id)
     return MessageResponse(message="Image deleted successfully")
+
+
+@router.get(
+    "/{event_id}/similar",
+    response_model=list[EventListItemResponse],
+    summary="Get similar events",
+    description=(
+        "Returns up to 5 public published/updated future events ranked by "
+        "category overlap (×3), same host (×2), and proximity ≤50 km (×1). "
+        "Optional auth: bookmarked state is populated when a token is provided."
+    ),
+    responses={**NOT_FOUND_RESPONSE},
+)
+def get_similar_events_endpoint(
+    event_id: UUID,
+    user_id: str | None = Depends(_optional_user_id),
+):
+    db = get_supabase()
+    return get_similar_events(db, str(event_id), user_id)
+
+
+# ── QR check-in ───────────────────────────────────────────────────────────────
+
+@router.post(
+    "/{event_id}/check-in",
+    response_model=CheckInResultResponse,
+    summary="Check in an attendee (host only)",
+    description=(
+        "Validates a scanned QR token or a manual `user_id` and marks the "
+        "attendee as checked in. Host-only. Returns 400 for tampered/wrong-event "
+        "payloads, 403 for non-hosts, 404 when the attendee is not Going, "
+        "and 409 on a duplicate scan."
+    ),
+    responses={
+        **AUTH_RESPONSES,
+        **NOT_FOUND_RESPONSE,
+        **FORBIDDEN_RESPONSE,
+        **CONFLICT_RESPONSE,
+    },
+)
+def check_in_endpoint(
+    event_id: UUID,
+    body: CheckInRequest,
+    host_user_id: str = Depends(get_current_user_id),
+):
+    db = get_supabase()
+    return check_in(db, str(event_id), host_user_id, body)
+
+
+@router.get(
+    "/{event_id}/attendees",
+    response_model=list[AttendeeStatusItem],
+    summary="List going attendees with check-in status (host only)",
+    description=(
+        "Returns the full roster of Going attendees with their check-in timestamp. "
+        "Host-only. Returns 403 for non-hosts."
+    ),
+    responses={**AUTH_RESPONSES, **NOT_FOUND_RESPONSE, **FORBIDDEN_RESPONSE},
+)
+def list_attendees_endpoint(
+    event_id: UUID,
+    host_user_id: str = Depends(get_current_user_id),
+):
+    db = get_supabase()
+    return list_event_attendees(db, str(event_id), host_user_id)

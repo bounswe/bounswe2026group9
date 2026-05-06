@@ -393,7 +393,7 @@ export function FilterSidebar({
 
   return (
     <>
-      <aside className="bg-card border-brand-mid-alpha hidden h-full w-72 shrink-0 flex-col border-r lg:flex">
+      <aside aria-label="Event filters" className="bg-card border-brand-mid-alpha hidden h-full w-72 shrink-0 flex-col border-r lg:flex">
         {renderSidebarContent(false)}
       </aside>
 
@@ -402,7 +402,9 @@ export function FilterSidebar({
         aria-hidden={!mobileOpen}
       >
         <button
+          type="button"
           onClick={onMobileClose}
+          tabIndex={mobileOpen ? 0 : -1}
           className={cn(
             "absolute inset-0 bg-brand-dark/35 transition-opacity",
             mobileOpen ? "opacity-100" : "opacity-0",
@@ -410,6 +412,9 @@ export function FilterSidebar({
           aria-label="Close filters"
         />
         <aside
+          role="dialog"
+          aria-modal="true"
+          aria-label="Event filters"
           className={cn(
             "bg-card border-brand-mid-alpha absolute left-0 top-0 flex h-full w-[min(22rem,88vw)] flex-col border-r shadow-brand-panel transition-transform duration-200",
             mobileOpen ? "translate-x-0" : "-translate-x-full",

@@ -106,3 +106,23 @@ def insert_notifications_bulk(db: Client, notifications: list[dict]) -> list[dic
         return []
     result = db.table("notifications").insert(notifications).execute()
     return result.data or []
+
+
+def count_by_type_for_users_since(
+    db: Client, user_ids: list[str], notification_type: str, cutoff_iso: str,
+) -> dict[str, int]:
+    """Return {user_id: count} of notifications of given type sent to each user since cutoff."""
+    if not user_ids:
+        return {}
+    result = (
+        db.table("notifications")
+        .select("user_id")
+        .in_("user_id", user_ids)
+        .eq("type", notification_type)
+        .gte("created_at", cutoff_iso)
+        .execute()
+    )
+    counts: dict[str, int] = {uid: 0 for uid in user_ids}
+    for row in (result.data or []):
+        counts[row["user_id"]] = counts.get(row["user_id"], 0) + 1
+    return counts

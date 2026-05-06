@@ -16,6 +16,7 @@ from app.routers import (
     notifications,
     users,
 )
+from app.routers.attendances import _qr_router
 
 API_DESCRIPTION = """
 Backend API for **Social Event Mapper** — a platform for discovering, hosting,
@@ -166,6 +167,7 @@ app.include_router(invites.router)
 app.include_router(notifications.router)
 app.include_router(bookmarks.router)
 app.include_router(attendances.router)
+app.include_router(_qr_router)
 app.include_router(users.router)
 
 

@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
@@ -264,6 +265,21 @@ private fun NotificationCard(
 
         // Content
         Column(modifier = Modifier.weight(1f)) {
+            if (notification.type == "event_recommended") {
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Text(
+                        text = "Recommended for you",
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+                Spacer(Modifier.height(4.dp))
+            }
             Text(
                 text = notification.message,
                 fontSize = 14.sp,
@@ -300,6 +316,7 @@ private fun notificationIcon(type: String): ImageVector = when (type) {
     "access_request" -> Icons.Default.PersonAdd
     "access_approved" -> Icons.Default.CheckCircle
     "access_rejected" -> Icons.Default.Cancel
+    "event_recommended" -> Icons.Default.AutoAwesome
     else -> Icons.Default.Notifications
 }
 
@@ -311,6 +328,7 @@ private fun notificationIconBg(type: String, isRead: Boolean): Color {
         "event_cancelled", "event_deleted", "access_rejected" ->
             MaterialTheme.colorScheme.error.copy(alpha = alpha)
         "access_approved" -> Color(0xFF4CAF50).copy(alpha = alpha)
+        "event_recommended" -> MaterialTheme.colorScheme.primary.copy(alpha = alpha)
         else -> MaterialTheme.colorScheme.tertiary.copy(alpha = alpha)
     }
 }
@@ -322,6 +340,7 @@ private fun notificationIconTint(type: String, isRead: Boolean): Color {
         "event_cancelled", "event_deleted", "access_rejected" ->
             MaterialTheme.colorScheme.error.copy(alpha = alpha)
         "access_approved" -> Color(0xFF4CAF50).copy(alpha = alpha)
+        "event_recommended" -> MaterialTheme.colorScheme.primary.copy(alpha = alpha)
         else -> MaterialTheme.colorScheme.tertiary.copy(alpha = alpha)
     }
 }

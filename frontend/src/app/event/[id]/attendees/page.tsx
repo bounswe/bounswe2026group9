@@ -15,6 +15,7 @@ import {
 
 import { useAuth } from "@/hooks/use-auth";
 import { Navbar } from "@/components/layout/navbar";
+import { getProfileHref } from "@/lib/profile-route";
 import {
   fetchEventDetail,
   fetchAccessRequests,
@@ -169,9 +170,11 @@ export default function ManageAttendeesPage() {
                 </p>
                 <div className="space-y-2">
                   {event.attendees.map((attendee) => (
-                    <div
+                    <Link
                       key={attendee.id}
-                      className="flex items-center gap-3 rounded-lg bg-brand-bg px-3 py-2.5"
+                      href={getProfileHref(attendee.id, user?.id ?? null)}
+                      aria-label={`View ${attendee.username}'s profile`}
+                      className="flex items-center gap-3 rounded-lg bg-brand-bg px-3 py-2.5 transition-colors hover:bg-brand-mid-alpha focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-dark focus-visible:ring-offset-1"
                     >
                       <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-mid text-white text-[12px] font-bold">
                         {attendee.username.slice(0, 2).toUpperCase()}
@@ -180,7 +183,7 @@ export default function ManageAttendeesPage() {
                         {attendee.username}
                       </span>
                       <Check className="size-3.5 text-green-600 ml-auto" />
-                    </div>
+                    </Link>
                   ))}
                 </div>
               </div>
@@ -218,14 +221,18 @@ export default function ManageAttendeesPage() {
                         key={req.id}
                         className="flex items-center justify-between gap-3 rounded-lg bg-brand-bg px-3 py-2.5"
                       >
-                        <div className="flex items-center gap-3 min-w-0">
+                        <Link
+                          href={getProfileHref(req.user_id, user?.id ?? null)}
+                          aria-label={`View ${req.username}'s profile`}
+                          className="flex items-center gap-3 min-w-0 transition-colors rounded-md hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-dark focus-visible:ring-offset-1"
+                        >
                           <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-surface text-brand-dark text-[12px] font-bold">
                             {req.username.slice(0, 2).toUpperCase()}
                           </div>
-                          <span className="text-[14px] font-bold text-brand-dark truncate">
+                          <span className="text-[14px] font-bold text-brand-dark truncate hover:underline">
                             {req.username}
                           </span>
-                        </div>
+                        </Link>
                         <div className="flex gap-2 shrink-0">
                           <button
                             onClick={() => { void handleAction(req.id, "approved"); }}
