@@ -343,50 +343,13 @@ export async function fetchHostProfile(userId: string): Promise<HostProfile> {
   return apiRequest<HostProfile>(`/users/${userId}/profile`, { auth: "optional" });
 }
 
-export async function rateHost(
-  userId: string,
-  score: number,
-  reviewText?: string | null,
-): Promise<void> {
-  const trimmed = reviewText?.trim();
-  const body: { score: number; review_text?: string } = { score };
-  if (trimmed) body.review_text = trimmed;
+export async function rateHost(userId: string, score: number): Promise<void> {
   await apiRequest<void>(`/users/${userId}/ratings`, {
     method: "POST",
     auth: "required",
-    body,
+    body: { score },
     parseAs: "void",
   });
-}
-
-// ─── Host Reviews ───────────────────────────────────────────────────────────────
-
-export interface HostReview {
-  id: string;
-  rater_id: string;
-  rater_username: string;
-  score: number;
-  review_text: string | null;
-  created_at: string;
-}
-
-export interface HostReviewListResponse {
-  items: HostReview[];
-  total: number;
-  page: number;
-  page_size: number;
-  total_pages: number;
-}
-
-export async function fetchHostReviews(
-  userId: string,
-  page = 1,
-  pageSize = 20,
-): Promise<HostReviewListResponse> {
-  return apiRequest<HostReviewListResponse>(
-    `/users/${userId}/reviews?page=${page}&page_size=${pageSize}`,
-    { auth: "optional" },
-  );
 }
 
 // ─── Notification Types ──────────────────────────────────────────────────────
