@@ -6,7 +6,6 @@ import pytest
 
 from app.services import notification_emitter as emitter
 
-
 EVENT_ID = "00000000-0000-0000-0000-000000000090"
 HOST_ID = "00000000-0000-0000-0000-000000000091"
 USER_A = "00000000-0000-0000-0000-000000000092"
