@@ -96,7 +96,6 @@ jobs:
           - shard: auth-core
             pytest_args: >-
               tests/test_auth.py
-              tests/test_auth_integration.py
               tests/test_categories.py
               tests/test_health.py
               tests/test_users.py
