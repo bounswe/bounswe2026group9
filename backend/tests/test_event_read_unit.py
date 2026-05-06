@@ -284,6 +284,58 @@ class TestListEvents:
 
         assert resp.suggested_fallback is True
 
+    def test_distance_sort_orders_closer_first_in_memory(self, db, events_repo, users_repo, bookmarks_repo, attendances_repo, invites_repo):
+        # Closer event must appear before farther one in the response items.
+        far = _stub_event(id=EVENT_ID)
+        close = _stub_event(id=EVENT_ID_2)
+        events_repo.list_events.return_value = ([far, close], 2)
+        events_repo.get_primary_locations_for_events.return_value = {
+            EVENT_ID: {
+                "id": "00000000-0000-0000-0000-0000000000d0",
+                "name": "far", "latitude": 41.5, "longitude": 29.5,
+                "is_primary": True, "order_index": 0,
+            },
+            EVENT_ID_2: {
+                "id": "00000000-0000-0000-0000-0000000000d1",
+                "name": "close", "latitude": 41.0, "longitude": 29.0,
+                "is_primary": True, "order_index": 0,
+            },
+        }
+
+        resp = event_service.list_events(
+            db,
+            near_lat=41.0,
+            near_lng=29.0,
+            sort="distance",
+            **_all(events_repo, users_repo, bookmarks_repo, attendances_repo, invites_repo),
+        )
+
+        assert [str(item.id) for item in resp.items] == [EVENT_ID_2, EVENT_ID]
+
+    def test_private_event_description_redacted_in_listing(self, db, events_repo, users_repo, bookmarks_repo, attendances_repo, invites_repo):
+        priv = _stub_event(id=EVENT_ID, visibility="private")
+        events_repo.list_events.return_value = ([priv], 1)
+
+        resp = event_service.list_events(
+            db,
+            user_id=HOST_ID,
+            **_all(events_repo, users_repo, bookmarks_repo, attendances_repo, invites_repo),
+        )
+
+        assert resp.items[0].description is None
+
+    def test_host_sees_has_access_true_for_own_event(self, db, events_repo, users_repo, bookmarks_repo, attendances_repo, invites_repo):
+        own = _stub_event(id=EVENT_ID, host_id=HOST_ID, visibility="private")
+        events_repo.list_events.return_value = ([own], 1)
+
+        resp = event_service.list_events(
+            db,
+            user_id=HOST_ID,
+            **_all(events_repo, users_repo, bookmarks_repo, attendances_repo, invites_repo),
+        )
+
+        assert resp.items[0].has_access is True
+
 
 # ── list_events_geojson ─────────────────────────────────────────────────────
 

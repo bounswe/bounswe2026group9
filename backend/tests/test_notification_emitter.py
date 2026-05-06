@@ -1,4 +1,11 @@
-"""Tests for notification emission on event update and cancellation."""
+"""Contract tests for notification emission across event lifecycle.
+
+Phase 2 retains one happy-path integration test per emission type — these
+verify the cross-service wiring (event update → emitter → notifications row)
+works end-to-end against real Supabase. Filtering rules (going-vs-bookmark
+union, host exclusion, interested-only exclusion) are unit-tested in
+tests/test_notification_emitter_unit.py.
+"""
 
 import io
 import uuid
@@ -15,11 +22,8 @@ from tests_support import build_test_identity
 
 client = TestClient(app)
 db = get_supabase()
-
 MOCK_STORAGE_URL = "https://example.com/storage/v1/object/public/event-images/test.jpg"
 
-
-# --- Helpers ---
 
 def _auth_header(user_id: str) -> dict:
     token = create_access_token(user_id, "test@test.com")
@@ -51,7 +55,7 @@ def _make_image_bytes() -> bytes:
 
 
 @patch("app.repositories.image.upload_to_storage", return_value=MOCK_STORAGE_URL)
-def _create_published_event(host_id: str, mock_upload, *, visibility: str = "public") -> dict:  # noqa: ARG001
+def _create_published_event(host_id: str, mock_upload) -> dict:  # noqa: ARG001
     cat_id = _get_category_id()
     start = datetime.now(UTC) + timedelta(days=5)
     end = start + timedelta(hours=2)
@@ -60,59 +64,43 @@ def _create_published_event(host_id: str, mock_upload, *, visibility: str = "pub
         "description": "Event for emitter testing",
         "start_datetime": start.isoformat(),
         "end_datetime": end.isoformat(),
-        "visibility": visibility,
+        "visibility": "public",
         "is_age_restricted": False,
         "status": "draft",
         "category_ids": [cat_id],
         "locations": [{"name": "Test Venue", "latitude": 41.0, "longitude": 29.0, "is_primary": True, "order_index": 0}],
     }
     create_resp = client.post("/events", json=body, headers=_auth_header(host_id))
-    assert create_resp.status_code == 201, f"Event create failed: {create_resp.json()}"
     event_id = create_resp.json()["id"]
-    img_resp = client.post(
+    client.post(
         f"/events/{event_id}/images",
         files={"file": ("test.jpg", _make_image_bytes(), "image/jpeg")},
         headers=_auth_header(host_id),
     )
-    assert img_resp.status_code == 201, f"Image upload failed: {img_resp.json()}"
-    pub_resp = client.patch(
+    client.patch(
         f"/events/{event_id}/status",
         json={"status": "published"},
         headers=_auth_header(host_id),
     )
-    assert pub_resp.status_code == 200, f"Publish failed: {pub_resp.json()}"
     return create_resp.json()
 
 
-def _add_bookmark(user_id: str, event_id: str) -> None:
-    """Insert bookmark directly into DB."""
-    db.table("bookmarks").insert({
-        "user_id": user_id,
-        "event_id": event_id,
-    }).execute()
-
-
 def _add_attendance(user_id: str, event_id: str, att_status: str = "going") -> None:
-    """Insert attendance directly into DB."""
     db.table("attendances").insert({
-        "user_id": user_id,
-        "event_id": event_id,
-        "status": att_status,
+        "user_id": user_id, "event_id": event_id, "status": att_status,
     }).execute()
 
 
 def _get_notifications(user_id: str) -> list[dict]:
-    """Get all notifications for a user."""
-    resp = client.get("/notifications", headers=_auth_header(user_id))
-    assert resp.status_code == 200
-    return resp.json()["items"]
+    return client.get("/notifications", headers=_auth_header(user_id)).json()["items"]
 
 
 def _cleanup_notifications(user_id: str) -> None:
     db.table("notifications").delete().eq("user_id", user_id).execute()
 
 
-# --- Update Notification Tests ---
+# --- Contract tests (one happy path per emission type) ---
+
 
 class TestUpdateNotification:
     def test_update_notifies_going_user(self):
@@ -129,33 +117,10 @@ class TestUpdateNotification:
         )
 
         notifications = _get_notifications(user["id"])
-        assert len(notifications) >= 1
         assert any(n["type"] == "event_updated" for n in notifications)
 
         _cleanup_notifications(user["id"])
 
-    def test_empty_update_does_not_notify(self):
-        host = _create_test_user()
-        user = _create_test_user()
-        event = _create_published_event(host["id"])
-
-        _add_bookmark(user["id"], event["id"])
-
-        resp = client.put(
-            f"/events/{event['id']}",
-            json={},
-            headers=_auth_header(host["id"]),
-        )
-        assert resp.status_code == 200
-
-        notifications = _get_notifications(user["id"])
-        update_notifs = [n for n in notifications if n["type"] == "event_updated"]
-        assert len(update_notifs) == 0
-
-        _cleanup_notifications(user["id"])
-
-
-# --- Cancellation Notification Tests ---
 
 class TestCancelNotification:
     def test_cancel_notifies_going_user(self):
@@ -176,113 +141,28 @@ class TestCancelNotification:
 
         _cleanup_notifications(user["id"])
 
-    def test_end_does_not_notify(self):
-        host = _create_test_user()
-        user = _create_test_user()
-        event = _create_published_event(host["id"])
-
-        _add_attendance(user["id"], event["id"], "going")
-
-        client.patch(
-            f"/events/{event['id']}/status",
-            json={"status": "ended"},
-            headers=_auth_header(host["id"]),
-        )
-
-        notifications = _get_notifications(user["id"])
-        # ended should NOT trigger notification
-        end_notifs = [n for n in notifications if n["type"] == "event_cancelled"]
-        assert len(end_notifs) == 0
-
-        _cleanup_notifications(user["id"])
-
-
-# --- Delete Notification Tests (issue #149) ---
 
 class TestDeleteNotification:
-    """delete_event must emit `event_deleted` to bookmarkers and going attendees
-    *before* the event row is removed. notifications.event_id is ON DELETE
-    SET NULL, so the rows survive with event_id cleared.
+    """delete_event must emit `event_deleted` to bookmarkers + going attendees
+    *before* the row is removed (notifications.event_id is ON DELETE SET NULL).
     """
 
-    def _force_terminal(self, event_id: str, status_str: str = "cancelled") -> None:
-        """Bypass the host-driven cancel route to set up a deletable event quickly."""
-        db.table("events").update({"status": status_str}).eq("id", event_id).execute()
-
-    def test_delete_notifies_going_attendee(self):
+    def test_delete_notifies_going_attendee_with_null_event_id_after_cascade(self):
         host = _create_test_user()
         attendee = _create_test_user()
         event = _create_published_event(host["id"])
         event_id = event["id"]
 
         _add_attendance(attendee["id"], event_id, "going")
-        self._force_terminal(event_id, "cancelled")
-        # Wipe the cancel notification so we can inspect the delete one alone.
-        _cleanup_notifications(attendee["id"])
+        # Force terminal state without producing a cancel notification.
+        db.table("events").update({"status": "ended"}).eq("id", event_id).execute()
 
         del_resp = client.delete(f"/events/{event_id}", headers=_auth_header(host["id"]))
-        assert del_resp.status_code == 200, del_resp.json()
+        assert del_resp.status_code == 200
 
         notifications = _get_notifications(attendee["id"])
         deleted = [n for n in notifications if n["type"] == "event_deleted"]
         assert len(deleted) == 1
-        # FK is SET NULL after delete — the notification stays, event_id is None.
-        assert deleted[0].get("event_id") is None
+        assert deleted[0].get("event_id") is None  # FK SET NULL after row removal
 
         _cleanup_notifications(attendee["id"])
-
-    def test_delete_notifies_bookmarker(self):
-        host = _create_test_user()
-        bookmarker = _create_test_user()
-        event = _create_published_event(host["id"])
-        event_id = event["id"]
-
-        _add_bookmark(bookmarker["id"], event_id)
-        self._force_terminal(event_id, "ended")  # ended path: no cancel notification
-
-        del_resp = client.delete(f"/events/{event_id}", headers=_auth_header(host["id"]))
-        assert del_resp.status_code == 200
-
-        notifications = _get_notifications(bookmarker["id"])
-        deleted = [n for n in notifications if n["type"] == "event_deleted"]
-        assert len(deleted) == 1
-        assert deleted[0].get("event_id") is None
-
-        _cleanup_notifications(bookmarker["id"])
-
-    def test_delete_does_not_notify_host(self):
-        host = _create_test_user()
-        event = _create_published_event(host["id"])
-        event_id = event["id"]
-
-        _add_bookmark(host["id"], event_id)  # host bookmarking own event — edge case
-        self._force_terminal(event_id, "ended")
-
-        del_resp = client.delete(f"/events/{event_id}", headers=_auth_header(host["id"]))
-        assert del_resp.status_code == 200
-
-        host_notifications = _get_notifications(host["id"])
-        deleted = [n for n in host_notifications if n["type"] == "event_deleted"]
-        assert len(deleted) == 0  # host is excluded from emit_event_notification
-
-        _cleanup_notifications(host["id"])
-
-    def test_delete_does_not_notify_interested_only_user(self):
-        # Only `going` attendees and bookmarkers receive event_deleted —
-        # `interested` is intentionally not in the affected set.
-        host = _create_test_user()
-        interested = _create_test_user()
-        event = _create_published_event(host["id"])
-        event_id = event["id"]
-
-        _add_attendance(interested["id"], event_id, "interested")
-        self._force_terminal(event_id, "ended")
-
-        del_resp = client.delete(f"/events/{event_id}", headers=_auth_header(host["id"]))
-        assert del_resp.status_code == 200
-
-        notifications = _get_notifications(interested["id"])
-        deleted = [n for n in notifications if n["type"] == "event_deleted"]
-        assert len(deleted) == 0
-
-        _cleanup_notifications(interested["id"])

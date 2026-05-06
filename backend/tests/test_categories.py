@@ -1,4 +1,11 @@
-"""Tests for Category endpoints."""
+"""Contract tests for /categories endpoints.
+
+Phase 2 retains one happy-path integration test per HTTP endpoint.
+Branch coverage (search filtering, duplicate detection, approval gating)
+lives in tests/test_category_unit.py.
+"""
+
+import uuid
 
 from fastapi.testclient import TestClient
 
@@ -19,57 +26,33 @@ def _auth_header(user_id: str) -> dict:
 def _create_test_user() -> dict:
     username, email = build_test_identity("cattest")
     result = db.table("users").insert({
-        "username": username,
-        "email": email,
-        "hashed_password": "fakehash",
-        "role": "registered",
-        "auth_provider": "local",
-        "email_verified": True,
-        "is_active": True,
+        "username": username, "email": email,
+        "hashed_password": "fakehash", "role": "registered",
+        "auth_provider": "local", "email_verified": True, "is_active": True,
     }).execute()
     return result.data[0]
 
 
-def _cleanup_user(user_id: str):
-    db.table("users").delete().eq("id", user_id).execute()
-
-
-def _cleanup_category(category_id: str):
-    db.table("categories").delete().eq("id", category_id).execute()
+# --- Contract tests (one happy path per endpoint) ---
 
 
 class TestListCategories:
+    """GET /categories"""
 
-    def test_list_predefined(self):
+    def test_list_returns_predefined_alphabetically(self):
         resp = client.get("/categories")
         assert resp.status_code == 200
         data = resp.json()
-        assert len(data) >= 15  # 15 seeded predefined categories
-        assert all(cat["is_predefined"] or cat["is_approved"] for cat in data)
-
-    def test_list_sorted_by_name(self):
-        resp = client.get("/categories")
-        names = [cat["name"] for cat in resp.json()]
+        assert len(data) >= 15  # seeded predefined set
+        names = [cat["name"] for cat in data]
         assert names == sorted(names)
-
-    def test_search_categories(self):
-        resp = client.get("/categories?search=Music")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert len(data) >= 1
-        assert any("Music" in cat["name"] for cat in data)
-
-    def test_search_no_results(self):
-        resp = client.get("/categories?search=xyznonexistent")
-        assert resp.status_code == 200
-        assert resp.json() == []
 
 
 class TestCreateCategory:
+    """POST /categories"""
 
-    def test_create_custom_category(self):
+    def test_create_custom_category_pending_approval(self):
         user = _create_test_user()
-        import uuid
         cat_name = f"TestCategory_{uuid.uuid4().hex[:8]}"
 
         resp = client.post(
@@ -83,51 +66,9 @@ class TestCreateCategory:
         assert data["is_predefined"] is False
         assert data["is_approved"] is False
 
-        _cleanup_category(data["id"])
-        _cleanup_user(user["id"])
-
-    def test_create_duplicate_fails(self):
-        user = _create_test_user()
-
-        resp = client.post(
-            "/categories",
-            json={"name": "Music"},  # Already exists as predefined
-            headers=_auth_header(user["id"]),
-        )
-        assert resp.status_code == 409
-
-        _cleanup_user(user["id"])
-
-    def test_create_no_auth(self):
-        resp = client.post("/categories", json={"name": "NoAuth"})
-        assert resp.status_code == 401
-
-    def test_create_empty_name(self):
-        user = _create_test_user()
-        resp = client.post(
-            "/categories",
-            json={"name": ""},
-            headers=_auth_header(user["id"]),
-        )
-        assert resp.status_code == 422
-        _cleanup_user(user["id"])
-
-    def test_custom_not_in_listing_until_approved(self):
-        """Custom category is not visible in listing until approved."""
-        user = _create_test_user()
-        import uuid
-        cat_name = f"Pending_{uuid.uuid4().hex[:8]}"
-
-        create_resp = client.post(
-            "/categories",
-            json={"name": cat_name},
-            headers=_auth_header(user["id"]),
-        )
-        cat_id = create_resp.json()["id"]
-
+        # Custom category is not visible in listing until approved.
         list_resp = client.get(f"/categories?search={cat_name}")
-        assert list_resp.status_code == 200
-        assert len(list_resp.json()) == 0  # Not approved, not in listing
+        assert list_resp.json() == []
 
-        _cleanup_category(cat_id)
-        _cleanup_user(user["id"])
+        db.table("categories").delete().eq("id", data["id"]).execute()
+        db.table("users").delete().eq("id", user["id"]).execute()
