@@ -62,7 +62,9 @@ class CategoryRepoProtocol(Protocol):
 
 
 class NotificationRepoProtocol(Protocol):
-    """Surface used by `services.notification`."""
+    """Surface used by `services.notification`, `services.invite`, and the
+    notification_emitter service. `insert_notification` is included so
+    invite's access-request flow can write through the same handle."""
 
     def get_notifications_by_user(
         self, db: Client, user_id: str, *, page: int = 1, page_size: int = 20
@@ -77,6 +79,57 @@ class NotificationRepoProtocol(Protocol):
     ) -> dict | None: ...
 
     def mark_all_notifications_as_read(self, db: Client, user_id: str) -> int: ...
+
+    def insert_notification(self, db: Client, data: dict) -> dict | None: ...
+
+
+class InviteRepoProtocol(Protocol):
+    """Surface used by `services.invite`. Covers both invite tokens and
+    access requests / grants — all live in the same repo module."""
+
+    def insert_invite(self, db: Client, data: dict) -> dict: ...
+
+    def get_invite_by_token(self, db: Client, token: str) -> dict | None: ...
+
+    def get_invites_by_event(self, db: Client, event_id: str) -> list[dict]: ...
+
+    def increment_invite_use_count(self, db: Client, invite_id: str) -> None: ...
+
+    def delete_invite(self, db: Client, invite_id: str) -> None: ...
+
+    def insert_access_grant(self, db: Client, data: dict) -> dict: ...
+
+    def get_access_grant(
+        self, db: Client, event_id: str, user_id: str
+    ) -> dict | None: ...
+
+    def get_granted_user_ids(self, db: Client, event_id: str) -> list[str]: ...
+
+    def insert_access_request(self, db: Client, data: dict) -> dict: ...
+
+    def get_access_request_by_id(
+        self, db: Client, request_id: str
+    ) -> dict | None: ...
+
+    def get_access_request(
+        self, db: Client, event_id: str, user_id: str
+    ) -> dict | None: ...
+
+    def get_access_request_status_for_events(
+        self, db: Client, user_id: str, event_ids: list[str]
+    ) -> dict[str, str]: ...
+
+    def get_access_granted_event_ids(
+        self, db: Client, user_id: str, event_ids: list[str]
+    ) -> set[str]: ...
+
+    def get_pending_requests_by_event(
+        self, db: Client, event_id: str
+    ) -> list[dict]: ...
+
+    def update_access_request(
+        self, db: Client, request_id: str, data: dict
+    ) -> dict | None: ...
 
 
 class RatingRepoProtocol(Protocol):
