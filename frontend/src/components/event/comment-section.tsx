@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { CornerDownRight, Send, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getProfileHref } from "@/lib/profile-route";
 import {
   fetchComments,
   postComment,
@@ -108,20 +110,25 @@ function CommentNode({
     <div className={cn("flex gap-3 py-3", depth > 0 && "ml-8 border-l-2 border-brand-mid-alpha/40 pl-4")}>
       <div className="flex-1 min-w-0">
         <div className="flex items-start gap-3">
-          <div
+          <Link
+            href={getProfileHref(comment.user.id, currentUserId)}
+            aria-label={`View ${comment.user.username}'s profile`}
             className={cn(
-              "flex shrink-0 items-center justify-center rounded-full text-xs font-bold text-white",
+              "flex shrink-0 items-center justify-center rounded-full text-xs font-bold text-white transition-transform hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-dark focus-visible:ring-offset-1",
               depth === 0 ? "size-8" : "size-6 text-[10px]",
               avatarColor(comment.user.id),
             )}
           >
             {initials(comment.user.username)}
-          </div>
+          </Link>
           <div className="flex-1 min-w-0">
             <div className="mb-1">
-              <strong className="text-sm font-bold text-brand-dark">
+              <Link
+                href={getProfileHref(comment.user.id, currentUserId)}
+                className="text-sm font-bold text-brand-dark hover:underline focus:outline-none focus-visible:underline"
+              >
                 {comment.user.username}
-              </strong>
+              </Link>
               <span className="text-[12px] text-brand-mid ml-2">· {timeAgo(comment.created_at)}</span>
               {currentUserId === comment.user.id && (
                 <button
