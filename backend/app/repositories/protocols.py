@@ -105,6 +105,28 @@ class ProfileRepoProtocol(Protocol):
     ) -> list[dict]: ...
 
 
+class CommentRepoProtocol(Protocol):
+    """Surface used by `services.comment`. Note: comment repo carries its own
+    user lookup helpers — `get_users_by_ids` returns a dict here (vs. a list
+    in user_repo), so they're intentionally not aliased."""
+
+    def insert_comment(self, db: Client, comment_data: dict) -> dict: ...
+
+    def get_comments_by_event(
+        self, db: Client, event_id: str, *, page: int = 1, page_size: int = 20
+    ) -> tuple[list[dict], int]: ...
+
+    def get_comment_by_id(self, db: Client, comment_id: str) -> dict | None: ...
+
+    def delete_comment(self, db: Client, comment_id: str) -> None: ...
+
+    def get_user_by_id(self, db: Client, user_id: str) -> dict | None: ...
+
+    def get_users_by_ids(
+        self, db: Client, user_ids: list[str]
+    ) -> dict[str, dict]: ...
+
+
 class AttendanceRepoProtocol(Protocol):
     """Surface used by `services.attendance`. Tokens excluded — those are
     a thin layer in the service module itself, not the repository."""
