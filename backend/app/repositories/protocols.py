@@ -321,6 +321,43 @@ class EventRepoProtocol(Protocol):
         self, db: Client, event_id: str, new_status: str
     ) -> dict | None: ...
 
+    def create_event_atomic(
+        self,
+        db: Client,
+        event_data: dict,
+        locations: list[dict],
+        category_ids: list[str],
+        venue_metadata: dict | None = None,
+        equipment: list[dict] | None = None,
+        segments: list[dict] | None = None,
+    ) -> dict: ...
+
+    def update_event_atomic(
+        self,
+        db: Client,
+        event_id: str,
+        event_data: dict | None = None,
+        locations: list[dict] | None = None,
+        category_ids: list[str] | None = None,
+        venue_metadata: dict | None = None,
+        equipment: list[dict] | None = None,
+        segments: list[dict] | None = None,
+    ) -> dict: ...
+
+    def get_event_locations(self, db: Client, event_id: str) -> list[dict]: ...
+
+    def get_event_categories(self, db: Client, event_id: str) -> list[dict]: ...
+
+    def get_event_images(self, db: Client, event_id: str) -> list[dict]: ...
+
+    def get_venue_metadata(self, db: Client, event_id: str) -> dict | None: ...
+
+    def get_equipment(self, db: Client, event_id: str) -> list[dict]: ...
+
+    def get_event_segments(self, db: Client, event_id: str) -> list[dict]: ...
+
+    def delete_event(self, db: Client, event_id: str) -> None: ...
+
 
 # Convenience alias for "any module-shaped object that satisfies a repo
 # protocol". Useful when a service takes a default-keyword repo and we

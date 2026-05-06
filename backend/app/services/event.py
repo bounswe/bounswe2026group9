@@ -30,6 +30,7 @@ from app.repositories import invite as _invite_repo
 from app.repositories import user as _user_repo
 from app.repositories.protocols import (
     EventRepoProtocol,
+    ImageRepoProtocol,
     UserRepoProtocol,
 )
 from app.services.rate_limit import is_rate_limit_exempt_email
@@ -253,18 +254,26 @@ def auto_end_event_if_past(
 
 # --- Main operations ---
 
-def create_event(db: Client, user_id: str, body: EventCreateRequest) -> EventDetailResponse:
+def create_event(
+    db: Client,
+    user_id: str,
+    body: EventCreateRequest,
+    *,
+    events: EventRepoProtocol = _event_repo,
+    users: UserRepoProtocol = _user_repo,
+) -> EventDetailResponse:
     # Validations
     validate_event_datetime(body.start_datetime, body.end_datetime)
 
     category_id_strs = [str(cid) for cid in body.category_ids]
-    validate_categories_exist(db, category_id_strs)
+    validate_categories_exist(db, category_id_strs, events=events)
 
     primary_location = next((loc for loc in body.locations if loc.is_primary), body.locations[0])
     check_duplicate_event(
         db, user_id, body.title, body.start_datetime.isoformat(), primary_location.name,
+        events=events,
     )
-    check_rate_limit(db, user_id)
+    check_rate_limit(db, user_id, events=events, users=users)
 
     # Cannot publish directly on create — images must be uploaded first
     if body.status == "published":
@@ -317,7 +326,7 @@ def create_event(db: Client, user_id: str, body: EventCreateRequest) -> EventDet
         equip_data = [eq.model_dump() for eq in body.equipment_requirements]
 
     # Single-transaction insert via RPC
-    event = event_repo.create_event_atomic(
+    event = events.create_event_atomic(
         db,
         event_data=event_data,
         locations=location_rows,
@@ -332,11 +341,11 @@ def create_event(db: Client, user_id: str, body: EventCreateRequest) -> EventDet
     event_id = event["id"]
 
     # Fetch related data for response
-    locations = event_repo.get_event_locations(db, event_id)
-    categories = event_repo.get_event_categories(db, event_id)
-    venue_meta = event_repo.get_venue_metadata(db, event_id)
-    equipment = event_repo.get_equipment(db, event_id)
-    segments = event_repo.get_event_segments(db, event_id)
+    locations = events.get_event_locations(db, event_id)
+    categories = events.get_event_categories(db, event_id)
+    venue_meta = events.get_venue_metadata(db, event_id)
+    equipment = events.get_equipment(db, event_id)
+    segments = events.get_event_segments(db, event_id)
 
     return _build_detail_response(
         event, locations, categories, [], venue_meta, equipment, segments=segments,
@@ -548,9 +557,14 @@ def get_event_detail(
 # --- Update ---
 
 def update_event(
-    db: Client, event_id: str, user_id: str, body: EventUpdateRequest,
+    db: Client,
+    event_id: str,
+    user_id: str,
+    body: EventUpdateRequest,
+    *,
+    events: EventRepoProtocol = _event_repo,
 ) -> EventDetailResponse:
-    event = event_repo.get_event_by_id(db, event_id)
+    event = events.get_event_by_id(db, event_id)
     if not event:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
 
@@ -610,7 +624,7 @@ def update_event(
         if body.locations is not None:
             effective_location_count = len(body.locations)
         else:
-            effective_location_count = len(event_repo.get_event_locations(db, event_id))
+            effective_location_count = len(events.get_event_locations(db, event_id))
 
         effective_start = body.start_datetime or _parse_stored_datetime(event["start_datetime"])
         effective_end = body.end_datetime or _parse_stored_datetime(event["end_datetime"])
@@ -620,7 +634,7 @@ def update_event(
 
     if body.category_ids is not None:
         category_id_strs = [str(cid) for cid in body.category_ids]
-        validate_categories_exist(db, category_id_strs)
+        validate_categories_exist(db, category_id_strs, events=events)
 
     # Set status to "updated" if currently published
     has_real_changes = (
@@ -667,7 +681,7 @@ def update_event(
     # require the caller to re-send segments alongside locations (or send []
     # to explicitly clear them) — silent loss is worse than a clear error.
     if body.locations is not None and body.segments is None:
-        existing_segments = event_repo.get_event_segments(db, event_id)
+        existing_segments = events.get_event_segments(db, event_id)
         if existing_segments:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -677,7 +691,7 @@ def update_event(
 
     # Single-transaction update via RPC
     if has_real_changes or update_data:
-        event_repo.update_event_atomic(
+        events.update_event_atomic(
             db,
             event_id=event_id,
             event_data=update_data if update_data else None,
@@ -691,7 +705,7 @@ def update_event(
     # Emit notification only if there were real changes
     if has_real_changes and event["status"] in ("published", "updated"):
         from app.services.notification_emitter import emit_event_notification
-        updated_event = event_repo.get_event_by_id(db, event_id)
+        updated_event = events.get_event_by_id(db, event_id)
         emit_event_notification(
             db, event_id, user_id, "event_updated",
             f"Event '{updated_event['title']}' has been updated",
@@ -711,9 +725,14 @@ VALID_STATUS_TRANSITIONS = {
 
 
 def change_event_status(
-    db: Client, event_id: str, user_id: str, new_status: str,
+    db: Client,
+    event_id: str,
+    user_id: str,
+    new_status: str,
+    *,
+    events: EventRepoProtocol = _event_repo,
 ) -> EventDetailResponse:
-    event = event_repo.get_event_by_id(db, event_id)
+    event = events.get_event_by_id(db, event_id)
     if not event:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
 
@@ -736,17 +755,17 @@ def change_event_status(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Cannot publish an event with a start time in the past",
             )
-        locations = event_repo.get_event_locations(db, event_id)
+        locations = events.get_event_locations(db, event_id)
         if not locations:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Event must have at least one location to publish")
-        categories = event_repo.get_event_categories(db, event_id)
+        categories = events.get_event_categories(db, event_id)
         if not categories:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Event must have at least one category to publish")
-        images = event_repo.get_event_images(db, event_id)
+        images = events.get_event_images(db, event_id)
         if not images:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Event must have at least one image to publish")
 
-    event_repo.update_event_status(db, event_id, new_status)
+    events.update_event_status(db, event_id, new_status)
 
     # Emit recommendation notifications when an event becomes published
     if current == "draft" and new_status == "published":
@@ -771,8 +790,15 @@ def change_event_status(
 
 # --- Delete ---
 
-def delete_event(db: Client, event_id: str, user_id: str) -> None:
-    event = event_repo.get_event_by_id(db, event_id)
+def delete_event(
+    db: Client,
+    event_id: str,
+    user_id: str,
+    *,
+    events: EventRepoProtocol = _event_repo,
+    images: ImageRepoProtocol = _image_repo,
+) -> None:
+    event = events.get_event_by_id(db, event_id)
     if not event:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
 
@@ -797,15 +823,15 @@ def delete_event(db: Client, event_id: str, user_id: str) -> None:
     )
 
     # Clean up storage images before DB delete (CASCADE will remove DB records)
-    images = image_repo.get_all_event_images(db, event_id)
-    for img in images:
+    event_images = images.get_all_event_images(db, event_id)
+    for img in event_images:
         try:
-            path = img["image_url"].split(f"/{image_repo.BUCKET_NAME}/")[-1]
-            image_repo.delete_from_storage(db, path)
+            path = img["image_url"].split(f"/{images.BUCKET_NAME}/")[-1]
+            images.delete_from_storage(db, path)
         except Exception:
             pass  # Best-effort storage cleanup
 
-    event_repo.delete_event(db, event_id)
+    events.delete_event(db, event_id)
 
 
 # --- Discovery ---
