@@ -789,6 +789,7 @@ def list_events(
     use_default_area: bool = False,
     accessibility: dict[str, bool | None] | None = None,
     sort: str | None = None,
+    suggested: bool = False,
     page: int = 1,
     page_size: int = 20,
 ) -> EventListResponse:
@@ -850,6 +851,19 @@ def list_events(
 
     effective_radius_km = radius_km if radius_km is not None else (50.0 if has_location else None)
 
+    # Resolve "Suggested for you" — only meaningful for authenticated users.
+    suggested_category_ids: set[str] | None = None
+    suggested_fallback = False
+    if suggested and user_id:
+        suggested_category_ids = attendance_repo.get_attended_ended_event_categories(
+            db, user_id,
+        )
+        if not suggested_category_ids:
+            # User has no attendance history yet — fall back to default listing
+            # but signal the empty-history hint to the UI.
+            suggested_category_ids = None
+            suggested_fallback = True
+
     events, total = event_repo.list_events(
         db,
         search=search,
@@ -862,13 +876,17 @@ def list_events(
         radius_km=effective_radius_km,
         accessibility=accessibility or {},
         sort=sort,
+        suggested_category_ids=suggested_category_ids,
         page=page,
         page_size=page_size,
     )
 
     total_pages = (total + page_size - 1) // page_size if total > 0 else 0
     if not events:
-        return EventListResponse(items=[], total=total, page=page, page_size=page_size, total_pages=total_pages)
+        return EventListResponse(
+            items=[], total=total, page=page, page_size=page_size,
+            total_pages=total_pages, suggested_fallback=suggested_fallback,
+        )
 
     # For sort in {distance, category} the repo returned the full filtered set;
     # rank in Python and slice to the requested page.
@@ -898,7 +916,10 @@ def list_events(
         offset = (page - 1) * page_size
         events = events[offset:offset + page_size]
         if not events:
-            return EventListResponse(items=[], total=total, page=page, page_size=page_size, total_pages=total_pages)
+            return EventListResponse(
+                items=[], total=total, page=page, page_size=page_size,
+                total_pages=total_pages, suggested_fallback=suggested_fallback,
+            )
 
     event_ids = [e["id"] for e in events]
     locations_by_event = event_repo.get_primary_locations_for_events(db, event_ids)
@@ -959,7 +980,10 @@ def list_events(
             primary_image_url=images_by_event.get(event["id"]),
         ))
 
-    return EventListResponse(items=items, total=total, page=page, page_size=page_size, total_pages=total_pages)
+    return EventListResponse(
+        items=items, total=total, page=page, page_size=page_size,
+        total_pages=total_pages, suggested_fallback=suggested_fallback,
+    )
 
 
 def list_events_geojson(
