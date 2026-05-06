@@ -9,7 +9,7 @@ _EVENT_COLS = (
     "visibility,is_age_restricted,attendee_limit,attendee_count,"
     "status,created_at,updated_at"
 )
-_LOCATION_COLS = "id,event_id,name,latitude,longitude,is_primary,order_index"
+_LOCATION_COLS = "id,event_id,name,latitude,longitude,is_primary,order_index,location_address"
 _IMAGE_COLS = "id,event_id,image_url,upload_date"
 _VENUE_COLS = (
     "id,event_id,price,language,health_requirements,wheelchair_access,accessible_restroom,"
@@ -303,6 +303,7 @@ def list_events(
     radius_km: float | None = None,
     accessibility: dict[str, bool | None] | None = None,
     sort: str = "start_time",
+    suggested_category_ids: set[str] | None = None,
     page: int = 1,
     page_size: int = 20,
 ) -> tuple[list[dict], int]:
@@ -327,6 +328,18 @@ def list_events(
             .execute()
         )
         ids = {row["event_id"] for row in (cat_result.data or [])}
+        if not ids:
+            return [], 0
+        whitelists.append(ids)
+
+    if suggested_category_ids:
+        sug_result = (
+            db.table("event_categories")
+            .select("event_id")
+            .in_("category_id", list(suggested_category_ids))
+            .execute()
+        )
+        ids = {row["event_id"] for row in (sug_result.data or [])}
         if not ids:
             return [], 0
         whitelists.append(ids)
@@ -360,6 +373,14 @@ def list_events(
             return [], 0
         whitelists.append(ids)
 
+    if search:
+        text_result = db.rpc("search_events_text", {"search_term": search}).execute()
+        text_ids = {row["event_id"] for row in (text_result.data or [])}
+        if text_ids:
+            whitelists.append(text_ids)
+        else:
+            return [], 0
+
     final_whitelist: list[str] | None = None
     if whitelists:
         intersection = set.intersection(*whitelists)
@@ -377,9 +398,6 @@ def list_events(
             q = q.in_("status", ["published", "updated"])
             q = q.gte("end_datetime", now.isoformat())
 
-        if search:
-            safe = search.replace("%", r"\%").replace("_", r"\_")
-            q = q.or_(f"title.ilike.%{safe}%,description.ilike.%{safe}%")
         if final_whitelist is not None:
             q = q.in_("id", final_whitelist)
 
@@ -483,3 +501,26 @@ def get_primary_images_for_events(db: Client, event_ids: list[str]) -> dict[str,
         if eid not in images:
             images[eid] = row["image_url"]
     return images
+
+
+def get_similar_candidates(db: Client, event_id: str, limit: int = 30) -> list[dict]:
+    """Return published/updated future events (public + private) excluding the source.
+
+    Private events are included to match Discovery's behaviour: they appear in
+    the list with a teaser (no description) so the viewer can still tap through
+    and request access. The service layer applies the same private-aware
+    redaction as list_events when building the response.
+    """
+    now = datetime.now(UTC)
+    result = (
+        db.table("events")
+        .select(_EVENT_COLS)
+        .in_("status", ["published", "updated"])
+        .gte("end_datetime", now.isoformat())
+        .neq("id", event_id)
+        .order("start_datetime")
+        .order("id")
+        .limit(limit)
+        .execute()
+    )
+    return result.data or []

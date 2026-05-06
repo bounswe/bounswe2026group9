@@ -6,12 +6,14 @@ from fastapi import APIRouter, Depends, status
 
 from app.database import get_supabase
 from app.middleware.auth import get_current_user_id
-from app.models.attendance import AttendanceResponse, AttendanceStatusRequest
+from app.models.attendance import AttendanceResponse, AttendanceStatusRequest, QrTokenResponse
 from app.models.errors import AUTH_RESPONSES, NOT_FOUND_RESPONSE
 from app.models.user import MessageResponse
-from app.services.attendance import remove_attendance, set_attendance
+from app.services.attendance import get_my_qr, remove_attendance, set_attendance
 
 router = APIRouter(prefix="/events/{event_id}/attendance", tags=["attendances"])
+
+_qr_router = APIRouter(prefix="/attendances", tags=["attendances"])
 
 
 @router.post(
@@ -44,3 +46,22 @@ def remove_attendance_endpoint(
     db = get_supabase()
     remove_attendance(db, str(event_id), user_id)
     return MessageResponse(message="Attendance removed successfully")
+
+
+@_qr_router.get(
+    "/me/{event_id}/qr",
+    response_model=QrTokenResponse,
+    summary="Get my check-in QR token",
+    description=(
+        "Returns the signed QR payload for the authenticated Going user. "
+        "Render the `token` field as a QR code. "
+        "Returns 404 if the caller is not Going for this event."
+    ),
+    responses={**AUTH_RESPONSES, **NOT_FOUND_RESPONSE},
+)
+def get_my_qr_endpoint(
+    event_id: UUID,
+    user_id: str = Depends(get_current_user_id),
+):
+    db = get_supabase()
+    return get_my_qr(db, str(event_id), user_id)

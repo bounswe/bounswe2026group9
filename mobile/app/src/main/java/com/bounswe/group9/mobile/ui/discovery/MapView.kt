@@ -23,12 +23,17 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.AsyncImage
 import com.bounswe.group9.mobile.data.remote.EventListItemDto
+import com.bounswe.group9.mobile.data.remote.EventLocationDto
 import com.bounswe.group9.mobile.ui.common.formatEventDate
+import com.bounswe.group9.mobile.ui.createevent.LocationEntry
 import org.maplibre.android.MapLibre
 import org.maplibre.android.annotations.IconFactory
 import org.maplibre.android.annotations.MarkerOptions
+import org.maplibre.android.annotations.PolylineOptions
 import org.maplibre.android.camera.CameraPosition
+import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.maps.MapView
 
 private const val MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty"
@@ -309,6 +314,132 @@ fun LocationPickerMapView(
             }
         }
     }
+}
+
+// ── Multi-location map (used in Create Event and Event Detail) ─────────────────
+
+@Composable
+fun MultiLocationMapView(
+    locations: List<LocationEntry>,
+    modifier: Modifier = Modifier
+) {
+    val validPoints = locations.mapIndexedNotNull { i, loc ->
+        val lat = loc.lat.toDoubleOrNull(); val lng = loc.lng.toDoubleOrNull()
+        if (lat != null && lng != null) Triple(i + 1, lat, lng) else null
+    }
+    key(validPoints.joinToString { "${it.second},${it.third}" }) {
+        AndroidView(
+            factory = { context ->
+                MapLibre.getInstance(context)
+                MapView(context).apply {
+                    getMapAsync { map ->
+                        map.setStyle(MAP_STYLE) { _ ->
+                            setupMultiLocationMap(map, validPoints, context)
+                        }
+                    }
+                    onCreate(null)
+                }
+            },
+            modifier = modifier
+        )
+    }
+}
+
+@Composable
+fun EventDetailMapView(
+    locations: List<EventLocationDto>,
+    modifier: Modifier = Modifier
+) {
+    val sorted = remember(locations) { locations.sortedBy { it.order_index } }
+    val points = sorted.mapIndexed { i, loc -> Triple(i + 1, loc.latitude, loc.longitude) }
+    AndroidView(
+        factory = { context ->
+            MapLibre.getInstance(context)
+            MapView(context).apply {
+                getMapAsync { map ->
+                    map.setStyle(MAP_STYLE) { _ ->
+                        setupMultiLocationMap(map, points, context)
+                    }
+                }
+                onCreate(null)
+            }
+        },
+        modifier = modifier
+    )
+}
+
+private fun setupMultiLocationMap(
+    map: org.maplibre.android.maps.MapLibreMap,
+    points: List<Triple<Int, Double, Double>>,
+    context: android.content.Context
+) {
+    if (points.isEmpty()) {
+        map.cameraPosition = CameraPosition.Builder()
+            .target(LatLng(DEFAULT_LAT, DEFAULT_LNG))
+            .zoom(DEFAULT_ZOOM)
+            .build()
+        return
+    }
+
+    val latLngs = points.map { LatLng(it.second, it.third) }
+
+    points.forEach { (num, lat, lng) ->
+        map.addMarker(
+            MarkerOptions()
+                .position(LatLng(lat, lng))
+                .icon(IconFactory.getInstance(context).fromBitmap(createNumberedMarkerBitmap(num)))
+        )
+    }
+
+    if (latLngs.size >= 2) {
+        map.addPolyline(
+            PolylineOptions()
+                .addAll(latLngs)
+                .color(android.graphics.Color.parseColor("#493628"))
+                .width(3f)
+        )
+    }
+
+    if (latLngs.size == 1) {
+        map.cameraPosition = CameraPosition.Builder()
+            .target(latLngs[0])
+            .zoom(14.0)
+            .build()
+    } else {
+        val boundsBuilder = LatLngBounds.Builder()
+        latLngs.forEach { boundsBuilder.include(it) }
+        try {
+            val bounds = boundsBuilder.build()
+            map.easeCamera(CameraUpdateFactory.newLatLngBounds(bounds, 120))
+        } catch (_: Exception) {
+            map.cameraPosition = CameraPosition.Builder().target(latLngs[0]).zoom(10.0).build()
+        }
+    }
+}
+
+private fun createNumberedMarkerBitmap(number: Int): Bitmap {
+    val size = 80
+    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    paint.color = android.graphics.Color.parseColor("#493628")
+    canvas.drawCircle(size / 2f, size / 2f - 8f, 28f, paint)
+
+    val path = android.graphics.Path()
+    path.moveTo(size / 2f - 10f, size / 2f + 18f)
+    path.lineTo(size / 2f + 10f, size / 2f + 18f)
+    path.lineTo(size / 2f, size / 2f + 38f)
+    path.close()
+    canvas.drawPath(path, paint)
+
+    paint.color = android.graphics.Color.WHITE
+    paint.textSize = 28f
+    paint.textAlign = Paint.Align.CENTER
+    paint.typeface = android.graphics.Typeface.DEFAULT_BOLD
+    canvas.drawText(number.toString(), size / 2f, size / 2f - 8f + 10f, paint)
+
+    return bitmap
 }
 
 private fun createMarkerBitmap(): Bitmap {

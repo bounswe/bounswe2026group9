@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CalendarDays, ChevronLeft, ChevronRight, Mail, MessageSquare, Phone, Star } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
+import { JsonLd } from "@/components/json-ld";
 import { StatusBadge } from "@/components/event/status-badge";
 import { Navbar } from "@/components/layout/navbar";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ import {
   type HostReview,
 } from "@/lib/events-api";
 import { getProfileHref } from "@/lib/profile-route";
+import { buildHostStructuredData } from "@/lib/structured-data";
 import { cn } from "@/lib/utils";
 
 type ProfileTab = "about" | "past" | "upcoming" | "reviews";
@@ -333,10 +335,21 @@ export function HostProfilePage() {
     void loadReviews(profile.id, next);
   }
 
+  // JSON-LD structured data for crawlers (issue #243).
+  // Emitted once the profile is loaded; private fields (email/phone) are
+  // gated by the backend's privacy settings before they reach this point,
+  // so forwarding them here is safe.
+  const baseUrl =
+    typeof window !== "undefined" ? window.location.origin : "";
+  const profileStructuredData =
+    profile && baseUrl ? buildHostStructuredData(profile, baseUrl) : null;
+
   return (
     <div className="min-h-screen bg-brand-bg">
+      {profileStructuredData && <JsonLd data={profileStructuredData} />}
       <Navbar />
 
+      <main aria-label="Host profile">
       {loading ? (
         <div className="mx-auto flex max-w-[1280px] flex-col gap-8 px-4 pb-20 sm:px-6 lg:px-8">
           <div className="h-52 animate-pulse rounded-[32px] bg-brand-dark/20" />
@@ -743,6 +756,7 @@ export function HostProfilePage() {
           </section>
         </>
       )}
+      </main>
     </div>
   );
 }

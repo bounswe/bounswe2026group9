@@ -30,6 +30,7 @@ import {
 
 import { useAuth } from "@/hooks/use-auth";
 import { useEventInteraction } from "@/hooks/use-event-interaction";
+import { JsonLd } from "@/components/json-ld";
 import { Navbar } from "@/components/layout/navbar";
 import { StatusBadge, eventStatusVariant } from "@/components/event/status-badge";
 import { ImageCarousel } from "@/components/event/image-carousel";
@@ -60,6 +61,7 @@ import {
   type AccessRequest,
   type Invite,
 } from "@/lib/events-api";
+import { buildEventStructuredData } from "@/lib/structured-data";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -1328,10 +1330,22 @@ export default function EventDetailPage() {
       (!isAuthenticated || !user?.date_of_birth || !isAtLeast18(user.date_of_birth)),
     );
 
+  // JSON-LD structured data for crawlers (issue #243).
+  // Built only when the event has loaded; for private events the helper emits
+  // a visibility-safe subset (no description, no location, no attendees).
+  // window is referenced on the client; SSR fallback is omitted because this
+  // page is "use client" and the script renders after hydration.
+  const baseUrl =
+    typeof window !== "undefined" ? window.location.origin : "";
+  const eventStructuredData =
+    event && baseUrl ? buildEventStructuredData(event, host, baseUrl) : null;
+
   return (
     <div className="bg-brand-bg min-h-screen">
+      {eventStructuredData && <JsonLd data={eventStructuredData} />}
       <Navbar />
 
+      <main aria-label="Event details">
       {loading ? (
         <div className="flex items-center justify-center py-32">
           <div className="flex flex-col items-center gap-3">
@@ -1369,6 +1383,7 @@ export default function EventDetailPage() {
           isAuthenticated={isAuthenticated}
         />
       )}
+      </main>
     </div>
   );
 }
