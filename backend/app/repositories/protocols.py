@@ -88,6 +88,14 @@ class NotificationRepoProtocol(Protocol):
         self, db: Client, notifications: list[dict]
     ) -> list[dict]: ...
 
+    def count_by_type_for_users_since(
+        self,
+        db: Client,
+        user_ids: list[str],
+        notification_type: str,
+        since_iso: str,
+    ) -> dict[str, int]: ...
+
 
 class InviteRepoProtocol(Protocol):
     """Surface used by `services.invite`. Covers both invite tokens and

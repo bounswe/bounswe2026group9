@@ -18,9 +18,14 @@ from datetime import UTC, datetime, timedelta
 
 from supabase import Client
 
-from app.repositories import attendance as attendance_repo
-from app.repositories import event as event_repo
-from app.repositories import notification as notification_repo
+from app.repositories import attendance as _attendance_repo
+from app.repositories import event as _event_repo
+from app.repositories import notification as _notification_repo
+from app.repositories.protocols import (
+    AttendanceRepoProtocol,
+    EventRepoProtocol,
+    NotificationRepoProtocol,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -35,13 +40,27 @@ ATTENDANCE_LOOKBACK_DAYS = 90
 _IN_CHUNK_SIZE = 100
 
 
-def emit_event_recommendations(db: Client, event_id: str, host_id: str) -> int:
+def emit_event_recommendations(
+    db: Client,
+    event_id: str,
+    host_id: str,
+    *,
+    events: EventRepoProtocol = _event_repo,
+    attendances: AttendanceRepoProtocol = _attendance_repo,
+    notifications: NotificationRepoProtocol = _notification_repo,
+) -> int:
     """Insert event_recommended notifications for users whose history matches.
 
     Returns the number of notifications inserted. Best-effort: callers should
     invoke this in a try/except and never let a failure block the publish path.
+
+    Helper functions still query Supabase directly through `db.table(...)`;
+    extracting those into repository methods is queued for a follow-up so we
+    can ship DI for the public surface without doubling the diff. Existing
+    integration coverage in `tests/test_recommendation_emitter.py` exercises
+    the end-to-end behaviour.
     """
-    event = event_repo.get_event_by_id(db, event_id)
+    event = events.get_event_by_id(db, event_id)
     if not event:
         return 0
 
@@ -55,7 +74,7 @@ def emit_event_recommendations(db: Client, event_id: str, host_id: str) -> int:
     if not category_ids:
         return 0
 
-    candidate_ids = _find_candidates(db, category_ids, event_id, host_id)
+    candidate_ids = _find_candidates(db, category_ids, event_id, host_id, attendances)
     if not candidate_ids:
         return 0
 
@@ -67,7 +86,7 @@ def emit_event_recommendations(db: Client, event_id: str, host_id: str) -> int:
     if not candidate_ids:
         return 0
 
-    candidate_ids = _drop_users_over_daily_cap(db, candidate_ids)
+    candidate_ids = _drop_users_over_daily_cap(db, candidate_ids, notifications)
     if not candidate_ids:
         return 0
 
@@ -83,7 +102,7 @@ def emit_event_recommendations(db: Client, event_id: str, host_id: str) -> int:
         for uid in candidate_ids
     ]
 
-    inserted = notification_repo.insert_notifications_bulk(db, rows)
+    inserted = notifications.insert_notifications_bulk(db, rows)
     return len(inserted)
 
 
@@ -100,7 +119,11 @@ def _get_event_category_ids(db: Client, event_id: str) -> list[str]:
 
 
 def _find_candidates(
-    db: Client, category_ids: list[str], new_event_id: str, host_id: str,
+    db: Client,
+    category_ids: list[str],
+    new_event_id: str,
+    host_id: str,
+    attendances: AttendanceRepoProtocol,
 ) -> set[str]:
     """Users with going attendance on ended events that share at least one category."""
     # Step 1: events in any of these categories (exclude the new event itself)
@@ -135,7 +158,7 @@ def _find_candidates(
         return set()
 
     # Step 3: users who attended any of those ended events
-    candidates = attendance_repo.find_users_going_on_events(db, ended_event_ids)
+    candidates = attendances.find_users_going_on_events(db, ended_event_ids)
     candidates.discard(host_id)
     return candidates
 
@@ -167,12 +190,16 @@ def _drop_users_already_engaged(
     return user_ids - engaged
 
 
-def _drop_users_over_daily_cap(db: Client, user_ids: set[str]) -> set[str]:
+def _drop_users_over_daily_cap(
+    db: Client,
+    user_ids: set[str],
+    notifications: NotificationRepoProtocol,
+) -> set[str]:
     """Skip users that already received MAX_RECOMMENDATIONS_PER_DAY today."""
     if not user_ids:
         return user_ids
     cutoff = (datetime.now(UTC) - timedelta(hours=24)).isoformat()
-    counts = notification_repo.count_by_type_for_users_since(
+    counts = notifications.count_by_type_for_users_since(
         db, list(user_ids), "event_recommended", cutoff,
     )
     return {uid for uid in user_ids if counts.get(uid, 0) < MAX_RECOMMENDATIONS_PER_DAY}
