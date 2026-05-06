@@ -330,6 +330,108 @@ class TestUnGoingInvalidatesToken:
         assert qr_resp.status_code == 404
 
 
+class TestEventLifecycleGuards:
+    """Lock down the `event["status"] not in ("published","updated")` guard
+    in `services/attendance.check_in`. Without these tests the guard could
+    silently regress and let scans through against cancelled/ended events.
+    """
+
+    def test_check_in_blocks_cancelled_event(self):
+        host = _register()
+        attendee = _register()
+        event_id = _create_published_event(host["id"])
+        _go(attendee["id"], event_id)
+        qr_token = client.get(
+            f"/attendances/me/{event_id}/qr", headers=_auth(attendee["id"])
+        ).json()["token"]
+
+        # Host cancels the event after RSVPs are in.
+        cancel = client.patch(
+            f"/events/{event_id}/status",
+            headers=_auth(host["id"]),
+            json={"status": "cancelled"},
+        )
+        assert cancel.status_code == 200
+
+        resp = client.post(
+            f"/events/{event_id}/check-in",
+            headers=_auth(host["id"]),
+            json={"token": qr_token},
+        )
+        assert resp.status_code == 400, resp.json()
+        assert "active" in resp.json()["detail"].lower()
+
+    def test_check_in_blocks_ended_event(self):
+        host = _register()
+        attendee = _register()
+        event_id = _create_published_event(host["id"])
+        _go(attendee["id"], event_id)
+        qr_token = client.get(
+            f"/attendances/me/{event_id}/qr", headers=_auth(attendee["id"])
+        ).json()["token"]
+
+        # Mark the event as ended directly via the status endpoint to avoid
+        # waiting on the pg_cron auto_end job.
+        end = client.patch(
+            f"/events/{event_id}/status",
+            headers=_auth(host["id"]),
+            json={"status": "ended"},
+        )
+        assert end.status_code == 200
+
+        resp = client.post(
+            f"/events/{event_id}/check-in",
+            headers=_auth(host["id"]),
+            json={"token": qr_token},
+        )
+        assert resp.status_code == 400, resp.json()
+        assert "active" in resp.json()["detail"].lower()
+
+
+class TestReGoingTokenRotation:
+    """When a user un-Goes and Goes again, a fresh token is issued and the
+    previous token must not validate. The first half is already covered by
+    `TestUnGoingInvalidatesToken`; this pins the rotation half explicitly.
+    """
+
+    def test_re_going_invalidates_old_token(self):
+        host = _register()
+        attendee = _register()
+        event_id = _create_published_event(host["id"])
+
+        # First Going + token snapshot.
+        _go(attendee["id"], event_id)
+        old_token = client.get(
+            f"/attendances/me/{event_id}/qr", headers=_auth(attendee["id"])
+        ).json()["token"]
+
+        # Un-Go → row deleted → token invalidated.
+        client.delete(f"/events/{event_id}/attendance", headers=_auth(attendee["id"]))
+
+        # Re-Go → new attendance row + new token.
+        _go(attendee["id"], event_id)
+        new_token = client.get(
+            f"/attendances/me/{event_id}/qr", headers=_auth(attendee["id"])
+        ).json()["token"]
+        assert new_token != old_token, "re-Going must rotate the token"
+
+        # Old token resolves to no row in the new attendance, so it 404s.
+        old_scan = client.post(
+            f"/events/{event_id}/check-in",
+            headers=_auth(host["id"]),
+            json={"token": old_token},
+        )
+        assert old_scan.status_code == 404, old_scan.json()
+
+        # New token works.
+        new_scan = client.post(
+            f"/events/{event_id}/check-in",
+            headers=_auth(host["id"]),
+            json={"token": new_token},
+        )
+        assert new_scan.status_code == 200, new_scan.json()
+
+
 class TestAttendeeList:
     def test_host_can_list_attendees(self):
         host = _register()
