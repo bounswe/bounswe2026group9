@@ -1,5 +1,6 @@
 package com.bounswe.group9.mobile.ui.checkin
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -156,12 +157,11 @@ private fun AttendeeRow(
                 .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(Modifier.weight(1f)) {
+            Column(Modifier.weight(1f).clickable { onProfileClick() }) {
                 Text(
                     text = "@${attendee.username}",
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
+                    color = MaterialTheme.colorScheme.primary
                 )
                 Spacer(Modifier.height(2.dp))
                 if (isCheckedIn) {
@@ -225,11 +225,15 @@ private fun CenteredMessage(text: String) {
 }
 
 private fun formatCheckInTime(iso: String): String {
-    return try {
-        val parser = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.getDefault())
-        val display = SimpleDateFormat("MMM d, HH:mm", Locale.getDefault())
-        display.timeZone = TimeZone.getDefault()
-        val date = parser.parse(iso)
-        if (date != null) display.format(date) else iso
-    } catch (_: Exception) { iso }
+    val display = SimpleDateFormat("MMM d, HH:mm", Locale.getDefault()).apply {
+        timeZone = TimeZone.getDefault()
+    }
+    val patterns = listOf("yyyy-MM-dd'T'HH:mm:ss.SSSXXX", "yyyy-MM-dd'T'HH:mm:ssXXX")
+    for (pattern in patterns) {
+        try {
+            val date = SimpleDateFormat(pattern, Locale.getDefault()).parse(iso)
+            if (date != null) return display.format(date)
+        } catch (_: Exception) { }
+    }
+    return iso
 }
