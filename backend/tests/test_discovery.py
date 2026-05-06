@@ -287,12 +287,13 @@ class TestListEventsSortOrder:
     def test_sorted_by_start_datetime(self):
         user = _create_test_user("sort")
         cat_ids = _get_category_ids(1)
+        unique = uuid.uuid4().hex[:8]
 
-        e1 = _create_published_event(user["id"], cat_ids, title="Sort Event A", days_from_now=5)
-        e2 = _create_published_event(user["id"], cat_ids, title="Sort Event B", days_from_now=3)
-        e3 = _create_published_event(user["id"], cat_ids, title="Sort Event C", days_from_now=7)
+        e1 = _create_published_event(user["id"], cat_ids, title=f"SortEvt{unique}A", days_from_now=5)
+        e2 = _create_published_event(user["id"], cat_ids, title=f"SortEvt{unique}B", days_from_now=3)
+        e3 = _create_published_event(user["id"], cat_ids, title=f"SortEvt{unique}C", days_from_now=7)
 
-        resp = client.get("/events")
+        resp = client.get(f"/events?search=SortEvt{unique}")
         items = resp.json()["items"]
         event_ids_in_order = [i["id"] for i in items]
 
