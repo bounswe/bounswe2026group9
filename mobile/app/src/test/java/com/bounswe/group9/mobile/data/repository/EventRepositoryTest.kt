@@ -187,6 +187,17 @@ class EventRepositoryTest {
     }
 
     @Test
+    fun `getEvents 500 surfaces failure with the status code in the message`() = runTest {
+        server.enqueue(MockResponse().setResponseCode(500).setBody("""{"detail":"server boom"}"""))
+
+        val result = repository.getEvents(token = null)
+
+        assertTrue(result.isFailure)
+        val msg = result.exceptionOrNull()?.message.orEmpty()
+        assertTrue(msg.contains("500"), "expected status code in message, got: $msg")
+    }
+
+    @Test
     fun `addBookmark POSTs to events bookmark path with bearer header`() = runTest {
         server.enqueue(
             MockResponse().setResponseCode(200).setBody(
