@@ -84,13 +84,25 @@ class RatingRepoProtocol(Protocol):
 
     def get_rating(self, db: Client, rater_id: str, host_id: str) -> dict | None: ...
 
-    def insert_rating(self, db: Client, data: dict) -> dict: ...
-
-    def update_rating_score(
-        self, db: Client, rating_id: str, score: float, review_text: str | None
-    ) -> dict: ...
+    def upsert_rating(self, db: Client, data: dict) -> dict: ...
 
     def get_host_rating_stats(self, db: Client, host_id: str) -> dict: ...
+
+    def list_reviews_for_host(
+        self, db: Client, host_id: str, *, page: int = 1, page_size: int = 20
+    ) -> tuple[list[dict], int]: ...
+
+
+class ProfileRepoProtocol(Protocol):
+    """Surface used by services that read/write user profile rows."""
+
+    def get_full_user_profile(self, db: Client, user_id: str) -> dict | None: ...
+
+    def update_user_profile(self, db: Client, user_id: str, data: dict) -> dict: ...
+
+    def get_hosted_events(
+        self, db: Client, user_id: str, include_drafts: bool = False
+    ) -> list[dict]: ...
 
 
 class AttendanceRepoProtocol(Protocol):
