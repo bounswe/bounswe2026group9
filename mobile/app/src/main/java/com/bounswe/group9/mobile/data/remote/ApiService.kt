@@ -80,7 +80,8 @@ data class EventListResponse(
     val total: Int,
     val page: Int,
     val page_size: Int,
-    val total_pages: Int
+    val total_pages: Int,
+    val suggested_fallback: Boolean = false
 )
 
 // ── Bookmark & Attendance ─────────────────────────────────────────────────────
