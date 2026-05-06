@@ -101,6 +101,10 @@ dependencies {
     testImplementation(libs.okhttp.mockwebserver)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.androidx.arch.core.testing)
+    // org.json.JSONObject is an Android framework class — provide a real impl
+    // in the JVM test classpath so production code that parses JSON via JSONObject
+    // (e.g. AuthRepository.friendlyHttpError) is exercised end-to-end in unit tests.
+    testImplementation("org.json:json:20240303")
 
     // ── Instrumented tests (Android device/emulator, src/androidTest) ──
     // Compose UI test is JUnit 4 based — keep classic JUnit alongside JUnit 5.
