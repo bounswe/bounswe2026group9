@@ -276,6 +276,10 @@ class UserRepoProtocol(Protocol):
 
     def get_users_by_ids(self, db: Client, user_ids: list[str]) -> list[dict]: ...
 
+    def get_user_default_area(
+        self, db: Client, user_id: str
+    ) -> tuple[float | None, float | None]: ...
+
 
 class EventRepoProtocol(Protocol):
     """Surface of `repositories.event` consumed by other services.
@@ -357,6 +361,29 @@ class EventRepoProtocol(Protocol):
     def get_event_segments(self, db: Client, event_id: str) -> list[dict]: ...
 
     def delete_event(self, db: Client, event_id: str) -> None: ...
+
+    def list_events(
+        self,
+        db: Client,
+        *,
+        search: str | None = None,
+        category_id: str | None = None,
+        quick_filter: str | None = None,
+        start_after: Any | None = None,
+        end_before: Any | None = None,
+        near_lat: float | None = None,
+        near_lng: float | None = None,
+        radius_km: float | None = None,
+        accessibility: dict[str, bool | None] | None = None,
+        sort: str = "start_time",
+        suggested_category_ids: set[str] | None = None,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> tuple[list[dict], int]: ...
+
+    def get_similar_candidates(
+        self, db: Client, event_id: str, limit: int = 30
+    ) -> list[dict]: ...
 
 
 # Convenience alias for "any module-shaped object that satisfies a repo

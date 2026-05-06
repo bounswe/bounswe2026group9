@@ -29,8 +29,11 @@ from app.repositories import image as _image_repo
 from app.repositories import invite as _invite_repo
 from app.repositories import user as _user_repo
 from app.repositories.protocols import (
+    AttendanceRepoProtocol,
+    BookmarkRepoProtocol,
     EventRepoProtocol,
     ImageRepoProtocol,
+    InviteRepoProtocol,
     UserRepoProtocol,
 )
 from app.services.rate_limit import is_rate_limit_exempt_email
@@ -442,14 +445,22 @@ def _build_limited_response(
 # --- Read ---
 
 def get_event_detail(
-    db: Client, event_id: str, user_id: str | None = None,
+    db: Client,
+    event_id: str,
+    user_id: str | None = None,
+    *,
+    events: EventRepoProtocol = _event_repo,
+    users: UserRepoProtocol = _user_repo,
+    bookmarks: BookmarkRepoProtocol = _bookmark_repo,
+    attendances: AttendanceRepoProtocol = _attendance_repo,
+    invites: InviteRepoProtocol = _invite_repo,
 ) -> EventDetailResponse | EventLimitedResponse:
-    event = event_repo.get_event_by_id(db, event_id)
+    event = events.get_event_by_id(db, event_id)
     if not event:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
 
     # Lazy auto-end
-    event = auto_end_event_if_past(db, event)
+    event = auto_end_event_if_past(db, event, events=events)
 
     # Draft events are only visible to the host
     if event["status"] == "draft" and (not user_id or event["host_id"] != user_id):
@@ -460,27 +471,27 @@ def get_event_detail(
     access_request_status = None
     has_access_grant = False
     if user_id:
-        bookmark = bookmark_repo.get_bookmark(db, user_id, event_id)
+        bookmark = bookmarks.get_bookmark(db, user_id, event_id)
         if bookmark:
             is_bookmarked = True
         else:
             is_bookmarked = False
 
-        attendance = attendance_repo.get_attendance(db, user_id, event_id)
+        attendance = attendances.get_attendance(db, user_id, event_id)
         if attendance:
             attendance_status = attendance["status"]
 
-        access_request = invite_repo.get_access_request(db, event_id, user_id)
+        access_request = invites.get_access_request(db, event_id, user_id)
         if access_request:
             access_request_status = access_request["status"]
         if event["visibility"] == "private" and event["host_id"] != user_id:
-            has_access_grant = invite_repo.get_access_grant(db, event_id, user_id) is not None
+            has_access_grant = invites.get_access_grant(db, event_id, user_id) is not None
 
-    bookmark_count = bookmark_repo.get_bookmark_count_for_event(db, event_id)
+    bookmark_count = bookmarks.get_bookmark_count_for_event(db, event_id)
 
     # Cancelled events show limited info with cancellation label
     if event["status"] == "cancelled" and (not user_id or event["host_id"] != user_id):
-        categories = event_repo.get_event_categories(db, event_id)
+        categories = events.get_event_categories(db, event_id)
         return _build_limited_response(
             event,
             categories,
@@ -488,7 +499,7 @@ def get_event_detail(
             access_request_status=access_request_status,
         )
 
-    categories = event_repo.get_event_categories(db, event_id)
+    categories = events.get_event_categories(db, event_id)
 
     # Guest (no user_id) → limited preview
     if not user_id:
@@ -506,7 +517,7 @@ def get_event_detail(
 
     # Age restriction check (host is always exempt)
     if event["is_age_restricted"] and user_id and event["host_id"] != user_id:
-        dob_str = user_repo.get_user_date_of_birth(db, user_id)
+        dob_str = users.get_user_date_of_birth(db, user_id)
         if not dob_str:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -522,13 +533,13 @@ def get_event_detail(
             )
 
     # Full detail
-    locations = event_repo.get_event_locations(db, event_id)
-    images = event_repo.get_event_images(db, event_id)
-    venue_metadata = event_repo.get_venue_metadata(db, event_id)
-    equipment = event_repo.get_equipment(db, event_id)
-    segments = event_repo.get_event_segments(db, event_id)
-    attendee_ids = attendance_repo.get_going_user_ids_for_event(db, event_id)
-    attendee_users = user_repo.get_users_by_ids(db, attendee_ids)
+    locations = events.get_event_locations(db, event_id)
+    images = events.get_event_images(db, event_id)
+    venue_metadata = events.get_venue_metadata(db, event_id)
+    equipment = events.get_equipment(db, event_id)
+    segments = events.get_event_segments(db, event_id)
+    attendee_ids = attendances.get_going_user_ids_for_event(db, event_id)
+    attendee_users = users.get_users_by_ids(db, attendee_ids)
     attendee_usernames = {
         attendee["id"]: attendee.get("username", "unknown")
         for attendee in attendee_users
@@ -538,7 +549,7 @@ def get_event_detail(
         for attendee_id in attendee_ids
     ]
 
-    host = user_repo.get_user_by_id(db, str(event["host_id"]))
+    host = users.get_user_by_id(db, str(event["host_id"]))
     host_username = host["username"] if host else ""
 
     return _build_detail_response(
@@ -854,23 +865,22 @@ def list_events(
     suggested: bool = False,
     page: int = 1,
     page_size: int = 20,
+    events: EventRepoProtocol = _event_repo,
+    users: UserRepoProtocol = _user_repo,
+    bookmarks: BookmarkRepoProtocol = _bookmark_repo,
+    attendances: AttendanceRepoProtocol = _attendance_repo,
+    invites: InviteRepoProtocol = _invite_repo,
 ) -> EventListResponse:
     # Resolve default-area fallback when client opts in and didn't pass coords.
     if use_default_area and near_lat is None and near_lng is None and user_id:
-        result = (
-            db.table("users")
-            .select("default_location_lat,default_location_lng")
-            .eq("id", user_id)
-            .execute()
-        )
-        row = result.data[0] if result.data else {}
-        if row.get("default_location_lat") is None or row.get("default_location_lng") is None:
+        default_lat, default_lng = users.get_user_default_area(db, user_id)
+        if default_lat is None or default_lng is None:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="No default area set on profile",
             )
-        near_lat = row["default_location_lat"]
-        near_lng = row["default_location_lng"]
+        near_lat = default_lat
+        near_lng = default_lng
 
     has_location = near_lat is not None and near_lng is not None
     if sort == "distance" and not has_location:
@@ -917,7 +927,7 @@ def list_events(
     suggested_category_ids: set[str] | None = None
     suggested_fallback = False
     if suggested and user_id:
-        suggested_category_ids = attendance_repo.get_attended_ended_event_categories(
+        suggested_category_ids = attendances.get_attended_ended_event_categories(
             db, user_id,
         )
         if not suggested_category_ids:
@@ -926,7 +936,7 @@ def list_events(
             suggested_category_ids = None
             suggested_fallback = True
 
-    events, total = event_repo.list_events(
+    event_rows, total = events.list_events(
         db,
         search=search,
         category_id=category_id,
@@ -944,7 +954,7 @@ def list_events(
     )
 
     total_pages = (total + page_size - 1) // page_size if total > 0 else 0
-    if not events:
+    if not event_rows:
         return EventListResponse(
             items=[], total=total, page=page, page_size=page_size,
             total_pages=total_pages, suggested_fallback=suggested_fallback,
@@ -954,8 +964,8 @@ def list_events(
     # rank in Python and slice to the requested page.
     if sort in ("distance", "category"):
         if sort == "distance":
-            full_event_ids = [e["id"] for e in events]
-            locations_by_event = event_repo.get_primary_locations_for_events(db, full_event_ids)
+            full_event_ids = [e["id"] for e in event_rows]
+            locations_by_event = events.get_primary_locations_for_events(db, full_event_ids)
 
             def _distance_key(ev: dict) -> tuple[float, str]:
                 loc = locations_by_event.get(ev["id"])
@@ -963,53 +973,53 @@ def list_events(
                     return (float("inf"), ev["id"])
                 return (_haversine_km(near_lat, near_lng, loc["latitude"], loc["longitude"]), ev["id"])
 
-            events.sort(key=_distance_key)
+            event_rows.sort(key=_distance_key)
         else:  # category
-            full_event_ids = [e["id"] for e in events]
-            categories_by_event_full = event_repo.get_categories_for_events(db, full_event_ids)
+            full_event_ids = [e["id"] for e in event_rows]
+            categories_by_event_full = events.get_categories_for_events(db, full_event_ids)
 
             def _category_key(ev: dict) -> tuple[str, str, str]:
                 cats = categories_by_event_full.get(ev["id"]) or []
                 primary = min((c.get("name", "") for c in cats), default="￿")
                 return (primary, ev["start_datetime"], ev["id"])
 
-            events.sort(key=_category_key)
+            event_rows.sort(key=_category_key)
 
         offset = (page - 1) * page_size
-        events = events[offset:offset + page_size]
-        if not events:
+        event_rows = event_rows[offset:offset + page_size]
+        if not event_rows:
             return EventListResponse(
                 items=[], total=total, page=page, page_size=page_size,
                 total_pages=total_pages, suggested_fallback=suggested_fallback,
             )
 
-    event_ids = [e["id"] for e in events]
-    locations_by_event = event_repo.get_primary_locations_for_events(db, event_ids)
-    categories_by_event = event_repo.get_categories_for_events(db, event_ids)
-    images_by_event = event_repo.get_primary_images_for_events(db, event_ids)
+    event_ids = [e["id"] for e in event_rows]
+    locations_by_event = events.get_primary_locations_for_events(db, event_ids)
+    categories_by_event = events.get_categories_for_events(db, event_ids)
+    images_by_event = events.get_primary_images_for_events(db, event_ids)
 
     is_bookmarked_map: set[str] = set()
     attendance_status_map: dict[str, str] = {}
     access_request_status_map: dict[str, str] = {}
     access_granted_event_ids: set[str] = set()
     if user_id:
-        is_bookmarked_map = bookmark_repo.get_bookmark_status_for_events(db, user_id, event_ids)
-        attendance_status_map = attendance_repo.get_attendance_status_for_events(db, user_id, event_ids)
-        access_request_status_map = invite_repo.get_access_request_status_for_events(
+        is_bookmarked_map = bookmarks.get_bookmark_status_for_events(db, user_id, event_ids)
+        attendance_status_map = attendances.get_attendance_status_for_events(db, user_id, event_ids)
+        access_request_status_map = invites.get_access_request_status_for_events(
             db,
             user_id,
             event_ids,
         )
-        access_granted_event_ids = invite_repo.get_access_granted_event_ids(
+        access_granted_event_ids = invites.get_access_granted_event_ids(
             db,
             user_id,
             event_ids,
         )
 
-    bookmark_counts = bookmark_repo.get_bookmark_counts_for_events(db, event_ids)
+    bookmark_counts = bookmarks.get_bookmark_counts_for_events(db, event_ids)
 
     items = []
-    for event in events:
+    for event in event_rows:
         is_private = event["visibility"] == "private"
         # Discovery previews stay limited for private events and guests.
         show_preview_details = user_id is not None and not is_private
@@ -1101,28 +1111,33 @@ def get_similar_events(
     event_id: str,
     user_id: str | None = None,
     limit: int = 5,
+    *,
+    events: EventRepoProtocol = _event_repo,
+    bookmarks: BookmarkRepoProtocol = _bookmark_repo,
+    invites: InviteRepoProtocol = _invite_repo,
 ) -> list[EventListItemResponse]:
     """Return up to `limit` scored similar public published/updated future events."""
-    source = event_repo.get_event_by_id(db, event_id)
+    source = events.get_event_by_id(db, event_id)
     if not source:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
 
-    source_categories = event_repo.get_event_categories(db, event_id)
+    source_categories = events.get_event_categories(db, event_id)
     source_cat_ids = {c["id"] for c in source_categories}
 
-    source_locs = db.table("event_locations").select("latitude,longitude").eq("event_id", event_id).eq("is_primary", True).execute()
-    source_lat = source_lng = None
-    if source_locs.data:
-        source_lat = source_locs.data[0].get("latitude")
-        source_lng = source_locs.data[0].get("longitude")
+    # Source primary location — reuse the batch lookup so we go through the
+    # repo seam instead of poking db.table directly.
+    source_locs = events.get_primary_locations_for_events(db, [event_id])
+    source_loc = source_locs.get(event_id) or {}
+    source_lat = source_loc.get("latitude")
+    source_lng = source_loc.get("longitude")
 
-    candidates = event_repo.get_similar_candidates(db, event_id, limit=30)
+    candidates = events.get_similar_candidates(db, event_id, limit=30)
     if not candidates:
         return []
 
     candidate_ids = [c["id"] for c in candidates]
-    cats_by_event = event_repo.get_categories_for_events(db, candidate_ids)
-    locs_by_event = event_repo.get_primary_locations_for_events(db, candidate_ids)
+    cats_by_event = events.get_categories_for_events(db, candidate_ids)
+    locs_by_event = events.get_primary_locations_for_events(db, candidate_ids)
 
     scored = []
     for cand in candidates:
@@ -1146,20 +1161,20 @@ def get_similar_events(
     top = [c for _, c in scored[:limit]]
     top_ids = [c["id"] for c in top]
 
-    locations_by_event = event_repo.get_primary_locations_for_events(db, top_ids)
-    images_by_event = event_repo.get_primary_images_for_events(db, top_ids)
-    bookmark_counts = bookmark_repo.get_bookmark_counts_for_events(db, top_ids)
+    locations_by_event = events.get_primary_locations_for_events(db, top_ids)
+    images_by_event = events.get_primary_images_for_events(db, top_ids)
+    bookmark_counts = bookmarks.get_bookmark_counts_for_events(db, top_ids)
 
     # Mirror list_events: private-aware redaction + access state batch lookups.
     is_bookmarked_map: set[str] = set()
     access_request_status_map: dict[str, str] = {}
     access_granted_event_ids: set[str] = set()
     if user_id:
-        is_bookmarked_map = bookmark_repo.get_bookmark_status_for_events(db, user_id, top_ids)
-        access_request_status_map = invite_repo.get_access_request_status_for_events(
+        is_bookmarked_map = bookmarks.get_bookmark_status_for_events(db, user_id, top_ids)
+        access_request_status_map = invites.get_access_request_status_for_events(
             db, user_id, top_ids,
         )
-        access_granted_event_ids = invite_repo.get_access_granted_event_ids(
+        access_granted_event_ids = invites.get_access_granted_event_ids(
             db, user_id, top_ids,
         )
 
