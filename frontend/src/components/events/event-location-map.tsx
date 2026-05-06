@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Map, { Marker, type MapRef } from "react-map-gl/maplibre";
+import Map, { Layer, Marker, Source, type MapRef } from "react-map-gl/maplibre";
 import { Minus, Plus } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -89,6 +89,26 @@ export function EventLocationMap({
     [activeLocation?.id, mappableLocations],
   );
 
+  // Polyline through pinned stops in their listed order. Recomputes on every
+  // mappableLocations change, which satisfies issue #157's AC: the line redraws
+  // automatically when a location is added, removed, or reordered.
+  const polylineFeature = useMemo(() => {
+    if (mappableLocations.length < 2) {
+      return null;
+    }
+    return {
+      type: "Feature" as const,
+      geometry: {
+        type: "LineString" as const,
+        coordinates: mappableLocations.map<[number, number]>((location) => [
+          location.longitude,
+          location.latitude,
+        ]),
+      },
+      properties: {},
+    };
+  }, [mappableLocations]);
+
   useEffect(() => {
     if (!isMapReady || !mapRef.current) {
       return;
@@ -162,6 +182,20 @@ export function EventLocationMap({
             onLoad={() => setIsMapReady(true)}
             style={{ width: "100%", height: "100%" }}
           >
+            {polylineFeature && (
+              <Source id="event-route-source" type="geojson" data={polylineFeature}>
+                <Layer
+                  id="event-route-line"
+                  type="line"
+                  layout={{ "line-cap": "round", "line-join": "round" }}
+                  paint={{
+                    "line-color": "#493628",
+                    "line-width": 3,
+                    "line-opacity": 0.85,
+                  }}
+                />
+              </Source>
+            )}
             {mappableLocations.map((location, index) => (
               <Marker
                 key={location.id}

@@ -38,6 +38,7 @@ import { CommentSection } from "@/components/event/comment-section";
 import { ConfirmDialog } from "@/components/event/confirm-dialog";
 import { AttendeeAvatarStack } from "@/components/event/attendee-avatar-stack";
 import { LocationMapModal } from "@/components/event/location-map-modal";
+import { ItineraryTimeline } from "@/components/event/itinerary-timeline";
 import { cn } from "@/lib/utils";
 import {
   clearAccessRequestPending,
@@ -733,29 +734,59 @@ function FullView({
             </p>
           </section>
 
-          {/* Equipment requirements */}
+          {/* Itinerary — multi-stop route + per-stop timing (issue #157).
+              Renders only when there's at least one stop; collapses gracefully
+              when there's a single primary venue with no segments. */}
+          {(event.locations.length > 1 || (event.segments?.length ?? 0) > 0) && (
+            <section className="mb-6">
+              <h3 className="font-heading text-brand-dark mb-3 text-lg font-semibold">
+                Itinerary
+              </h3>
+              <ItineraryTimeline
+                locations={event.locations}
+                segments={event.segments ?? []}
+              />
+            </section>
+          )}
+
+          {/* Equipment requirements — Required / Optional badges per AC #157 */}
           {(event.equipment_requirements ?? []).length > 0 && (
             <section className="mb-6">
               <h3 className="font-heading text-brand-dark text-lg font-semibold mb-3">
                 What to bring
               </h3>
-              <div className="space-y-2">
+              <ul className="space-y-2" aria-label="Equipment requirements">
                 {(event.equipment_requirements ?? []).map((eq) => (
-                  <div key={eq.id} className="flex items-center gap-2 text-sm text-brand-dark">
-                    {eq.is_required ? (
-                      <Check className="size-4 text-brand-mid shrink-0" />
-                    ) : (
-                      <span className="inline-flex size-4 shrink-0 items-center justify-center rounded-full border-2 border-brand-mid-alpha text-[9px] text-brand-mid">○</span>
-                    )}
-                    <span>
-                      {eq.item_name}
-                      {!eq.is_required && (
-                        <span className="ml-1 text-brand-mid/70">(optional)</span>
+                  <li
+                    key={eq.id}
+                    className="text-brand-dark flex items-center justify-between gap-3 text-sm"
+                  >
+                    <span className="flex min-w-0 items-center gap-2">
+                      {eq.is_required ? (
+                        <Check className="text-brand-mid size-4 shrink-0" aria-hidden="true" />
+                      ) : (
+                        <span
+                          aria-hidden="true"
+                          className="border-brand-mid-alpha text-brand-mid inline-flex size-4 shrink-0 items-center justify-center rounded-full border-2 text-[9px]"
+                        >
+                          ○
+                        </span>
                       )}
+                      <span className="break-words">{eq.item_name}</span>
                     </span>
-                  </div>
+                    <span
+                      className={cn(
+                        "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+                        eq.is_required
+                          ? "bg-brand-dark text-white"
+                          : "border-brand-mid-alpha text-brand-mid border",
+                      )}
+                    >
+                      {eq.is_required ? "Required" : "Optional"}
+                    </span>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </section>
           )}
 

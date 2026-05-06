@@ -4,6 +4,7 @@ import type {
   EventDetailResponse,
   EventLimitedResponse,
   EventUpdatePayload,
+  SegmentPayload,
   VenueMetadataPayload,
 } from "@/lib/api";
 
@@ -25,6 +26,16 @@ export interface EventLocationFormValue {
   latitude: string;
   longitude: string;
   name: string;
+  /** Optional human-readable address (issue #295). */
+  locationAddress?: string;
+  // ── Optional itinerary segment timing for this stop (issue #149 / #157) ──
+  /** When `true`, the stop carries a segment payload on save. */
+  segmentEnabled: boolean;
+  segmentStartDate: string;
+  segmentStartTime: string;
+  segmentEndDate: string;
+  segmentEndTime: string;
+  segmentDescription: string;
 }
 
 export interface EventFormValues {
@@ -157,6 +168,13 @@ export function createEmptyLocation(
     latitude: "",
     longitude: "",
     name: "",
+    locationAddress: undefined,
+    segmentEnabled: false,
+    segmentStartDate: "",
+    segmentStartTime: "",
+    segmentEndDate: "",
+    segmentEndTime: "",
+    segmentDescription: "",
     ...overrides,
   };
 }
@@ -195,6 +213,12 @@ export function mapEventToFormValues(event: EventDetailResponse): EventFormValue
   const start = new Date(event.start_datetime);
   const end = new Date(event.end_datetime);
 
+  // Index segments by location_id so each stop can reclaim its timing.
+  const segmentsByLocation = new Map<string, EventDetailResponse["segments"] extends (infer S)[] | undefined ? S : never>();
+  for (const segment of event.segments ?? []) {
+    segmentsByLocation.set(segment.location_id, segment);
+  }
+
   return {
     accessibleRestroom: event.venue_metadata?.accessible_restroom ?? false,
     attendeeLimit: event.attendee_limit?.toString() ?? "",
@@ -209,15 +233,37 @@ export function mapEventToFormValues(event: EventDetailResponse): EventFormValue
     language: event.venue_metadata?.language ?? "",
     locations:
       event.locations.length > 0
-        ? event.locations.map((location) =>
-            createEmptyLocation({
-              id: location.id,
-              isPrimary: location.is_primary,
-              latitude: location.latitude.toString(),
-              longitude: location.longitude.toString(),
-              name: location.name,
-            }),
-          )
+        ? [...event.locations]
+            .sort((a, b) => a.order_index - b.order_index)
+            .map((location) => {
+              const segment = segmentsByLocation.get(location.id);
+              if (!segment) {
+                return createEmptyLocation({
+                  id: location.id,
+                  isPrimary: location.is_primary,
+                  latitude: location.latitude.toString(),
+                  longitude: location.longitude.toString(),
+                  name: location.name,
+                  locationAddress: location.location_address ?? undefined,
+                });
+              }
+              const segStart = new Date(segment.start_datetime);
+              const segEnd = new Date(segment.end_datetime);
+              return createEmptyLocation({
+                id: location.id,
+                isPrimary: location.is_primary,
+                latitude: location.latitude.toString(),
+                longitude: location.longitude.toString(),
+                name: location.name,
+                locationAddress: location.location_address ?? undefined,
+                segmentEnabled: true,
+                segmentStartDate: formatDateInput(segStart),
+                segmentStartTime: formatTimeInput(segStart),
+                segmentEndDate: formatDateInput(segEnd),
+                segmentEndTime: formatTimeInput(segEnd),
+                segmentDescription: segment.description ?? "",
+              });
+            })
         : [createEmptyLocation({ isPrimary: true })],
     isAgeRestricted: event.is_age_restricted ?? false,
     price: event.venue_metadata?.price ?? "",
@@ -238,6 +284,7 @@ export function isFullEventResponse(
 }
 
 export function buildEventCreatePayload(values: EventFormValues): EventCreatePayload {
+  const segments = buildSegments(values);
   return {
     attendee_limit: values.hasAttendeeLimit ? Number(values.attendeeLimit) : null,
     category_ids: values.categoryIds,
@@ -245,6 +292,7 @@ export function buildEventCreatePayload(values: EventFormValues): EventCreatePay
     end_datetime: buildIsoDateTime(values.endDate, values.endTime),
     is_age_restricted: values.isAgeRestricted,
     locations: buildLocations(values),
+    segments: segments.length > 0 ? segments : null,
     start_datetime: buildIsoDateTime(values.startDate, values.startTime),
     status: "draft",
     title: values.title.trim(),
@@ -307,6 +355,12 @@ export function buildEventUpdatePayload(values: EventFormValues): EventUpdatePay
     end_datetime: buildIsoDateTime(values.endDate, values.endTime),
     is_age_restricted: values.isAgeRestricted,
     locations: buildLocations(values),
+    // null clears any existing itinerary; an empty array would be ambiguous on
+    // the wire, so we only emit when at least one stop carries timing.
+    segments: (() => {
+      const segs = buildSegments(values);
+      return segs.length > 0 ? segs : null;
+    })(),
     start_datetime: buildIsoDateTime(values.startDate, values.startTime),
     title: values.title.trim(),
     venue_metadata: buildVenueMetadata(values),
@@ -340,8 +394,19 @@ export function buildBestEffortEventUpdatePayload(
   const hasLocationErrors = Object.keys(locationErrors).some(
     (key) => key === "locations" || key.startsWith("location-"),
   );
+  const hasSegmentErrors = Object.keys(locationErrors).some((key) =>
+    key.startsWith("segment-"),
+  );
   if (!hasLocationErrors) {
     payload.locations = buildLocations(values);
+    // Segments piggy-back on locations because they reference stops by index.
+    // Only emit when validation is fully clean — a partial / invalid itinerary
+    // gets held back until "Next" so we don't accidentally clobber a good
+    // server-side itinerary with broken intermediate state.
+    if (!hasSegmentErrors) {
+      const segs = buildSegments(values);
+      payload.segments = segs.length > 0 ? segs : null;
+    }
   }
 
   const venueMetadata = buildVenueMetadata(values);
@@ -494,9 +559,14 @@ export function validateStep(
       errors.locations = "Add at least one location.";
     }
 
+    // Cross-cutting bounds for segment timing — parity with mobile #293
+    // ("segment within event window" + "consecutive stops don't overlap").
+    const eventStart = parseDateTime(values.startDate, values.startTime);
+    const eventEnd = parseDateTime(values.endDate, values.endTime);
+
     values.locations.forEach((location, index) => {
       if (!location.name.trim()) {
-        errors[`location-name-${location.id}`] = `Location ${index + 1} needs a name.`;
+        errors[`location-name-${location.id}`] = `Stop ${index + 1} needs a name.`;
       }
 
       const latitude = Number(location.latitude);
@@ -512,7 +582,70 @@ export function validateStep(
       } else if (longitude < -180 || longitude > 180) {
         errors[`location-longitude-${location.id}`] = "Longitude must be between -180 and 180.";
       }
+
+      // Itinerary segment validation (issue #157). The toggle is opt-in; we
+      // only validate when the host has actually entered timing.
+      if (location.segmentEnabled) {
+        const hasAny =
+          location.segmentStartDate ||
+          location.segmentStartTime ||
+          location.segmentEndDate ||
+          location.segmentEndTime;
+        const hasAll =
+          location.segmentStartDate &&
+          location.segmentStartTime &&
+          location.segmentEndDate &&
+          location.segmentEndTime;
+        if (hasAny && !hasAll) {
+          errors[`segment-${location.id}`] =
+            "Fill in start and end date/time for this stop, or remove the timing.";
+        } else if (hasAll) {
+          const segStart = parseDateTime(location.segmentStartDate, location.segmentStartTime);
+          const segEnd = parseDateTime(location.segmentEndDate, location.segmentEndTime);
+          if (segStart && segEnd && segEnd <= segStart) {
+            errors[`segment-${location.id}`] = "Stop end must be after stop start.";
+          } else if (location.segmentDescription.length > 1000) {
+            errors[`segment-${location.id}`] = "Stop note must stay under 1000 characters.";
+          } else if (eventStart && segStart && segStart < eventStart) {
+            errors[`segment-${location.id}`] =
+              `Stop ${index + 1} must start after the event start.`;
+          } else if (eventEnd && segEnd && segEnd > eventEnd) {
+            errors[`segment-${location.id}`] =
+              `Stop ${index + 1} must end before the event end.`;
+          }
+        }
+      }
     });
+
+    // Consecutive segments (in list order) must not overlap. We run this
+    // *after* the per-stop loop so individual segment errors already wrote
+    // their messages, and we don't clobber them with the overlap message.
+    const segmentsInOrder = values.locations
+      .map((loc, idx) => ({ loc, idx }))
+      .filter(({ loc }) => {
+        return (
+          loc.segmentEnabled &&
+          loc.segmentStartDate &&
+          loc.segmentStartTime &&
+          loc.segmentEndDate &&
+          loc.segmentEndTime
+        );
+      });
+    for (let i = 1; i < segmentsInOrder.length; i += 1) {
+      const prev = segmentsInOrder[i - 1];
+      const curr = segmentsInOrder[i];
+      const prevEnd = parseDateTime(prev.loc.segmentEndDate, prev.loc.segmentEndTime);
+      const currStart = parseDateTime(curr.loc.segmentStartDate, curr.loc.segmentStartTime);
+      if (
+        prevEnd &&
+        currStart &&
+        currStart < prevEnd &&
+        !errors[`segment-${curr.loc.id}`]
+      ) {
+        errors[`segment-${curr.loc.id}`] =
+          `Stop ${curr.idx + 1} must start at or after Stop ${prev.idx + 1} ends.`;
+      }
+    }
   }
 
   if (stepIndex === 3 && imageCount === 0) {
@@ -551,17 +684,56 @@ export function getFirstInvalidStep(values: EventFormValues, imageCount: number)
 }
 
 function buildLocations(values: EventFormValues) {
-  const locations = values.locations.map((location, index) => ({
-    is_primary: location.isPrimary,
-    latitude: Number(location.latitude),
-    longitude: Number(location.longitude),
-    name: location.name.trim(),
-    order_index: index,
-  }));
+  const locations = values.locations.map((location, index) => {
+    const address = location.locationAddress?.trim();
+    return {
+      is_primary: location.isPrimary,
+      latitude: Number(location.latitude),
+      longitude: Number(location.longitude),
+      name: location.name.trim(),
+      order_index: index,
+      ...(address ? { location_address: address } : {}),
+    };
+  });
 
   if (!locations.some((location) => location.is_primary) && locations.length > 0) {
     locations[0].is_primary = true;
   }
 
   return locations;
+}
+
+/**
+ * Build segment payloads for stops that have all four timing fields filled.
+ * `location_index` and `order_index` are 1-to-1 with the stop's position in
+ * `values.locations`, matching the contract from backend issue #149.
+ */
+export function buildSegments(values: EventFormValues): SegmentPayload[] {
+  return values.locations.flatMap<SegmentPayload>((location, index) => {
+    if (!isSegmentReady(location)) {
+      return [];
+    }
+    const description = location.segmentDescription.trim();
+    return [
+      {
+        location_index: index,
+        order_index: index,
+        start_datetime: buildIsoDateTime(location.segmentStartDate, location.segmentStartTime),
+        end_datetime: buildIsoDateTime(location.segmentEndDate, location.segmentEndTime),
+        description: description === "" ? null : description,
+      },
+    ];
+  });
+}
+
+function isSegmentReady(location: EventLocationFormValue) {
+  return (
+    location.segmentEnabled &&
+    Boolean(
+      location.segmentStartDate &&
+        location.segmentStartTime &&
+        location.segmentEndDate &&
+        location.segmentEndTime,
+    )
+  );
 }

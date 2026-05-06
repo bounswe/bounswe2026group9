@@ -16,6 +16,18 @@ export interface EventLocation {
   longitude: number;
   is_primary: boolean;
   order_index: number;
+  /** Optional reverse-geocoded street address (issue #295). */
+  location_address?: string | null;
+}
+
+/** Itinerary segment (issue #149 / #157) — host-defined start/end window for a stop. */
+export interface EventSegment {
+  id: string;
+  location_id: string;
+  order_index: number;
+  start_datetime: string;
+  end_datetime: string;
+  description: string | null;
 }
 
 export interface EventListItem {
@@ -194,6 +206,8 @@ export interface EventDetail {
   bookmark_count: number;
   is_full: boolean | null;
   locations: EventLocation[];
+  /** Empty array when the event has no host-defined itinerary. */
+  segments?: EventSegment[];
   categories: Category[];
   images: EventImage[];
   venue_metadata: VenueMetadata | null;
