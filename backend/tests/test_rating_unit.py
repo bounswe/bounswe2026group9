@@ -8,7 +8,6 @@ from fastapi import HTTPException
 
 from app.services import rating as rating_service
 
-
 HOST_ID = "00000000-0000-0000-0000-000000000030"
 RATER_ID = "00000000-0000-0000-0000-000000000031"
 RATING_ID = "00000000-0000-0000-0000-000000000032"

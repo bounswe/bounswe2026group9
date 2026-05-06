@@ -7,7 +7,6 @@ from fastapi import HTTPException
 
 from app.services import notification as notification_service
 
-
 USER_ID = "00000000-0000-0000-0000-000000000020"
 OTHER_USER_ID = "00000000-0000-0000-0000-000000000021"
 NOTIFICATION_ID = "00000000-0000-0000-0000-000000000022"

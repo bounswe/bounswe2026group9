@@ -8,7 +8,6 @@ from fastapi import HTTPException
 from app.models.event import CategoryCreateRequest
 from app.services import category as category_service
 
-
 CATEGORY_ID = "00000000-0000-0000-0000-000000000010"
 
 
