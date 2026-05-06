@@ -44,6 +44,21 @@ android {
         unitTests.isIncludeAndroidResources = true
         unitTests.isReturnDefaultValues = true
     }
+
+    // JUnit 5 jars on the androidTest classpath (pulled transitively by other
+    // test deps) all bundle META-INF/LICENSE-notice files; AGP refuses to merge
+    // them when packaging the androidTest APK. Drop the duplicates instead of
+    // letting the instrumented build fail at mergeDebugAndroidTestJavaResource.
+    packaging {
+        resources {
+            excludes += setOf(
+                "META-INF/LICENSE.md",
+                "META-INF/LICENSE-notice.md",
+                "META-INF/AL2.0",
+                "META-INF/LGPL2.1"
+            )
+        }
+    }
 }
 
 detekt {
