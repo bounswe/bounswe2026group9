@@ -27,6 +27,7 @@ class EventRepository {
         nearLat: Double? = null,
         nearLng: Double? = null,
         radiusKm: Double? = null,
+        suggested: Boolean? = null,
         page: Int = 1,
         pageSize: Int = 20
     ): Result<EventListResponse> {
@@ -47,6 +48,7 @@ class EventRepository {
                 captions = captions,
                 quietFriendly = quietFriendly,
                 sort = sort,
+                suggested = suggested,
                 page = page,
                 pageSize = pageSize
             )
@@ -54,9 +56,10 @@ class EventRepository {
         } catch (e: retrofit2.HttpException) {
             if (e.code() == 401 && token != null) {
                 Log.w("EventRepository", "Token rejected (401), retrying without auth")
+                // Suggested requires auth — drop it on the unauth retry so the request still succeeds.
                 return getEvents(null, search, categoryId, quickFilter,
                     wheelchair, accessibleRestroom, elevator, seating, captions,
-                    quietFriendly, sort, nearLat, nearLng, radiusKm, page, pageSize)
+                    quietFriendly, sort, nearLat, nearLng, radiusKm, null, page, pageSize)
             }
             val body = e.response()?.errorBody()?.string() ?: "Unknown error"
             Log.e("EventRepository", "getEvents HTTP ${e.code()}: $body")
