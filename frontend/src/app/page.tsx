@@ -49,6 +49,9 @@ interface PageParams {
   search: string;
   temporal: TemporalFilter | null;
   personal: PersonalFilter | null;
+  /** "Suggested for you" — issue #285. Auth-only on the wire (silently ignored
+   *  for guests by the backend, but we also gate the chip in the UI). */
+  suggested: boolean;
   /** comma-separated in URL, array in JS */
   categoryIds: string[];
   page: number;
@@ -71,6 +74,7 @@ function readParams(sp: ReturnType<typeof useSearchParams>): PageParams {
     search: sp.get("q") ?? "",
     temporal: isTemporalFilter(temporal) ? temporal : null,
     personal: isPersonalFilter(personal) ? personal : null,
+    suggested: sp.get("suggested") === "1",
     categoryIds: raw ? raw.split(",").filter(Boolean) : [],
     page: Math.max(1, parseInt(sp.get("page") ?? "1", 10)),
   };
@@ -82,6 +86,7 @@ function buildQS(p: PageParams & { resetPage?: boolean }): string {
   if (p.search) sp.set("q", p.search);
   if (p.temporal) sp.set("temporal", p.temporal);
   if (p.personal) sp.set("personal", p.personal);
+  if (p.suggested) sp.set("suggested", "1");
   if (p.categoryIds.length > 0) sp.set("category", p.categoryIds.join(","));
   if (!p.resetPage && p.page > 1) sp.set("page", String(p.page));
   const qs = sp.toString();
@@ -94,10 +99,11 @@ interface DiscoveryPageResult {
   items: EventListItem[];
   total: number;
   totalPages: number;
+  suggested_fallback: boolean;
 }
 
 function buildDiscoveryCacheKey(
-  params: Pick<PageParams, "search" | "temporal" | "categoryIds">,
+  params: Pick<PageParams, "search" | "temporal" | "categoryIds" | "suggested">,
   personal: PersonalFilter | null,
   userKey: string,
 ): string {
@@ -105,27 +111,37 @@ function buildDiscoveryCacheKey(
     search: params.search.trim(),
     temporal: params.temporal,
     personal,
+    suggested: params.suggested,
     categoryIds: [...params.categoryIds].sort(),
     userKey,
   });
 }
 
-function paginateDiscoveryEvents(items: EventListItem[], page: number): DiscoveryPageResult {
+function paginateDiscoveryEvents(
+  items: EventListItem[],
+  page: number,
+  suggested_fallback: boolean,
+): DiscoveryPageResult {
   const startIndex = (page - 1) * LIST_PAGE_SIZE;
   return {
     items: items.slice(startIndex, startIndex + LIST_PAGE_SIZE),
     total: items.length,
     totalPages: items.length > 0 ? Math.ceil(items.length / LIST_PAGE_SIZE) : 0,
+    suggested_fallback,
   };
 }
 
-function buildDiscoveryQuery(params: PageParams): DiscoveryParams {
+function buildDiscoveryQuery(
+  params: PageParams,
+  isAuthenticated: boolean,
+): DiscoveryParams {
   return {
     search: params.search || undefined,
     temporal_filter:
       params.temporal === "today" || params.temporal === "this_week"
         ? params.temporal
         : undefined,
+    suggested: params.suggested && isAuthenticated ? true : undefined,
   };
 }
 
@@ -169,12 +185,17 @@ function sortDiscoveryEvents(a: EventListItem, b: EventListItem): number {
   return a.id.localeCompare(b.id);
 }
 
+interface UnionEventsResult {
+  items: EventListItem[];
+  suggested_fallback: boolean;
+}
+
 async function fetchUnionEvents(
   categoryIds: string[],
   query: DiscoveryParams,
   temporal: TemporalFilter | null,
   personal: PersonalFilter | null,
-): Promise<EventListItem[]> {
+): Promise<UnionEventsResult> {
   const applyFilters = (items: EventListItem[]) =>
     applyPersonalFilter(
       applyTemporalFilter(items, temporal),
@@ -182,11 +203,13 @@ async function fetchUnionEvents(
     );
 
   if (categoryIds.length === 0) {
-    return applyFilters(await fetchAllEvents(query));
+    const res = await fetchAllEvents(query);
+    return { items: applyFilters(res.items), suggested_fallback: res.suggested_fallback };
   }
 
   if (categoryIds.length === 1) {
-    return applyFilters(await fetchAllEvents({ ...query, category_id: categoryIds[0] }));
+    const res = await fetchAllEvents({ ...query, category_id: categoryIds[0] });
+    return { items: applyFilters(res.items), suggested_fallback: res.suggested_fallback };
   }
 
   const results = await Promise.all(
@@ -194,13 +217,19 @@ async function fetchUnionEvents(
   );
 
   const eventsById = new Map<string, EventListItem>();
-  for (const items of results) {
-    for (const item of items) {
+  for (const res of results) {
+    for (const item of res.items) {
       eventsById.set(item.id, item);
     }
   }
 
-  return applyFilters(Array.from(eventsById.values()).sort(sortDiscoveryEvents));
+  // Treat fallback as union: any per-category call that fell back means the
+  // user has no history matching that category — surface the hint.
+  const suggested_fallback = results.some((res) => res.suggested_fallback);
+  return {
+    items: applyFilters(Array.from(eventsById.values()).sort(sortDiscoveryEvents)),
+    suggested_fallback,
+  };
 }
 
 // ─── Loading UI ─────────────────────────────────────────────────────────────────
@@ -264,20 +293,26 @@ function DiscoveryPage() {
   const [events, setEvents] = useState<EventListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [suggestedFallback, setSuggestedFallback] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshTick, setRefreshTick] = useState(0);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const fullResultsCacheRef = useRef(new Map<string, EventListItem[]>());
-  const pendingFullResultsRef = useRef(new Map<string, Promise<EventListItem[]>>());
+  const fullResultsCacheRef = useRef(new Map<string, UnionEventsResult>());
+  const pendingFullResultsRef = useRef(new Map<string, Promise<UnionEventsResult>>());
   const pagedResultsCacheRef = useRef(new Map<string, DiscoveryPageResult>());
 
   // categoryCounts come from a separate fetch WITHOUT category filter
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
 
+  // Suggested is auth-only — strip it from the URL state for guests so the
+  // chip never gets a phantom "on" reading and the wire never receives it.
+  const activeSuggested = isAuthenticated && params.suggested;
+
   // Draft filters (not yet pushed to URL)
   const [draftFilters, setDraftFilters] = useState<FilterState>({
     temporal: params.temporal,
     personal: activePersonalFilter,
+    suggested: activeSuggested,
     categoryIds: params.categoryIds,
   });
 
@@ -285,6 +320,7 @@ function DiscoveryPage() {
   const prevRef = useRef({
     temporal: params.temporal,
     personal: activePersonalFilter,
+    suggested: activeSuggested,
     categoryIds: params.categoryIds,
   });
   useEffect(() => {
@@ -292,19 +328,26 @@ function DiscoveryPage() {
     const sameIds =
       prev.categoryIds.length === params.categoryIds.length &&
       prev.categoryIds.every((id, i) => id === params.categoryIds[i]);
-    if (prev.temporal !== params.temporal || prev.personal !== activePersonalFilter || !sameIds) {
+    if (
+      prev.temporal !== params.temporal ||
+      prev.personal !== activePersonalFilter ||
+      prev.suggested !== activeSuggested ||
+      !sameIds
+    ) {
       setDraftFilters({
         temporal: params.temporal,
         personal: activePersonalFilter,
+        suggested: activeSuggested,
         categoryIds: params.categoryIds,
       });
       prevRef.current = {
         temporal: params.temporal,
         personal: activePersonalFilter,
+        suggested: activeSuggested,
         categoryIds: params.categoryIds,
       };
     }
-  }, [params.temporal, activePersonalFilter, params.categoryIds]);
+  }, [params.temporal, activePersonalFilter, activeSuggested, params.categoryIds]);
 
   // ── URL push / replace ─────────────────────────────────────────────────────────
 
@@ -341,9 +384,9 @@ function DiscoveryPage() {
       temporal: TemporalFilter | null,
       personal: PersonalFilter | null,
     ) => {
-      const cachedItems = fullResultsCacheRef.current.get(cacheKey);
-      if (cachedItems) {
-        return Promise.resolve(cachedItems);
+      const cachedResult = fullResultsCacheRef.current.get(cacheKey);
+      if (cachedResult) {
+        return Promise.resolve(cachedResult);
       }
 
       const pendingRequest = pendingFullResultsRef.current.get(cacheKey);
@@ -357,9 +400,9 @@ function DiscoveryPage() {
         temporal,
         personal,
       )
-        .then((items) => {
-          fullResultsCacheRef.current.set(cacheKey, items);
-          return items;
+        .then((result) => {
+          fullResultsCacheRef.current.set(cacheKey, result);
+          return result;
         })
         .finally(() => {
           pendingFullResultsRef.current.delete(cacheKey);
@@ -375,7 +418,7 @@ function DiscoveryPage() {
   useEffect(() => {
     let cancelled = false;
 
-    const query = buildDiscoveryQuery(params);
+    const query = buildDiscoveryQuery(params, isAuthenticated);
     const resultCacheKey = buildDiscoveryCacheKey(params, activePersonalFilter, discoveryUserKey);
     const pageCacheKey = `${resultCacheKey}|page:${params.page}`;
     const canUseSimpleListFetch =
@@ -390,7 +433,7 @@ function DiscoveryPage() {
         let nextResult: DiscoveryPageResult;
 
         if (params.view === "map") {
-          const items = await getFullDiscoveryEvents(
+          const res = await getFullDiscoveryEvents(
             resultCacheKey,
             query,
             params.categoryIds,
@@ -399,14 +442,19 @@ function DiscoveryPage() {
           );
 
           nextResult = {
-            items,
-            total: items.length,
-            totalPages: items.length > 0 ? Math.ceil(items.length / LIST_PAGE_SIZE) : 0,
+            items: res.items,
+            total: res.items.length,
+            totalPages: res.items.length > 0 ? Math.ceil(res.items.length / LIST_PAGE_SIZE) : 0,
+            suggested_fallback: res.suggested_fallback,
           };
         } else {
-          const cachedFullItems = fullResultsCacheRef.current.get(resultCacheKey);
-          if (cachedFullItems) {
-            nextResult = paginateDiscoveryEvents(cachedFullItems, params.page);
+          const cachedFull = fullResultsCacheRef.current.get(resultCacheKey);
+          if (cachedFull) {
+            nextResult = paginateDiscoveryEvents(
+              cachedFull.items,
+              params.page,
+              cachedFull.suggested_fallback,
+            );
           } else {
             const cachedPage = pagedResultsCacheRef.current.get(pageCacheKey);
             if (cachedPage) {
@@ -423,6 +471,7 @@ function DiscoveryPage() {
                 items: res.items,
                 total: res.total,
                 totalPages: res.total_pages,
+                suggested_fallback: res.suggested_fallback ?? false,
               };
               pagedResultsCacheRef.current.set(pageCacheKey, nextResult);
 
@@ -434,14 +483,14 @@ function DiscoveryPage() {
                 activePersonalFilter,
               ).catch(() => undefined);
             } else {
-              const items = await getFullDiscoveryEvents(
+              const res = await getFullDiscoveryEvents(
                 resultCacheKey,
                 query,
                 params.categoryIds,
                 params.temporal,
                 activePersonalFilter,
               );
-              nextResult = paginateDiscoveryEvents(items, params.page);
+              nextResult = paginateDiscoveryEvents(res.items, params.page, res.suggested_fallback);
             }
           }
         }
@@ -461,6 +510,7 @@ function DiscoveryPage() {
         setEvents(nextResult.items);
         setTotal(nextResult.total);
         setTotalPages(nextResult.totalPages);
+        setSuggestedFallback(nextResult.suggested_fallback);
 
         // attendance_status and is_bookmarked are now returned directly by the list endpoint
         // when authenticated — no separate enrichment needed.
@@ -469,6 +519,7 @@ function DiscoveryPage() {
         setEvents([]);
         setTotal(0);
         setTotalPages(1);
+        setSuggestedFallback(false);
       } finally {
         if (!cancelled) {
           setLoading(false);
@@ -484,9 +535,11 @@ function DiscoveryPage() {
     discoveryUserKey,
     getFullDiscoveryEvents,
     replaceParams,
+    isAuthenticated,
     params.search,
     params.temporal,
     activePersonalFilter,
+    activeSuggested,
     params.page,
     params.view,
     categoryIdsKey,
@@ -503,12 +556,15 @@ function DiscoveryPage() {
         params.temporal === "today" || params.temporal === "this_week"
           ? params.temporal
           : undefined,
+      // Counts must reflect the same suggested-narrowed set the listing uses,
+      // otherwise the badge totals stop matching what the user actually sees.
+      suggested: activeSuggested ? true : undefined,
     })
-      .then((items) => {
+      .then((res) => {
         if (cancelled) return;
         const counts: Record<string, number> = {};
         const filteredItems = applyPersonalFilter(
-          applyTemporalFilter(items, params.temporal),
+          applyTemporalFilter(res.items, params.temporal),
           activePersonalFilter,
         );
         if (cancelled) return;
@@ -526,6 +582,7 @@ function DiscoveryPage() {
     params.search,
     params.temporal,
     activePersonalFilter,
+    activeSuggested,
     refreshTick,
   ]);
 
@@ -543,7 +600,10 @@ function DiscoveryPage() {
   }, []);
 
   // ── Active filter count ────────────────────────────────────────────────────────
-  const activeFilterCount = ((draftFilters.temporal || draftFilters.personal) ? 1 : 0) + draftFilters.categoryIds.length;
+  const activeFilterCount =
+    ((draftFilters.temporal || draftFilters.personal) ? 1 : 0) +
+    (draftFilters.suggested ? 1 : 0) +
+    draftFilters.categoryIds.length;
 
   // ── Handlers ───────────────────────────────────────────────────────────────────
 
@@ -560,15 +620,22 @@ function DiscoveryPage() {
     pushParams({
       temporal: draftFilters.temporal,
       personal: isAuthenticated ? draftFilters.personal : null,
+      suggested: isAuthenticated ? draftFilters.suggested : false,
       categoryIds: draftFilters.categoryIds,
       resetPage: true,
     });
   }
 
   function handleClearFilters() {
-    setDraftFilters({ temporal: null, personal: null, categoryIds: [] });
+    setDraftFilters({ temporal: null, personal: null, suggested: false, categoryIds: [] });
     setMobileFiltersOpen(false);
-    pushParams({ temporal: null, personal: null, categoryIds: [], resetPage: true });
+    pushParams({
+      temporal: null,
+      personal: null,
+      suggested: false,
+      categoryIds: [],
+      resetPage: true,
+    });
   }
 
   function handlePageChange(page: number) {
@@ -613,6 +680,15 @@ function DiscoveryPage() {
             loading && params.view === "list" ? "overflow-hidden" : "overflow-y-auto",
           )}
         >
+          {activeSuggested && suggestedFallback && !loading && (
+            <div
+              role="status"
+              className="border-brand-mid-alpha bg-brand-surface/60 text-brand-dark mx-4 mt-3 rounded-lg border px-4 py-2.5 text-xs sm:mx-6"
+            >
+              Attend events to get personalised suggestions. Showing default
+              results in the meantime.
+            </div>
+          )}
           <div className="relative flex min-h-0 flex-1">
             <div
               className={cn(

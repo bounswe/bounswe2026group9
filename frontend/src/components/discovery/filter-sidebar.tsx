@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, SlidersHorizontal, X } from "lucide-react";
+import { Check, Sparkles, SlidersHorizontal, X } from "lucide-react";
 
 import type { Category, PersonalFilter, TemporalFilter } from "@/lib/events-api";
 import { cn } from "@/lib/utils";
@@ -8,6 +8,9 @@ import { cn } from "@/lib/utils";
 export interface FilterState {
   temporal: TemporalFilter | null;
   personal: PersonalFilter | null;
+  /** "Suggested for you" (issue #285) — biases listing toward categories the
+   *  user has previously attended. Independent of temporal/personal toggles. */
+  suggested: boolean;
   /** Multiple categories = union (OR) logic */
   categoryIds: string[];
 }
@@ -73,6 +76,10 @@ export function FilterSidebar({
     });
   }
 
+  function toggleSuggested() {
+    onFiltersChange({ ...filters, suggested: !filters.suggested });
+  }
+
   function toggleCategory(id: string) {
     const next = filters.categoryIds.includes(id)
       ? filters.categoryIds.filter((c) => c !== id)
@@ -105,6 +112,28 @@ export function FilterSidebar({
         </div>
 
         <div className={cn("flex-1 overflow-y-auto space-y-6", isMobile ? "px-4 py-4" : "px-5 py-4")}>
+          {isAuthenticated && (
+            <section>
+              <p className="text-brand-mid mb-3 text-xs font-bold uppercase tracking-widest">
+                Personalised
+              </p>
+              <button
+                type="button"
+                onClick={toggleSuggested}
+                aria-pressed={filters.suggested}
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-mid/60 focus-visible:ring-offset-2",
+                  filters.suggested
+                    ? "bg-brand-dark border-brand-dark text-white"
+                    : "border-brand-mid-alpha text-brand-dark hover:bg-brand-mid-alpha",
+                )}
+              >
+                <Sparkles className="size-3.5" />
+                Suggested for you
+              </button>
+            </section>
+          )}
+
           <section>
             <p className="text-brand-mid mb-3 text-xs font-bold uppercase tracking-widest">
               Quick Filters

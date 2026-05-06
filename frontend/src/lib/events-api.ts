@@ -51,6 +51,12 @@ export interface EventListResponse {
   page: number;
   page_size: number;
   total_pages: number;
+  /**
+   * Set by the backend when ?suggested=true was requested but the user has no
+   * past attendance history to bias on. UI should render an "attend events to
+   * get personalised suggestions" hint and fall back to the default listing.
+   */
+  suggested_fallback?: boolean;
 }
 
 export type TemporalFilter = "today" | "this_week" | "weekend";
@@ -59,8 +65,19 @@ export interface DiscoveryParams {
   search?: string;
   category_id?: string;
   temporal_filter?: "today" | "this_week";
+  /**
+   * Bias the listing toward categories the authenticated user attended on past
+   * ended events. Silently ignored for guests by the backend. When the user
+   * has no attendance history the response sets `suggested_fallback=true`.
+   */
+  suggested?: boolean;
   page?: number;
   page_size?: number;
+}
+
+export interface AllEventsResult {
+  items: EventListItem[];
+  suggested_fallback: boolean;
 }
 
 // ─── API Functions ─────────────────────────────────────────────────────────────
@@ -71,6 +88,7 @@ export async function fetchEvents(params: DiscoveryParams = {}): Promise<EventLi
   if (params.search?.trim()) query.set("search", params.search.trim());
   if (params.category_id) query.set("category_id", params.category_id);
   if (params.temporal_filter) query.set("temporal_filter", params.temporal_filter);
+  if (params.suggested) query.set("suggested", "true");
   if (params.page && params.page > 1) query.set("page", String(params.page));
   if (params.page_size) query.set("page_size", String(params.page_size));
 
@@ -78,12 +96,13 @@ export async function fetchEvents(params: DiscoveryParams = {}): Promise<EventLi
   return apiRequest<EventListResponse>(`/events${qs ? `?${qs}` : ""}`, { auth: "optional" });
 }
 
-export async function fetchAllEvents(params: DiscoveryParams = {}): Promise<EventListItem[]> {
+export async function fetchAllEvents(params: DiscoveryParams = {}): Promise<AllEventsResult> {
   const pageSize = 100;
   const firstPage = await fetchEvents({ ...params, page: 1, page_size: pageSize });
+  const suggested_fallback = firstPage.suggested_fallback ?? false;
 
   if (firstPage.total_pages <= 1) {
-    return firstPage.items;
+    return { items: firstPage.items, suggested_fallback };
   }
 
   const remainingPages = await Promise.all(
@@ -92,7 +111,8 @@ export async function fetchAllEvents(params: DiscoveryParams = {}): Promise<Even
     ),
   );
 
-  return [firstPage, ...remainingPages].flatMap((page) => page.items);
+  const items = [firstPage, ...remainingPages].flatMap((page) => page.items);
+  return { items, suggested_fallback };
 }
 
 export async function fetchCategories(): Promise<Category[]> {
@@ -140,6 +160,7 @@ export async function fetchGeoJsonEvents(params: DiscoveryParams = {}): Promise<
   if (params.search?.trim()) query.set("search", params.search.trim());
   if (params.category_id) query.set("category_id", params.category_id);
   if (params.temporal_filter) query.set("temporal_filter", params.temporal_filter);
+  if (params.suggested) query.set("suggested", "true");
 
   const qs = query.toString();
   return apiRequest<GeoJSONFeatureCollection>(`/events/geojson${qs ? `?${qs}` : ""}`, { auth: "optional" });

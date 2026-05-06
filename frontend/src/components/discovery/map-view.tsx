@@ -160,6 +160,7 @@ export function MapView({ currentUserId, isAuthenticated }: MapViewProps) {
           category_id: searchParams.get("category")?.split(",")[0] ?? undefined,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           temporal_filter: (searchParams.get("temporal") as any) ?? undefined,
+          suggested: searchParams.get("suggested") === "1" ? true : undefined,
         });
         if (!cancelled) setGeoJson(res);
       } catch (err) {
