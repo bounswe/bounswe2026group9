@@ -48,6 +48,8 @@ class BookmarkRepoProtocol(Protocol):
         self, db: Client, user_id: str, event_ids: list[str]
     ) -> dict[str, bool]: ...
 
+    def get_bookmarker_user_ids(self, db: Client, event_id: str) -> set[str]: ...
+
 
 class CategoryRepoProtocol(Protocol):
     """Surface used by `services.category`."""
@@ -81,6 +83,10 @@ class NotificationRepoProtocol(Protocol):
     def mark_all_notifications_as_read(self, db: Client, user_id: str) -> int: ...
 
     def insert_notification(self, db: Client, data: dict) -> dict | None: ...
+
+    def insert_notifications_bulk(
+        self, db: Client, notifications: list[dict]
+    ) -> list[dict]: ...
 
 
 class InviteRepoProtocol(Protocol):
