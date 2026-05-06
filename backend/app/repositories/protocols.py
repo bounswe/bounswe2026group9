@@ -299,6 +299,28 @@ class EventRepoProtocol(Protocol):
         self, db: Client, event_ids: list[str]
     ) -> dict[str, str]: ...
 
+    def get_valid_category_ids(
+        self, db: Client, category_ids: list[str]
+    ) -> set[str]: ...
+
+    def find_duplicate_events(
+        self, db: Client, host_id: str, title: str, start_datetime: str
+    ) -> list[dict]: ...
+
+    def find_location_by_event_and_name(
+        self, db: Client, event_id: str, name: str
+    ) -> list[dict]: ...
+
+    def get_rate_limit_config(self, db: Client) -> dict | None: ...
+
+    def count_events_by_host_since(
+        self, db: Client, host_id: str, cutoff_iso: str
+    ) -> int: ...
+
+    def update_event_status(
+        self, db: Client, event_id: str, new_status: str
+    ) -> dict | None: ...
+
 
 # Convenience alias for "any module-shaped object that satisfies a repo
 # protocol". Useful when a service takes a default-keyword repo and we

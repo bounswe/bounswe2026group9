@@ -22,13 +22,27 @@ from app.models.geojson import (
     GeoJSONFeatureCollection,
     GeoJSONPoint,
 )
-from app.repositories import attendance as attendance_repo
-from app.repositories import bookmark as bookmark_repo
-from app.repositories import event as event_repo
-from app.repositories import image as image_repo
-from app.repositories import invite as invite_repo
-from app.repositories import user as user_repo
+from app.repositories import attendance as _attendance_repo
+from app.repositories import bookmark as _bookmark_repo
+from app.repositories import event as _event_repo
+from app.repositories import image as _image_repo
+from app.repositories import invite as _invite_repo
+from app.repositories import user as _user_repo
+from app.repositories.protocols import (
+    EventRepoProtocol,
+    UserRepoProtocol,
+)
 from app.services.rate_limit import is_rate_limit_exempt_email
+
+# Aliases kept for the (still-large) parts of this module that haven't been
+# DI-converted yet. Phase 1 slice A converts the validators + helpers; the
+# CRUD and read-side functions get their own slices and switch to kwargs.
+attendance_repo = _attendance_repo
+bookmark_repo = _bookmark_repo
+event_repo = _event_repo
+image_repo = _image_repo
+invite_repo = _invite_repo
+user_repo = _user_repo
 
 
 def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
@@ -75,8 +89,13 @@ def validate_event_datetime(
         )
 
 
-def validate_categories_exist(db: Client, category_ids: list[str]) -> None:
-    found_ids = event_repo.get_valid_category_ids(db, category_ids)
+def validate_categories_exist(
+    db: Client,
+    category_ids: list[str],
+    *,
+    events: EventRepoProtocol = _event_repo,
+) -> None:
+    found_ids = events.get_valid_category_ids(db, category_ids)
     missing = set(category_ids) - found_ids
     if missing:
         raise HTTPException(
@@ -167,7 +186,13 @@ def _build_segment_rows(segments: list[SegmentRequest] | None) -> list[dict] | N
 
 
 def check_duplicate_event(
-    db: Client, host_id: str, title: str, start_datetime: str, location_name: str
+    db: Client,
+    host_id: str,
+    title: str,
+    start_datetime: str,
+    location_name: str,
+    *,
+    events: EventRepoProtocol = _event_repo,
 ) -> None:
     """Reject creation when title + start_datetime + *primary* location collide for the same host.
 
@@ -175,9 +200,9 @@ def check_duplicate_event(
     event whose primary differs but happens to include `location_name` as a
     non-primary stop is allowed.
     """
-    events = event_repo.find_duplicate_events(db, host_id, title, start_datetime)
-    for event in events:
-        locations = event_repo.find_location_by_event_and_name(db, event["id"], location_name)
+    duplicates = events.find_duplicate_events(db, host_id, title, start_datetime)
+    for event in duplicates:
+        locations = events.find_location_by_event_and_name(db, event["id"], location_name)
         if locations:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -185,12 +210,18 @@ def check_duplicate_event(
             )
 
 
-def check_rate_limit(db: Client, host_id: str) -> None:
-    host_email = user_repo.get_user_email_by_id(db, host_id)
+def check_rate_limit(
+    db: Client,
+    host_id: str,
+    *,
+    events: EventRepoProtocol = _event_repo,
+    users: UserRepoProtocol = _user_repo,
+) -> None:
+    host_email = users.get_user_email_by_id(db, host_id)
     if is_rate_limit_exempt_email(host_email):
         return
 
-    config = event_repo.get_rate_limit_config(db)
+    config = events.get_rate_limit_config(db)
     if not config:
         return
 
@@ -198,7 +229,7 @@ def check_rate_limit(db: Client, host_id: str) -> None:
     window_hours = config["time_window_hours"]
     cutoff = (datetime.now(UTC) - timedelta(hours=window_hours)).isoformat()
 
-    count = event_repo.count_events_by_host_since(db, host_id, cutoff)
+    count = events.count_events_by_host_since(db, host_id, cutoff)
     if count >= max_events:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -206,11 +237,16 @@ def check_rate_limit(db: Client, host_id: str) -> None:
         )
 
 
-def auto_end_event_if_past(db: Client, event: dict) -> dict:
+def auto_end_event_if_past(
+    db: Client,
+    event: dict,
+    *,
+    events: EventRepoProtocol = _event_repo,
+) -> dict:
     if event["status"] in ("published", "updated"):
         end_dt = _parse_stored_datetime(event["end_datetime"])
         if end_dt < datetime.now(UTC):
-            event_repo.update_event_status(db, event["id"], "ended")
+            events.update_event_status(db, event["id"], "ended")
             event["status"] = "ended"
     return event
 
