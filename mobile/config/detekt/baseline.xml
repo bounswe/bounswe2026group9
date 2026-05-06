@@ -1,0 +1,275 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues></ManuallySuppressedIssues>
+  <CurrentIssues>
+    <ID>ComplexCondition:CreateEventViewModel.kt$CreateEventViewModel$lat == null || lat &lt; -90 || lat &gt; 90 || lng == null || lng &lt; -180 || lng &gt; 180</ID>
+    <ID>ComplexCondition:CreateEventViewModel.kt$CreateEventViewModel$loc.segmentStartDate.isNotBlank() &amp;&amp; loc.segmentStartTime.isNotBlank() &amp;&amp; loc.segmentEndDate.isNotBlank() &amp;&amp; loc.segmentEndTime.isNotBlank()</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$AccessRequestResponseDto$val created_at: String</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$AccessRequestResponseDto$val event_id: String</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$AccessRequestResponseDto$val resolved_at: String?</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$AccessRequestResponseDto$val user_id: String</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$AttendanceResponse$val event_id: String</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$AttendanceResponse$val marked_at: String</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$AttendanceResponse$val user_id: String</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$AuthResponse$val access_token: String</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$AuthResponse$val token_type: String</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$BookmarkListResponseDto$val page_size: Int</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$BookmarkListResponseDto$val total_pages: Int</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$BookmarkResponse$val created_at: String</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$BookmarkResponse$val event_id: String</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$BookmarkedEventDto$val bookmarked_at: String</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$BookmarkedEventDto$val end_datetime: String</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$BookmarkedEventDto$val is_age_restricted: Boolean</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$BookmarkedEventDto$val primary_image_url: String? = null</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$BookmarkedEventDto$val primary_location: EventLocationDto? = null</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$BookmarkedEventDto$val start_datetime: String</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$CategoryDto$val is_approved: Boolean</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$CategoryDto$val is_predefined: Boolean</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$CommentDto$val created_at: String</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$CommentDto$val event_id: String</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$CommentDto$val parent_id: String? = null</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$CommentListResponseDto$val page_size: Int</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$CommentListResponseDto$val total_pages: Int</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$EventCreateRequest$val attendee_limit: Int? = null</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$EventCreateRequest$val category_ids: List&lt;String&gt;</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$EventCreateRequest$val end_datetime: String</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$EventCreateRequest$val is_age_restricted: Boolean = false</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$EventCreateRequest$val start_datetime: String</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$EventCreateRequest$val venue_metadata: VenueMetadataRequest? = null</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$EventListItemDto$val attendance_status: String?</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$EventListItemDto$val attendee_count: Int</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$EventListItemDto$val attendee_limit: Int?</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$EventListItemDto$val bookmark_count: Int = 0</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$EventListItemDto$val end_datetime: String</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$EventListItemDto$val going_count: Int</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$EventListItemDto$val host_id: String</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$EventListItemDto$val is_age_restricted: Boolean</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$EventListItemDto$val is_bookmarked: Boolean?</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$EventListItemDto$val is_full: Boolean?</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$EventListItemDto$val primary_image_url: String?</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$EventListItemDto$val primary_location: EventLocationDto?</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$EventListItemDto$val start_datetime: String</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$EventListResponse$val page_size: Int</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$EventListResponse$val total_pages: Int</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$EventLocationDto$val is_primary: Boolean</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$EventLocationDto$val location_address: String? = null</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$EventLocationDto$val order_index: Int</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$EventUpdateRequest$val attendee_limit: Int? = null</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$EventUpdateRequest$val category_ids: List&lt;String&gt;? = null</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$EventUpdateRequest$val clear_attendee_limit: Boolean = false</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$EventUpdateRequest$val end_datetime: String? = null</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$EventUpdateRequest$val is_age_restricted: Boolean? = null</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$EventUpdateRequest$val start_datetime: String? = null</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$EventUpdateRequest$val venue_metadata: VenueMetadataRequest? = null</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$HostProfileDto$val average_rating: Double?</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$HostProfileDto$val can_rate: Boolean = false</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$HostProfileDto$val hosted_events: List&lt;EventListItemDto&gt;</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$HostProfileDto$val hosted_events_count: Int</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$HostProfileDto$val phone_number: String?</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$InviteCreateRequestDto$val expires_in_hours: Int? = null</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$InviteCreateRequestDto$val max_uses: Int? = null</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$InviteResponseDto$val created_at: String</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$InviteResponseDto$val event_id: String</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$InviteResponseDto$val expires_at: String?</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$InviteResponseDto$val invite_url: String</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$InviteResponseDto$val max_uses: Int?</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$InviteResponseDto$val use_count: Int</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$LocationRequest$val is_primary: Boolean = true</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$LocationRequest$val location_address: String? = null</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$LocationRequest$val order_index: Int = 0</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$MyProfileDto$val date_of_birth: String? = null</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$MyProfileDto$val email_visibility: Boolean = false</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$MyProfileDto$val is_active: Boolean = true</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$MyProfileDto$val phone_number: String? = null</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$MyProfileDto$val phone_visibility: Boolean = false</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$NotificationDto$val created_at: String</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$NotificationDto$val event_id: String?</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$NotificationDto$val is_read: Boolean</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$NotificationDto$val user_id: String</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$NotificationListResponseDto$val page_size: Int</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$NotificationListResponseDto$val total_pages: Int</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$NotificationListResponseDto$val unread_count: Int = 0</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$NotificationReadAllResponseDto$val updated_count: Int</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$NotificationReadResponseDto$val is_read: Boolean</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$ProfileUpdateRequestDto$val date_of_birth: String? = null</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$ProfileUpdateRequestDto$val default_location_lat: Double? = null</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$ProfileUpdateRequestDto$val default_location_lng: Double? = null</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$ProfileUpdateRequestDto$val default_location_name: String? = null</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$ProfileUpdateRequestDto$val email_visibility: String? = null</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$ProfileUpdateRequestDto$val phone_number: String? = null</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$ProfileUpdateRequestDto$val phone_visibility: String? = null</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$RatingResponseDto$val created_at: String</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$RatingResponseDto$val host_id: String</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$RatingResponseDto$val rater_id: String</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$RefreshTokenRequest$val refresh_token: String?</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$RegisterRequest$val date_of_birth: String</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$SegmentRequest$val end_datetime: String</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$SegmentRequest$val location_index: Int</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$SegmentRequest$val order_index: Int</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$SegmentRequest$val start_datetime: String</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$VenueMetadataRequest$val accessible_restroom: Boolean = false</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$VenueMetadataRequest$val captions_support: Boolean = false</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$VenueMetadataRequest$val elevator_available: Boolean = false</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$VenueMetadataRequest$val health_requirements: String? = null</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$VenueMetadataRequest$val quiet_friendly: Boolean = false</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$VenueMetadataRequest$val seating_available: Boolean = false</ID>
+    <ID>ConstructorParameterNaming:ApiService.kt$VenueMetadataRequest$val wheelchair_access: Boolean = false</ID>
+    <ID>ConstructorParameterNaming:EventDetailDto.kt$EquipmentDto$val is_required: Boolean</ID>
+    <ID>ConstructorParameterNaming:EventDetailDto.kt$EquipmentDto$val item_name: String</ID>
+    <ID>ConstructorParameterNaming:EventDetailDto.kt$EventDetailDto$val attendance_status: String?</ID>
+    <ID>ConstructorParameterNaming:EventDetailDto.kt$EventDetailDto$val attendee_count: Int</ID>
+    <ID>ConstructorParameterNaming:EventDetailDto.kt$EventDetailDto$val attendee_limit: Int?</ID>
+    <ID>ConstructorParameterNaming:EventDetailDto.kt$EventDetailDto$val bookmark_count: Int = 0</ID>
+    <ID>ConstructorParameterNaming:EventDetailDto.kt$EventDetailDto$val created_at: String</ID>
+    <ID>ConstructorParameterNaming:EventDetailDto.kt$EventDetailDto$val end_datetime: String</ID>
+    <ID>ConstructorParameterNaming:EventDetailDto.kt$EventDetailDto$val equipment_requirements: List&lt;EquipmentDto&gt;</ID>
+    <ID>ConstructorParameterNaming:EventDetailDto.kt$EventDetailDto$val going_count: Int</ID>
+    <ID>ConstructorParameterNaming:EventDetailDto.kt$EventDetailDto$val host_id: String</ID>
+    <ID>ConstructorParameterNaming:EventDetailDto.kt$EventDetailDto$val host_username: String? = null</ID>
+    <ID>ConstructorParameterNaming:EventDetailDto.kt$EventDetailDto$val is_age_restricted: Boolean</ID>
+    <ID>ConstructorParameterNaming:EventDetailDto.kt$EventDetailDto$val is_bookmarked: Boolean?</ID>
+    <ID>ConstructorParameterNaming:EventDetailDto.kt$EventDetailDto$val is_full: Boolean?</ID>
+    <ID>ConstructorParameterNaming:EventDetailDto.kt$EventDetailDto$val start_datetime: String</ID>
+    <ID>ConstructorParameterNaming:EventDetailDto.kt$EventDetailDto$val updated_at: String</ID>
+    <ID>ConstructorParameterNaming:EventDetailDto.kt$EventDetailDto$val venue_metadata: VenueMetadataDto?</ID>
+    <ID>ConstructorParameterNaming:EventDetailDto.kt$EventImageDto$val image_url: String</ID>
+    <ID>ConstructorParameterNaming:EventDetailDto.kt$EventImageDto$val upload_date: String</ID>
+    <ID>ConstructorParameterNaming:EventDetailDto.kt$EventLimitedDto$val access_request_status: String? = null</ID>
+    <ID>ConstructorParameterNaming:EventDetailDto.kt$EventLimitedDto$val end_datetime: String</ID>
+    <ID>ConstructorParameterNaming:EventDetailDto.kt$EventLimitedDto$val is_age_restricted: Boolean</ID>
+    <ID>ConstructorParameterNaming:EventDetailDto.kt$EventLimitedDto$val is_bookmarked: Boolean?</ID>
+    <ID>ConstructorParameterNaming:EventDetailDto.kt$EventLimitedDto$val start_datetime: String</ID>
+    <ID>ConstructorParameterNaming:EventDetailDto.kt$SegmentDto$val end_datetime: String</ID>
+    <ID>ConstructorParameterNaming:EventDetailDto.kt$SegmentDto$val location_id: String</ID>
+    <ID>ConstructorParameterNaming:EventDetailDto.kt$SegmentDto$val order_index: Int</ID>
+    <ID>ConstructorParameterNaming:EventDetailDto.kt$SegmentDto$val start_datetime: String</ID>
+    <ID>ConstructorParameterNaming:EventDetailDto.kt$VenueMetadataDto$val accessible_restroom: Boolean</ID>
+    <ID>ConstructorParameterNaming:EventDetailDto.kt$VenueMetadataDto$val captions_support: Boolean</ID>
+    <ID>ConstructorParameterNaming:EventDetailDto.kt$VenueMetadataDto$val elevator_available: Boolean</ID>
+    <ID>ConstructorParameterNaming:EventDetailDto.kt$VenueMetadataDto$val health_requirements: String?</ID>
+    <ID>ConstructorParameterNaming:EventDetailDto.kt$VenueMetadataDto$val quiet_friendly: Boolean</ID>
+    <ID>ConstructorParameterNaming:EventDetailDto.kt$VenueMetadataDto$val seating_available: Boolean</ID>
+    <ID>ConstructorParameterNaming:EventDetailDto.kt$VenueMetadataDto$val wheelchair_access: Boolean</ID>
+    <ID>CyclomaticComplexMethod:CreateEventScreen.kt$@Composable private fun LocationEntryCard( index: Int, entry: LocationEntry, isPrimary: Boolean, canDelete: Boolean, canMoveUp: Boolean, canMoveDown: Boolean, canReorder: Boolean, isDragging: Boolean, dragOffsetY: Float, onSizeMeasured: (Int) -&gt; Unit, onDragStart: () -&gt; Unit, onDrag: (Float) -&gt; Unit, onDragEnd: () -&gt; Unit, onDragCancel: () -&gt; Unit, readOnly: Boolean, onNameChange: (String) -&gt; Unit, onSetOnMap: () -&gt; Unit, onDelete: () -&gt; Unit, onMoveUp: () -&gt; Unit, onMoveDown: () -&gt; Unit, onSuggestionPicked: (com.bounswe.group9.mobile.data.remote.NominatimResult) -&gt; Unit, onDismissSuggestions: () -&gt; Unit, onToggleSegment: () -&gt; Unit, onShowPicker: (String) -&gt; Unit, onSegmentDescriptionChange: (String) -&gt; Unit )</ID>
+    <ID>CyclomaticComplexMethod:CreateEventScreen.kt$@Composable private fun ReviewStep(uiState: CreateEventUiState, viewModel: CreateEventViewModel)</ID>
+    <ID>CyclomaticComplexMethod:CreateEventScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun CreateEventScreen( token: String?, editEvent: EventDetailDto? = null, onBack: () -&gt; Unit, onEventSaved: (eventId: String) -&gt; Unit, viewModel: CreateEventViewModel = remember { CreateEventViewModel() } )</ID>
+    <ID>CyclomaticComplexMethod:CreateEventScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun LocationStep(uiState: CreateEventUiState, viewModel: CreateEventViewModel)</ID>
+    <ID>CyclomaticComplexMethod:CreateEventScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun ScheduleStep(uiState: CreateEventUiState, viewModel: CreateEventViewModel)</ID>
+    <ID>CyclomaticComplexMethod:CreateEventViewModel.kt$CreateEventUiState$fun stepCompleted(step: Int): Boolean</ID>
+    <ID>CyclomaticComplexMethod:CreateEventViewModel.kt$CreateEventViewModel$fun uploadImages(context: Context)</ID>
+    <ID>CyclomaticComplexMethod:CreateEventViewModel.kt$CreateEventViewModel$private fun prefillForEdit(event: EventDetailDto)</ID>
+    <ID>CyclomaticComplexMethod:CreateEventViewModel.kt$CreateEventViewModel$private fun validateCurrentStep(): Boolean</ID>
+    <ID>CyclomaticComplexMethod:DiscoveryScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun DiscoveryScreen( viewModel: DiscoveryViewModel, token: String?, onEventClick: (String) -&gt; Unit, onLoginClick: () -&gt; Unit = {}, onLogout: () -&gt; Unit = {}, username: String? = null, unreadNotificationCount: Int = 0, onNotificationsClick: () -&gt; Unit = {}, onProfileClick: () -&gt; Unit = {}, onCreateEvent: () -&gt; Unit = {} )</ID>
+    <ID>CyclomaticComplexMethod:EventDetailScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun EventDetailScreen( viewModel: EventDetailViewModel, eventId: String, token: String?, currentUserId: String? = null, onBack: () -&gt; Unit, onNavigateToHost: (String) -&gt; Unit = {}, onNavigateToEvent: (String) -&gt; Unit = {}, onNavigateToEdit: (EventDetailDto) -&gt; Unit = {}, onDeleteSuccess: () -&gt; Unit = {} )</ID>
+    <ID>CyclomaticComplexMethod:EventDetailScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun FullDetailContent( event: EventDetailDto, uiState: EventDetailUiState, viewModel: EventDetailViewModel, token: String?, currentUserId: String?, isHost: Boolean, onNavigateToHost: (String) -&gt; Unit, onNavigateToEvent: (String) -&gt; Unit = {} )</ID>
+    <ID>CyclomaticComplexMethod:HostProfileScreen.kt$@Composable private fun ProfileContent( profile: com.bounswe.group9.mobile.data.remote.HostProfileDto, uiState: HostProfileUiState, isOwnProfile: Boolean, isAuthenticated: Boolean, onRatingChange: (Double) -&gt; Unit, onSubmitRating: () -&gt; Unit, onEventClick: (String) -&gt; Unit )</ID>
+    <ID>CyclomaticComplexMethod:NotificationScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun NotificationScreen( viewModel: NotificationViewModel, token: String?, onBack: () -&gt; Unit, onEventClick: (String) -&gt; Unit = {} )</ID>
+    <ID>CyclomaticComplexMethod:ProfileScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun ProfileScreen( viewModel: ProfileViewModel, token: String?, username: String?, onBack: () -&gt; Unit, onEventClick: (String) -&gt; Unit )</ID>
+    <ID>ImplicitDefaultLocale:CreateEventScreen.kt$String.format("%02d:%02d", state.hour, state.minute)</ID>
+    <ID>ImplicitDefaultLocale:HostProfileScreen.kt$String.format("%.1f", profile.average_rating)</ID>
+    <ID>LongMethod:CreateEventScreen.kt$@Composable private fun LocationEntryCard( index: Int, entry: LocationEntry, isPrimary: Boolean, canDelete: Boolean, canMoveUp: Boolean, canMoveDown: Boolean, canReorder: Boolean, isDragging: Boolean, dragOffsetY: Float, onSizeMeasured: (Int) -&gt; Unit, onDragStart: () -&gt; Unit, onDrag: (Float) -&gt; Unit, onDragEnd: () -&gt; Unit, onDragCancel: () -&gt; Unit, readOnly: Boolean, onNameChange: (String) -&gt; Unit, onSetOnMap: () -&gt; Unit, onDelete: () -&gt; Unit, onMoveUp: () -&gt; Unit, onMoveDown: () -&gt; Unit, onSuggestionPicked: (com.bounswe.group9.mobile.data.remote.NominatimResult) -&gt; Unit, onDismissSuggestions: () -&gt; Unit, onToggleSegment: () -&gt; Unit, onShowPicker: (String) -&gt; Unit, onSegmentDescriptionChange: (String) -&gt; Unit )</ID>
+    <ID>LongMethod:CreateEventScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun CreateEventScreen( token: String?, editEvent: EventDetailDto? = null, onBack: () -&gt; Unit, onEventSaved: (eventId: String) -&gt; Unit, viewModel: CreateEventViewModel = remember { CreateEventViewModel() } )</ID>
+    <ID>LongMethod:CreateEventScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun LocationStep(uiState: CreateEventUiState, viewModel: CreateEventViewModel)</ID>
+    <ID>LongMethod:CreateEventScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun ScheduleStep(uiState: CreateEventUiState, viewModel: CreateEventViewModel)</ID>
+    <ID>LongMethod:DiscoveryScreen.kt$@Composable private fun DiscoveryTopBar( search: String, onSearchChange: (String) -&gt; Unit, activeFilterCount: Int, onFilterClick: () -&gt; Unit, username: String?, isLoggedIn: Boolean, onLoginClick: () -&gt; Unit, onLogout: () -&gt; Unit, isMapView: Boolean, onViewToggle: () -&gt; Unit, unreadNotificationCount: Int = 0, onNotificationsClick: () -&gt; Unit = {}, onProfileClick: () -&gt; Unit = {} )</ID>
+    <ID>LongMethod:DiscoveryScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun DiscoveryScreen( viewModel: DiscoveryViewModel, token: String?, onEventClick: (String) -&gt; Unit, onLoginClick: () -&gt; Unit = {}, onLogout: () -&gt; Unit = {}, username: String? = null, unreadNotificationCount: Int = 0, onNotificationsClick: () -&gt; Unit = {}, onProfileClick: () -&gt; Unit = {}, onCreateEvent: () -&gt; Unit = {} )</ID>
+    <ID>LongMethod:EventDetailScreen.kt$@Composable private fun LimitedPreviewContent( event: EventLimitedDto, token: String?, accessRequestStatus: String?, isRequestingAccess: Boolean, onRequestAccess: () -&gt; Unit )</ID>
+    <ID>LongMethod:EventDetailScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun EventDetailScreen( viewModel: EventDetailViewModel, eventId: String, token: String?, currentUserId: String? = null, onBack: () -&gt; Unit, onNavigateToHost: (String) -&gt; Unit = {}, onNavigateToEvent: (String) -&gt; Unit = {}, onNavigateToEdit: (EventDetailDto) -&gt; Unit = {}, onDeleteSuccess: () -&gt; Unit = {} )</ID>
+    <ID>LongMethod:EventDetailScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun FullDetailContent( event: EventDetailDto, uiState: EventDetailUiState, viewModel: EventDetailViewModel, token: String?, currentUserId: String?, isHost: Boolean, onNavigateToHost: (String) -&gt; Unit, onNavigateToEvent: (String) -&gt; Unit = {} )</ID>
+    <ID>LongMethod:HostProfileScreen.kt$@Composable private fun ProfileContent( profile: com.bounswe.group9.mobile.data.remote.HostProfileDto, uiState: HostProfileUiState, isOwnProfile: Boolean, isAuthenticated: Boolean, onRatingChange: (Double) -&gt; Unit, onSubmitRating: () -&gt; Unit, onEventClick: (String) -&gt; Unit )</ID>
+    <ID>LongMethod:LoginScreen.kt$@Composable fun LoginScreen(viewModel: AuthViewModel, onLoginSuccess: () -&gt; Unit = {})</ID>
+    <ID>LongMethod:NavGraph.kt$@Composable fun AppNavGraph( navController: NavHostController, sessionManager: SessionManager, authViewModel: AuthViewModel, discoveryViewModel: DiscoveryViewModel, notificationViewModel: NotificationViewModel, profileViewModel: ProfileViewModel )</ID>
+    <ID>LongMethod:NotificationScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun NotificationScreen( viewModel: NotificationViewModel, token: String?, onBack: () -&gt; Unit, onEventClick: (String) -&gt; Unit = {} )</ID>
+    <ID>LongMethod:ProfileScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun ProfileScreen( viewModel: ProfileViewModel, token: String?, username: String?, onBack: () -&gt; Unit, onEventClick: (String) -&gt; Unit )</ID>
+    <ID>LoopWithTooManyJumpStatements:CreateEventViewModel.kt$CreateEventViewModel$for</ID>
+    <ID>MatchingDeclarationName:NavGraph.kt$Routes</ID>
+    <ID>MaxLineLength:CreateEventScreen.kt$HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)</ID>
+    <ID>MaxLineLength:CreateEventScreen.kt$Icon(Icons.Default.Delete, contentDescription = "Remove stop", modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error)</ID>
+    <ID>MaxLineLength:CreateEventScreen.kt$Row</ID>
+    <ID>MaxLineLength:CreateEventScreen.kt$Text("${uiState.startDate} ${uiState.startTime} → ${uiState.endDate} ${uiState.endTime}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)</ID>
+    <ID>MaxLineLength:CreateEventScreen.kt$Text("${uiState.uploadedImages.size} image${if (uiState.uploadedImages.size == 1) "" else "s"} uploaded", style = MaterialTheme.typography.labelMedium, color = Color(0xFF78716C))</ID>
+    <ID>MaxLineLength:CreateEventScreen.kt$Text("+ ${stopCount - 1} more stop${if (stopCount - 1 == 1) "" else "s"}", style = MaterialTheme.typography.bodySmall, color = BrandMid)</ID>
+    <ID>MaxLineLength:CreateEventScreen.kt$Text("Cover", modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp), color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)</ID>
+    <ID>MaxLineLength:CreateEventScreen.kt$Text("You must be signed in to create or edit events.", style = MaterialTheme.typography.bodyMedium, color = Color(0xFF78716C))</ID>
+    <ID>MaxLineLength:CreateEventScreen.kt$Text(if (count &gt; 0) "$count image${if (count == 1) "" else "s"} uploaded" else "No images uploaded (optional)", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)</ID>
+    <ID>MaxLineLength:CreateEventScreen.kt$Text(label, style = MaterialTheme.typography.bodyMedium, fontWeight = if (checked) FontWeight.Medium else FontWeight.Normal)</ID>
+    <ID>MaxLineLength:CreateEventScreen.kt$Text(message, modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp), style = MaterialTheme.typography.bodyMedium, color = fg)</ID>
+    <ID>MaxLineLength:CreateEventScreen.kt$Text(opt.replaceFirstChar { it.uppercase() }, fontWeight = FontWeight.SemiBold, color = if (selected) Color.White else BrandDark)</ID>
+    <ID>MaxLineLength:CreateEventScreen.kt$Text(primary?.name?.ifBlank { "No location" } ?: "No location", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)</ID>
+    <ID>MaxLineLength:CreateEventScreen.kt$Text(uiState.description, style = MaterialTheme.typography.bodySmall, color = Color(0xFF78716C), maxLines = 3, overflow = TextOverflow.Ellipsis)</ID>
+    <ID>MaxLineLength:CreateEventScreen.kt$drawRoundRect(color = BrandMid.copy(alpha = 0.5f), topLeft = Offset(0f, (size.height - th) * thumbFraction), size = Size(size.width, th), cornerRadius = CornerRadius(thumbWidth.toPx() / 2))</ID>
+    <ID>MaxLineLength:CreateEventScreen.kt$helper = if (readOnly) "Locations locked for started events." else "Stop 1 is the primary venue. Add more stops to create a route."</ID>
+    <ID>MaxLineLength:CreateEventScreen.kt$uiState.categoryError?.let { Spacer(Modifier.height(4.dp)); Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }</ID>
+    <ID>MaxLineLength:CreateEventScreen.kt$uiState.endError?.let { Spacer(Modifier.height(4.dp)); Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }</ID>
+    <ID>MaxLineLength:CreateEventScreen.kt$uiState.imageUploadError?.let { Spacer(Modifier.height(6.dp)); Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }</ID>
+    <ID>MaxLineLength:CreateEventScreen.kt$uiState.startError?.let { Spacer(Modifier.height(4.dp)); Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }</ID>
+    <ID>MaxLineLength:CreateEventScreen.kt$val state = rememberTimePickerState(initialHour = parseHour(loc.segmentEndTime), initialMinute = parseMin(loc.segmentEndTime))</ID>
+    <ID>MaxLineLength:CreateEventScreen.kt$val state = rememberTimePickerState(initialHour = parseHour(loc.segmentStartTime), initialMinute = parseMin(loc.segmentStartTime))</ID>
+    <ID>MaxLineLength:CreateEventViewModel.kt$CreateEventViewModel$feedbackMessage = if (!hasError &amp;&amp; uploaded.isNotEmpty()) "${uploaded.size} image${if (uploaded.size == 1) "" else "s"} uploaded." else null</ID>
+    <ID>MaxLineLength:CreateEventViewModel.kt$CreateEventViewModel$onSuccess = { event -&gt; update { copy(persistedEventId = event.id, isSaving = false, currentStep = currentStep + 1, feedbackMessage = "Draft created. You can add media now.", feedbackTone = FeedbackTone.Success) } }</ID>
+    <ID>MaxLineLength:CreateEventViewModel.kt$CreateEventViewModel$onSuccess = { event -&gt; update { copy(persistedEventId = event.id, isSaving = false, feedbackMessage = if (isEditMode) "Changes saved." else "Draft saved.", feedbackTone = FeedbackTone.Success) } }</ID>
+    <ID>MaxLineLength:CreateEventViewModel.kt$CreateEventViewModel$onSuccess = { pub -&gt; update { copy(isPublishing = false, persistedEventId = pub.id, successEventId = pub.id, feedbackMessage = "Event published!", feedbackTone = FeedbackTone.Success) } }</ID>
+    <ID>MaxLineLength:EventDetailScreen.kt$Icon(Icons.Default.AccessTime, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)</ID>
+    <ID>MaxLineLength:EventDetailScreen.kt$Icon(Icons.Default.Close, contentDescription = "Delete reply", modifier = Modifier.size(12.dp))</ID>
+    <ID>MaxLineLength:EventDetailScreen.kt$Icon(Icons.Default.Group, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)</ID>
+    <ID>MaxLineLength:EventDetailScreen.kt$SuggestionChip(onClick = {}, label = { Text("Cancelled") }, colors = SuggestionChipDefaults.suggestionChipColors(containerColor = MaterialTheme.colorScheme.errorContainer))</ID>
+    <ID>MaxLineLength:EventDetailScreen.kt$SuggestionChip(onClick = {}, label = { Text("This event has ended") }, colors = SuggestionChipDefaults.suggestionChipColors(containerColor = MaterialTheme.colorScheme.surfaceVariant))</ID>
+    <ID>MaxLineLength:EventDetailScreen.kt$Text("Full", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error, modifier = Modifier.background(MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 2.dp))</ID>
+    <ID>MaxLineLength:EventDetailScreen.kt$Text(formatDateRange(event.start_datetime, event.end_datetime), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)</ID>
+    <ID>MaxLineLength:EventDetailScreen.kt$uiState.detailError is com.bounswe.group9.mobile.data.repository.EventDetailError.NotFound -&gt; NotFoundScreen(onBack = onBack)</ID>
+    <ID>MaxLineLength:EventDetailViewModel.kt$EventDetailViewModel$accessRequests</ID>
+    <ID>MaxLineLength:EventRepository.kt$EventRepository$Result.success(RetrofitProvider.apiService.decideAccessRequest(eventId, requestId, "Bearer $token", com.bounswe.group9.mobile.data.remote.AccessRequestDecisionDto(decision)))</ID>
+    <ID>MaxLineLength:EventRepository.kt$EventRepository$suspend</ID>
+    <ID>MaxLineLength:HostProfileScreen.kt$Icon(Icons.Default.Email, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)</ID>
+    <ID>MaxLineLength:HostProfileScreen.kt$Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.error)</ID>
+    <ID>MaxLineLength:HostProfileScreen.kt$Icon(Icons.Default.Phone, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)</ID>
+    <ID>MaxLineLength:HostProfileScreen.kt$Text("${profile.hosted_events_count} events hosted", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)</ID>
+    <ID>MaxLineLength:HostProfileScreen.kt$Text(uiState.errorMessage!!, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)</ID>
+    <ID>MayBeConst:MapView.kt$// Default center: Istanbul private val DEFAULT_LAT = 41.0082</ID>
+    <ID>MayBeConst:MapView.kt$private val DEFAULT_LNG = 28.9784</ID>
+    <ID>MayBeConst:MapView.kt$private val DEFAULT_ZOOM = 10.0</ID>
+    <ID>NestedBlockDepth:AuthRepository.kt$private fun friendlyHttpError(code: Int, body: String): String</ID>
+    <ID>NestedBlockDepth:CreateEventViewModel.kt$CreateEventViewModel$private fun validateCurrentStep(): Boolean</ID>
+    <ID>NestedBlockDepth:DateUtils.kt$fun formatEventDate(dateStr: String): String</ID>
+    <ID>NewLineAtEndOfFile:ApiService.kt$com.bounswe.group9.mobile.data.remote.ApiService.kt</ID>
+    <ID>NewLineAtEndOfFile:AuthUiState.kt$com.bounswe.group9.mobile.ui.auth.AuthUiState.kt</ID>
+    <ID>NewLineAtEndOfFile:Color.kt$com.bounswe.group9.mobile.ui.theme.Color.kt</ID>
+    <ID>NewLineAtEndOfFile:DiscoveryScreen.kt$com.bounswe.group9.mobile.ui.discovery.DiscoveryScreen.kt</ID>
+    <ID>NewLineAtEndOfFile:EventDetailScreen.kt$com.bounswe.group9.mobile.ui.eventdetail.EventDetailScreen.kt</ID>
+    <ID>NewLineAtEndOfFile:NavGraph.kt$com.bounswe.group9.mobile.ui.navigation.NavGraph.kt</ID>
+    <ID>NewLineAtEndOfFile:Type.kt$com.bounswe.group9.mobile.ui.theme.Type.kt</ID>
+    <ID>TooGenericExceptionCaught:AuthRepository.kt$AuthRepository$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:EventRepository.kt$EventRepository$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:NominatimClient.kt$NominatimClient$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:ProfileRepository.kt$ProfileRepository$e: Exception</ID>
+    <ID>UnusedParameter:CreateEventScreen.kt$context: android.content.Context</ID>
+    <ID>UnusedParameter:CreateEventScreen.kt$viewModel: CreateEventViewModel</ID>
+    <ID>UnusedPrivateMember:EventDetailViewModel.kt$EventDetailViewModel$private fun checkAccessRequestStatus()</ID>
+    <ID>UnusedPrivateProperty:CreateEventScreen.kt$private val StepInactive = Color(0xFFBDB5B0)</ID>
+    <ID>WildcardImport:CreateEventScreen.kt$import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:CreateEventScreen.kt$import androidx.compose.material3.*</ID>
+    <ID>WildcardImport:CreateEventScreen.kt$import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:DiscoveryScreen.kt$import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:DiscoveryScreen.kt$import androidx.compose.material3.*</ID>
+    <ID>WildcardImport:DiscoveryScreen.kt$import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:EventDetailScreen.kt$import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:EventDetailScreen.kt$import androidx.compose.material3.*</ID>
+    <ID>WildcardImport:HostProfileScreen.kt$import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:HostProfileScreen.kt$import androidx.compose.material3.*</ID>
+    <ID>WildcardImport:InviteAcceptScreen.kt$import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:InviteAcceptScreen.kt$import androidx.compose.material3.*</ID>
+    <ID>WildcardImport:InviteAcceptScreen.kt$import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:LoginScreen.kt$import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:LoginScreen.kt$import androidx.compose.material3.*</ID>
+    <ID>WildcardImport:LoginScreen.kt$import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:MapView.kt$import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:MapView.kt$import androidx.compose.material3.*</ID>
+    <ID>WildcardImport:MapView.kt$import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:NotificationScreen.kt$import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:NotificationScreen.kt$import androidx.compose.material3.*</ID>
+    <ID>WildcardImport:NotificationScreen.kt$import androidx.compose.runtime.*</ID>
+    <ID>WildcardImport:ProfileScreen.kt$import androidx.compose.foundation.layout.*</ID>
+    <ID>WildcardImport:ProfileScreen.kt$import androidx.compose.material3.*</ID>
+    <ID>WildcardImport:ProfileScreen.kt$import androidx.compose.runtime.*</ID>
+  </CurrentIssues>
+</SmellBaseline>
