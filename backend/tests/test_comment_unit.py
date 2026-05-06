@@ -8,7 +8,6 @@ from fastapi import HTTPException
 from app.models.comment import CommentCreateRequest
 from app.services import comment as comment_service
 
-
 EVENT_ID = "00000000-0000-0000-0000-000000000050"
 USER_ID = "00000000-0000-0000-0000-000000000051"
 HOST_ID = "00000000-0000-0000-0000-000000000052"

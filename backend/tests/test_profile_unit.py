@@ -8,7 +8,6 @@ from fastapi import HTTPException
 from app.models.profile import ProfileUpdateRequest
 from app.services import profile as profile_service
 
-
 HOST_ID = "00000000-0000-0000-0000-000000000040"
 VIEWER_ID = "00000000-0000-0000-0000-000000000041"
 EVENT_UPCOMING = "00000000-0000-0000-0000-000000000042"
