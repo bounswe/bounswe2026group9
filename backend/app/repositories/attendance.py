@@ -117,11 +117,15 @@ def get_attended_ended_event_categories(db: Client, user_id: str) -> set[str]:
     if not event_ids:
         return set()
 
-    # Step 2: collect category_ids for those events
-    cat_rows = (
-        db.table("event_categories")
-        .select("category_id")
-        .in_("event_id", event_ids)
-        .execute()
-    )
-    return {row["category_id"] for row in (cat_rows.data or [])}
+    # Step 2: collect category_ids for those events — chunk to avoid URL limits.
+    categories: set[str] = set()
+    for i in range(0, len(event_ids), _IN_CHUNK_SIZE):
+        chunk = event_ids[i:i + _IN_CHUNK_SIZE]
+        cat_rows = (
+            db.table("event_categories")
+            .select("category_id")
+            .in_("event_id", chunk)
+            .execute()
+        )
+        categories.update(row["category_id"] for row in (cat_rows.data or []))
+    return categories

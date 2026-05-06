@@ -1100,7 +1100,35 @@ class TestSuggestedFilter:
         _cleanup_user(listener["id"])
         _cleanup_user(host["id"])
 
-    def test_private_event_not_surfaced_via_suggested(self):
+    def test_active_event_attendance_does_not_count_as_signal(self):
+        cat_a, cat_b = _get_category_ids(2)
+        host = _create_test_user("activeHost")
+        listener = _create_test_user("activeList")
+
+        # Listener is going on a currently PUBLISHED (not ended) event in cat_a
+        active = _create_published_event(host["id"], [cat_a], title="Active")
+        _add_attendance(listener["id"], active, "going")
+
+        # New event also in cat_a — but listener's signal comes from a non-ended event,
+        # so no history exists and suggested filter should fall back to default listing
+        ev_new = _create_published_event(host["id"], [cat_b], title="New Other Cat")
+
+        resp = client.get("/events?suggested=true", headers=_auth_header(listener["id"]))
+        assert resp.status_code == 200
+        body = resp.json()
+        # No ended attendance → fallback flag must be set
+        assert body["suggested_fallback"] is True
+        # The cat_b event appears in the default fallback listing
+        ids = {item["id"] for item in body["items"]}
+        assert ev_new["id"] in ids
+
+        _cleanup_event(active)
+        _cleanup_event(ev_new)
+        db.table("attendances").delete().eq("user_id", listener["id"]).execute()
+        _cleanup_user(listener["id"])
+        _cleanup_user(host["id"])
+
+    def test_private_event_access_boundary_preserved_via_suggested(self):
         cat_a, _ = _get_category_ids(2)
         host = _create_test_user("privHost")
         listener = _create_test_user("privList")
@@ -1108,20 +1136,20 @@ class TestSuggestedFilter:
         past = _make_ended_event(host["id"], cat_a)
         _add_attendance(listener["id"], past, "going")
 
-        # Private event in matching category. Listing currently surfaces a limited
-        # preview of private events for non-host viewers, so the response will
-        # contain it but description/full data is absent. The strict requirement
-        # is that the access boundary holds: the listener cannot get full detail.
         ev_priv = _create_published_event(
             host["id"], [cat_a], title="Private Match", visibility="private",
         )
 
-        # Listener can see it in the list (private events appear in discovery),
-        # but cannot read full detail without an invite/grant.
+        # The suggested listing may surface the private event in limited form —
+        # the key requirement is that the access boundary holds at the detail level.
+        resp = client.get("/events?suggested=true", headers=_auth_header(listener["id"]))
+        assert resp.status_code == 200
+        assert resp.json()["suggested_fallback"] is False
+
+        # Non-invited user must not be able to read full event detail.
         detail_resp = client.get(
             f"/events/{ev_priv['id']}", headers=_auth_header(listener["id"]),
         )
-        # Limited responses lack 'description' / 'host_id' fields.
         body = detail_resp.json()
         assert "host_id" not in body or body.get("description") is None
 
