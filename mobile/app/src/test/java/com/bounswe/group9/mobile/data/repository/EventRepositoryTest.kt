@@ -112,6 +112,81 @@ class EventRepositoryTest {
     }
 
     @Test
+    fun `getEventDetail with description field parses as Full`() = runTest {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """
+                {
+                  "id":"e1","host_id":"h1","title":"T","description":"D",
+                  "start_datetime":"2026-06-01T10:00:00+00:00",
+                  "end_datetime":"2026-06-01T12:00:00+00:00",
+                  "visibility":"public","is_age_restricted":false,
+                  "attendee_limit":null,"attendee_count":0,"status":"published",
+                  "created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z",
+                  "is_bookmarked":null,"attendance_status":null,
+                  "going_count":0,"bookmark_count":0,"is_full":false,
+                  "locations":[],"categories":[],"images":[],
+                  "venue_metadata":null,"equipment_requirements":[]
+                }
+                """.trimIndent()
+            )
+        )
+
+        val result = repository.getEventDetail(token = null, eventId = "e1")
+
+        assertTrue(result.isSuccess)
+        val data = result.getOrThrow()
+        assertTrue(data is com.bounswe.group9.mobile.data.repository.EventDetailResult.Full)
+    }
+
+    @Test
+    fun `getEventDetail without description field parses as Limited`() = runTest {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """
+                {
+                  "id":"e1","title":"Private",
+                  "start_datetime":"2026-06-01T10:00:00+00:00",
+                  "end_datetime":"2026-06-01T12:00:00+00:00",
+                  "visibility":"private","is_age_restricted":false,
+                  "status":"published","is_bookmarked":null,"categories":[]
+                }
+                """.trimIndent()
+            )
+        )
+
+        val result = repository.getEventDetail(token = null, eventId = "e1")
+
+        assertTrue(result.isSuccess)
+        val data = result.getOrThrow()
+        assertTrue(data is com.bounswe.group9.mobile.data.repository.EventDetailResult.Limited)
+    }
+
+    @Test
+    fun `getEventDetail 404 yields a typed NotFound error`() = runTest {
+        server.enqueue(MockResponse().setResponseCode(404).setBody("""{"detail":"Event not found"}"""))
+
+        val result = repository.getEventDetail(token = null, eventId = "missing")
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is com.bounswe.group9.mobile.data.repository.EventDetailError.NotFound)
+    }
+
+    @Test
+    fun `getEventDetail 403 with age message yields Underage error`() = runTest {
+        server.enqueue(
+            MockResponse().setResponseCode(403).setBody(
+                """{"detail":"You must be 18 or older to view this event."}"""
+            )
+        )
+
+        val result = repository.getEventDetail(token = "tok", eventId = "e1")
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is com.bounswe.group9.mobile.data.repository.EventDetailError.Underage)
+    }
+
+    @Test
     fun `addBookmark POSTs to events bookmark path with bearer header`() = runTest {
         server.enqueue(
             MockResponse().setResponseCode(200).setBody(
