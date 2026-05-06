@@ -7,7 +7,7 @@ on:
       - '.github/workflows/android-ci.yml'
 
 concurrency:
-  group: android-ci-${{ github.ref }}
+  group: android-ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -68,6 +68,7 @@ jobs:
 
   instrumented:
     name: Compose UI tests (emulator)
+    needs: [fast]
     runs-on: ubuntu-latest
     # Hardware-acceleration KVM is required by the emulator runner.
     steps:
