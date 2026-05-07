@@ -30,6 +30,7 @@ import {
 
 import { useAuth } from "@/hooks/use-auth";
 import { useEventInteraction } from "@/hooks/use-event-interaction";
+import { JsonLd } from "@/components/json-ld";
 import { Navbar } from "@/components/layout/navbar";
 import { StatusBadge, eventStatusVariant } from "@/components/event/status-badge";
 import { ImageCarousel } from "@/components/event/image-carousel";
@@ -38,6 +39,7 @@ import { ConfirmDialog } from "@/components/event/confirm-dialog";
 import { AttendeeAvatarStack } from "@/components/event/attendee-avatar-stack";
 import { LocationMapModal } from "@/components/event/location-map-modal";
 import { cn } from "@/lib/utils";
+import { getProfileHref } from "@/lib/profile-route";
 import {
   clearAccessRequestPending,
   isAccessRequestPending,
@@ -59,6 +61,7 @@ import {
   type AccessRequest,
   type Invite,
 } from "@/lib/events-api";
+import { buildEventStructuredData } from "@/lib/structured-data";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -728,7 +731,7 @@ function FullView({
                   <>
                     Created by{" "}
                     <Link
-                      href={`/profile/${event.host_id}`}
+                      href={getProfileHref(event.host_id, currentUserId)}
                       className="text-brand-dark font-bold hover:underline"
                     >
                       {host.username}
@@ -1103,9 +1106,12 @@ function FullView({
                         key={req.id}
                         className="bg-brand-bg flex items-center justify-between gap-2 rounded-lg px-3 py-2"
                       >
-                        <span className="text-brand-dark flex-1 truncate text-[13px] font-bold">
+                        <Link
+                          href={getProfileHref(req.user_id, currentUserId)}
+                          className="text-brand-dark flex-1 truncate text-[13px] font-bold hover:underline focus:outline-none focus-visible:underline"
+                        >
                           {req.username}
-                        </span>
+                        </Link>
                         <div className="flex gap-1.5">
                           <button
                             onClick={() => {
@@ -1137,11 +1143,20 @@ function FullView({
             {host ? (
               <div className="bg-brand-surface border-brand-mid-alpha rounded-xl border p-5">
                 <div className="mb-3 flex items-center gap-3">
-                  <div className="bg-brand-mid flex size-16 shrink-0 items-center justify-center rounded-full text-[22px] font-bold text-white">
+                  <Link
+                    href={getProfileHref(event.host_id, currentUserId)}
+                    aria-label={`View ${host.username}'s profile`}
+                    className="bg-brand-mid focus-visible:ring-brand-dark flex size-16 shrink-0 items-center justify-center rounded-full text-[22px] font-bold text-white transition-transform hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                  >
                     {host.username.slice(0, 2).toUpperCase()}
-                  </div>
+                  </Link>
                   <div>
-                    <p className="text-brand-dark text-[16px] font-bold">{host.username}</p>
+                    <Link
+                      href={getProfileHref(event.host_id, currentUserId)}
+                      className="text-brand-dark text-[16px] font-bold hover:underline focus:outline-none focus-visible:underline"
+                    >
+                      {host.username}
+                    </Link>
                     <p className="text-brand-mid text-[13px]">
                       {isHost ? "You are the host" : "Event Host"}
                     </p>
@@ -1160,7 +1175,7 @@ function FullView({
                 </p>
                 {event.host_id && (
                   <Link
-                    href={`/profile/${event.host_id}`}
+                    href={getProfileHref(event.host_id, currentUserId)}
                     className="text-brand-mid hover:text-brand-dark text-[13px] font-bold transition-colors"
                   >
                     View Profile →
@@ -1233,7 +1248,11 @@ function FullView({
                 {/* Avatar stack */}
                 {event.attendees && event.attendees.length > 0 && (
                   <div className="mb-3">
-                    <AttendeeAvatarStack attendees={event.attendees} maxShow={5} />
+                    <AttendeeAvatarStack
+                      attendees={event.attendees}
+                      maxShow={5}
+                      currentUserId={currentUserId}
+                    />
                   </div>
                 )}
                 {event.attendee_limit ? (
@@ -1364,47 +1383,59 @@ export default function EventDetailPage() {
     (!isAuthenticated || !user?.date_of_birth || !isAtLeast18(user.date_of_birth)),
   );
 
+  // JSON-LD structured data for crawlers (issue #243).
+  // Built only when the event has loaded; for private events the helper emits
+  // a visibility-safe subset (no description, no location, no attendees).
+  // window is referenced on the client; SSR fallback is omitted because this
+  // page is "use client" and the script renders after hydration.
+  const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+  const eventStructuredData =
+    event && baseUrl ? buildEventStructuredData(event, host, baseUrl) : null;
+
   return (
     <div className="bg-brand-bg min-h-screen">
+      {eventStructuredData && <JsonLd data={eventStructuredData} />}
       <Navbar />
 
-      {loading ? (
-        <div className="flex items-center justify-center py-32">
-          <div className="flex flex-col items-center gap-3">
-            <div className="border-brand-mid size-10 animate-spin rounded-full border-4 border-t-transparent" />
-            <p className="text-brand-mid text-sm">Loading event…</p>
+      <main aria-label="Event details">
+        {loading ? (
+          <div className="flex items-center justify-center py-32">
+            <div className="flex flex-col items-center gap-3">
+              <div className="border-brand-mid size-10 animate-spin rounded-full border-4 border-t-transparent" />
+              <p className="text-brand-mid text-sm">Loading event…</p>
+            </div>
           </div>
-        </div>
-      ) : notFound || !event ? (
-        <div className="flex flex-col items-center justify-center gap-4 px-6 py-32 text-center">
-          <p className="font-heading text-brand-dark text-2xl font-bold">Event not found</p>
-          <p className="text-brand-mid text-sm">
-            This event may have been removed or the link is incorrect.
-          </p>
-          <Link
-            href="/"
-            className="bg-brand-dark hover:bg-brand-dark/85 rounded-lg px-5 py-2.5 text-sm font-bold text-white transition-colors"
-          >
-            Back to Discovery
-          </Link>
-        </div>
-      ) : isAgeBlocked ? (
-        <AgeGate
-          eventId={id}
-          isAuthenticated={isAuthenticated}
-          userDob={user?.date_of_birth ?? null}
-        />
-      ) : event._type === "limited" ? (
-        <LimitedView event={event} isGuest={isGuest} currentUserId={user?.id ?? null} />
-      ) : (
-        <FullView
-          event={event}
-          host={host}
-          isHost={isHost}
-          currentUserId={user?.id ?? null}
-          isAuthenticated={isAuthenticated}
-        />
-      )}
+        ) : notFound || !event ? (
+          <div className="flex flex-col items-center justify-center gap-4 px-6 py-32 text-center">
+            <p className="font-heading text-brand-dark text-2xl font-bold">Event not found</p>
+            <p className="text-brand-mid text-sm">
+              This event may have been removed or the link is incorrect.
+            </p>
+            <Link
+              href="/"
+              className="bg-brand-dark hover:bg-brand-dark/85 rounded-lg px-5 py-2.5 text-sm font-bold text-white transition-colors"
+            >
+              Back to Discovery
+            </Link>
+          </div>
+        ) : isAgeBlocked ? (
+          <AgeGate
+            eventId={id}
+            isAuthenticated={isAuthenticated}
+            userDob={user?.date_of_birth ?? null}
+          />
+        ) : event._type === "limited" ? (
+          <LimitedView event={event} isGuest={isGuest} currentUserId={user?.id ?? null} />
+        ) : (
+          <FullView
+            event={event}
+            host={host}
+            isHost={isHost}
+            currentUserId={user?.id ?? null}
+            isAuthenticated={isAuthenticated}
+          />
+        )}
+      </main>
     </div>
   );
 }

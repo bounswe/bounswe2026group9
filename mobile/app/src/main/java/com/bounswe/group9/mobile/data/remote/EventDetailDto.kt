@@ -4,6 +4,15 @@ package com.bounswe.group9.mobile.data.remote
  * Full detail response from GET /events/{event_id} for authenticated users
  * viewing public events (or host/granted users viewing private events).
  */
+data class SegmentDto(
+    val id: String,
+    val location_id: String,
+    val order_index: Int,
+    val start_datetime: String,
+    val end_datetime: String,
+    val description: String? = null
+)
+
 data class EventDetailDto(
     val id: String,
     val host_id: String,
@@ -28,7 +37,8 @@ data class EventDetailDto(
     val categories: List<CategoryDto>,
     val images: List<EventImageDto>,
     val venue_metadata: VenueMetadataDto?,
-    val equipment_requirements: List<EquipmentDto>
+    val equipment_requirements: List<EquipmentDto>,
+    val segments: List<SegmentDto>? = null
 )
 
 data class EventImageDto(

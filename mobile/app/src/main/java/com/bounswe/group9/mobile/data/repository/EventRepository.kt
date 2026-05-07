@@ -4,6 +4,7 @@ import android.util.Log
 import com.bounswe.group9.mobile.data.remote.AttendanceRequest
 import com.bounswe.group9.mobile.data.remote.CategoryDto
 import com.bounswe.group9.mobile.data.remote.EventDetailDto
+import com.bounswe.group9.mobile.data.remote.EventListItemDto
 import com.bounswe.group9.mobile.data.remote.EventLimitedDto
 import com.bounswe.group9.mobile.data.remote.EventListResponse
 import com.bounswe.group9.mobile.data.remote.RetrofitProvider
@@ -15,7 +16,18 @@ class EventRepository {
         token: String? = null,
         search: String? = null,
         categoryId: String? = null,
-        temporalFilter: String? = null,
+        quickFilter: String? = null,
+        wheelchair: Boolean? = null,
+        accessibleRestroom: Boolean? = null,
+        elevator: Boolean? = null,
+        seating: Boolean? = null,
+        captions: Boolean? = null,
+        quietFriendly: Boolean? = null,
+        sort: String? = null,
+        nearLat: Double? = null,
+        nearLng: Double? = null,
+        radiusKm: Double? = null,
+        suggested: Boolean? = null,
         page: Int = 1,
         pageSize: Int = 20
     ): Result<EventListResponse> {
@@ -25,16 +37,29 @@ class EventRepository {
                 token = authHeader,
                 search = search?.takeIf { it.isNotBlank() },
                 categoryId = categoryId,
-                temporalFilter = temporalFilter,
+                quickFilter = quickFilter,
+                nearLat = nearLat,
+                nearLng = nearLng,
+                radiusKm = radiusKm,
+                wheelchair = wheelchair,
+                accessibleRestroom = accessibleRestroom,
+                elevator = elevator,
+                seating = seating,
+                captions = captions,
+                quietFriendly = quietFriendly,
+                sort = sort,
+                suggested = suggested,
                 page = page,
                 pageSize = pageSize
             )
             Result.success(response)
         } catch (e: retrofit2.HttpException) {
-            // If token expired (401), retry without token — discovery is public
             if (e.code() == 401 && token != null) {
                 Log.w("EventRepository", "Token rejected (401), retrying without auth")
-                return getEvents(null, search, categoryId, temporalFilter, page, pageSize)
+                // Suggested requires auth — drop it on the unauth retry so the request still succeeds.
+                return getEvents(null, search, categoryId, quickFilter,
+                    wheelchair, accessibleRestroom, elevator, seating, captions,
+                    quietFriendly, sort, nearLat, nearLng, radiusKm, null, page, pageSize)
             }
             val body = e.response()?.errorBody()?.string() ?: "Unknown error"
             Log.e("EventRepository", "getEvents HTTP ${e.code()}: $body")
@@ -75,6 +100,25 @@ class EventRepository {
             }
         } catch (e: Exception) {
             Log.e("EventRepository", "getEventDetail failed: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getSimilarEvents(
+        eventId: String,
+        token: String? = null
+    ): Result<List<EventListItemDto>> {
+        return try {
+            val authHeader = token?.let { "Bearer $it" }
+            val response = RetrofitProvider.apiService.getSimilarEvents(eventId, authHeader)
+            if (!response.isSuccessful) {
+                val body = response.errorBody()?.string() ?: "Unknown error"
+                Log.e("EventRepository", "getSimilarEvents HTTP ${response.code()}: $body")
+                return Result.failure(Exception("${response.code()}: $body"))
+            }
+            Result.success(response.body() ?: emptyList())
+        } catch (e: Exception) {
+            Log.e("EventRepository", "getSimilarEvents failed: ${e.message}", e)
             Result.failure(e)
         }
     }

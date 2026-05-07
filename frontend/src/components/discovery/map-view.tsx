@@ -6,9 +6,13 @@ import { Bookmark, BookmarkCheck, Minus, Pencil, Plus, Users, X } from "lucide-r
 import Link from "next/link";
 
 import {
+  type AccessibilityFilters,
+  type DiscoveryParams,
   type EventListItem,
   type EventGeoJSONProperties,
   type GeoJSONFeatureCollection,
+  type QuickFilter,
+  type SortOption,
   fetchGeoJsonEvents,
 } from "@/lib/events-api";
 import { useEventInteraction } from "@/hooks/use-event-interaction";
@@ -20,10 +24,6 @@ import "maplibre-gl/dist/maplibre-gl.css";
 
 const MAPTILER_STYLE = "https://tiles.openfreemap.org/styles/liberty";
 const DEFAULT_CENTER = { longitude: 28.9784, latitude: 41.0082, zoom: 11 };
-
-function toApiTemporalFilter(value: string | null): "today" | "this_week" | undefined {
-  return value === "today" || value === "this_week" ? value : undefined;
-}
 
 interface MapViewProps {
   currentUserId: string | null;
@@ -187,11 +187,54 @@ export function MapView({ currentUserId, isAuthenticated }: MapViewProps) {
     let cancelled = false;
     const fetchGeo = async () => {
       try {
-        const res = await fetchGeoJsonEvents({
+        const params: DiscoveryParams = {
           search: searchParams.get("q") ?? undefined,
           category_id: searchParams.get("category")?.split(",")[0] ?? undefined,
-          temporal_filter: toApiTemporalFilter(searchParams.get("temporal")),
-        });
+        };
+
+        const temporalRaw = searchParams.get("temporal");
+        const VALID_QUICK: readonly QuickFilter[] = [
+          "now",
+          "today",
+          "this_week",
+          "weekend",
+          "upcoming",
+          "past",
+        ];
+        if (temporalRaw && (VALID_QUICK as readonly string[]).includes(temporalRaw)) {
+          params.quick_filter = temporalRaw as QuickFilter;
+        } else if (searchParams.get("showPast") === "1") {
+          params.quick_filter = "past";
+        }
+
+        const sortRaw = searchParams.get("sort");
+        const VALID_SORT: readonly SortOption[] = ["start_time", "distance", "category"];
+        if (
+          sortRaw &&
+          (VALID_SORT as readonly string[]).includes(sortRaw) &&
+          sortRaw !== "start_time"
+        ) {
+          params.sort = sortRaw as SortOption;
+        }
+
+        const a11yRaw = searchParams.get("a11y");
+        if (a11yRaw) {
+          const set = new Set(a11yRaw.split(",").filter(Boolean));
+          const a11y: AccessibilityFilters = {};
+          for (const key of [
+            "wheelchair",
+            "accessible_restroom",
+            "elevator",
+            "seating",
+            "captions",
+            "quiet_friendly",
+          ] as (keyof AccessibilityFilters)[]) {
+            if (set.has(key)) a11y[key] = true;
+          }
+          if (Object.keys(a11y).length > 0) params.accessibility = a11y;
+        }
+
+        const res = await fetchGeoJsonEvents(params);
         if (!cancelled) setGeoJson(res);
       } catch (err) {
         console.error("Failed to fetch map GeoJSON", err);

@@ -1,0 +1,59 @@
+# Project-specific detekt overrides on top of the bundled defaults
+# (build with `buildUponDefaultConfig = true`). Keep this file small and
+# project-specific — defaults handle everything else.
+
+build:
+  maxIssues: 0
+  excludeCorrectable: false
+
+console-reports:
+  active: true
+  exclude:
+    - 'ProjectStatisticsReport'
+    - 'ComplexityReport'
+    - 'NotificationReport'
+
+# Compose Composables don't follow the standard "function name = lower camel"
+# rule; they are PascalCase by convention. Disable the lint that would
+# otherwise flag every screen/component.
+naming:
+  FunctionNaming:
+    active: true
+    excludes: ['**/test/**', '**/androidTest/**']
+    ignoreAnnotated: ['androidx.compose.runtime.Composable']
+
+style:
+  MagicNumber:
+    active: false  # Compose dp/sp values trip this constantly — false-positive heavy.
+  WildcardImport:
+    active: true
+    excludes: ['**/test/**', '**/androidTest/**']
+  ReturnCount:
+    active: true
+    max: 4
+  MaxLineLength:
+    active: true
+    maxLineLength: 140
+    excludePackageStatements: true
+    excludeImportStatements: true
+
+complexity:
+  LongMethod:
+    active: true
+    threshold: 120  # Compose screens commonly exceed the 60-line default.
+  LongParameterList:
+    active: false  # Compose component APIs naturally have many params.
+  TooManyFunctions:
+    active: false  # ViewModels frequently group many small handlers.
+  LargeClass:
+    active: true
+    threshold: 700
+
+empty-blocks:
+  EmptyFunctionBlock:
+    active: true
+    ignoreOverridden: true
+
+performance:
+  SpreadOperator:
+    active: false  # Bundle.putAll uses spread; rarely hot path.

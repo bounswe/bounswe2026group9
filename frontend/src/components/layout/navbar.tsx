@@ -242,13 +242,14 @@ export function Navbar({
               onSubmit={handleSearchSubmit}
               className="flex w-full max-w-2xl items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3 py-2 transition-colors focus-within:border-white/30 focus-within:bg-white/15 sm:px-4"
             >
-              <Search className="size-4 shrink-0 text-white/50" />
+              <Search className="size-4 shrink-0 text-white/50" aria-hidden="true" />
               <input
                 ref={inputRef}
                 type="search"
                 value={currentSearch}
                 onChange={handleSearchChange}
                 placeholder="Search events, categories, places..."
+                aria-label="Search events"
                 className="w-full min-w-0 bg-transparent text-sm text-white outline-none placeholder:text-white/45"
               />
             </form>
@@ -307,10 +308,15 @@ export function ActionBar({
         )}
       </button>
 
-      <div className="border-brand-mid-alpha shadow-brand-floating flex min-w-0 items-center gap-1 overflow-x-auto rounded-xl border bg-white/35 p-1">
+      <div
+        role="group"
+        aria-label="View mode"
+        className="border-brand-mid-alpha shadow-brand-floating flex min-w-0 items-center gap-1 overflow-x-auto rounded-xl border bg-white/35 p-1"
+      >
         <button
           type="button"
           onClick={() => onViewChange("map")}
+          aria-pressed={view === "map"}
           className={cn(
             "flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors",
             toggleButtonClassName,
@@ -321,6 +327,7 @@ export function ActionBar({
         >
           {/* Map icon inline to avoid lucide dep inside navbar */}
           <svg
+            aria-hidden="true"
             className="size-4"
             viewBox="0 0 24 24"
             fill="none"
@@ -337,6 +344,7 @@ export function ActionBar({
         <button
           type="button"
           onClick={() => onViewChange("list")}
+          aria-pressed={view === "list"}
           className={cn(
             "flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors",
             toggleButtonClassName,
@@ -346,6 +354,7 @@ export function ActionBar({
           )}
         >
           <svg
+            aria-hidden="true"
             className="size-4"
             viewBox="0 0 24 24"
             fill="none"

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Cached QR PNGs that the attendee shares via FileProvider. -->
+    <cache-path name="shared_qr" path="shared_qr/" />
+</paths>

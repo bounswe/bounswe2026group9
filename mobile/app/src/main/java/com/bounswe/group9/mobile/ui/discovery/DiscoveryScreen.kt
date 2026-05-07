@@ -32,6 +32,24 @@ import com.bounswe.group9.mobile.data.remote.CategoryDto
 import com.bounswe.group9.mobile.data.remote.EventListItemDto
 import kotlinx.coroutines.launch
 import com.bounswe.group9.mobile.ui.common.formatEventDate
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.location.Location
+import android.location.LocationListener
+import android.location.LocationManager
+import android.os.Bundle
+import android.os.Looper
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,6 +71,27 @@ fun DiscoveryScreen(
     val scope = rememberCoroutineScope()
     var showFilterSheet by remember { mutableStateOf(false) }
     var isMapView by remember { mutableStateOf(true) } // default: map
+    var locationPermissionDenied by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            viewModel.enableProximitySortOptimistic()
+            requestCurrentLocation(context) { loc ->
+                if (loc != null) viewModel.enableProximitySort(loc.first, loc.second)
+                else {
+                    viewModel.revertProximitySort()
+                    scope.launch { snackbarHostState.showSnackbar("Could not get location. Try again.") }
+                }
+            }
+        } else {
+            locationPermissionDenied = true
+            scope.launch { snackbarHostState.showSnackbar("Location permission denied. Cannot use proximity ranking.") }
+        }
+    }
 
     LaunchedEffect(token) { viewModel.setToken(token) }
 
@@ -65,6 +104,7 @@ fun DiscoveryScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             if (token != null) {
                 ExtendedFloatingActionButton(
@@ -95,17 +135,38 @@ fun DiscoveryScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
+            // Empty-history hint for the Suggested filter (issue #277). Shown above the listing
+            // whenever the chip is on AND the server signalled it had no history to bias by.
+            if (uiState.suggestedActive && uiState.suggestedFallback) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer
+                ) {
+                    Text(
+                        "Attend events to get personalised suggestions. Showing default results.",
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                }
+            }
+            Box(modifier = Modifier.fillMaxSize().weight(1f)) {
             when {
                 uiState.isLoading -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center),
-                        color = MaterialTheme.colorScheme.tertiary
-                    )
+                    LazyColumn(
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(5) { EventCardSkeleton() }
+                    }
                 }
                 uiState.errorMessage != null -> {
                     val errorMsg = uiState.errorMessage
@@ -163,6 +224,7 @@ fun DiscoveryScreen(
                     }
                 }
             }
+            }
         }
     }
 
@@ -176,10 +238,38 @@ fun DiscoveryScreen(
             FilterSheetContent(
                 uiState = uiState,
                 isLoggedIn = token != null,
-                onTemporalSelect = viewModel::onTemporalSelected,
+                onQuickFilterSelect = viewModel::onQuickFilterSelected,
                 onCategorySelect = viewModel::onCategorySelected,
                 onBookmarkedToggle = viewModel::onBookmarkedOnlyToggle,
                 onGoingToggle = viewModel::onGoingOnlyToggle,
+                onWheelchairToggle = viewModel::onWheelchairToggle,
+                onAccessibleRestroomToggle = viewModel::onAccessibleRestroomToggle,
+                onElevatorToggle = viewModel::onElevatorToggle,
+                onSeatingToggle = viewModel::onSeatingToggle,
+                onCaptionsToggle = viewModel::onCaptionsToggle,
+                onQuietFriendlyToggle = viewModel::onQuietFriendlyToggle,
+                onSuggestedToggle = viewModel::onSuggestedToggle,
+                onProximitySortToggle = {
+                    if (uiState.proximitySort) {
+                        viewModel.disableProximitySort()
+                    } else {
+                        val hasPermission = ContextCompat.checkSelfPermission(
+                            context, Manifest.permission.ACCESS_FINE_LOCATION
+                        ) == PackageManager.PERMISSION_GRANTED
+                        if (hasPermission) {
+                            viewModel.enableProximitySortOptimistic()
+                            requestCurrentLocation(context) { loc ->
+                                if (loc != null) viewModel.enableProximitySort(loc.first, loc.second)
+                                else {
+                                    viewModel.revertProximitySort()
+                                    scope.launch { snackbarHostState.showSnackbar("Could not get location. Try again.") }
+                                }
+                            }
+                        } else {
+                            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                        }
+                    }
+                },
                 onClear = {
                     viewModel.clearFilters()
                     scope.launch { sheetState.hide() }.invokeOnCompletion { showFilterSheet = false }
@@ -343,7 +433,7 @@ private fun DiscoveryTopBar(
                 OutlinedTextField(
                     value = search,
                     onValueChange = onSearchChange,
-                    placeholder = { Text("Search events...", fontSize = 13.sp, color = Color.White.copy(alpha = 0.5f)) },
+                    placeholder = { Text("Search events or places...", fontSize = 13.sp, color = Color.White.copy(alpha = 0.5f)) },
                     leadingIcon = {
                         Icon(Icons.Default.Search, null,
                             tint = Color.White.copy(alpha = 0.6f),
@@ -405,34 +495,35 @@ private fun DiscoveryTopBar(
 private fun FilterSheetContent(
     uiState: DiscoveryUiState,
     isLoggedIn: Boolean,
-    onTemporalSelect: (String?) -> Unit,
+    onQuickFilterSelect: (String?) -> Unit,
     onCategorySelect: (String?) -> Unit,
     onBookmarkedToggle: () -> Unit,
     onGoingToggle: () -> Unit,
+    onWheelchairToggle: () -> Unit,
+    onAccessibleRestroomToggle: () -> Unit,
+    onElevatorToggle: () -> Unit,
+    onSeatingToggle: () -> Unit,
+    onCaptionsToggle: () -> Unit,
+    onQuietFriendlyToggle: () -> Unit,
+    onSuggestedToggle: () -> Unit,
+    onProximitySortToggle: () -> Unit,
     onClear: () -> Unit,
     onApply: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 32.dp)
-    ) {
+    val hasAnyFilter = uiState.selectedQuickFilter != null || uiState.selectedCategoryId != null ||
+        uiState.bookmarkedOnly || uiState.goingOnly || uiState.hasAccessibilityFilter ||
+        uiState.proximitySort || uiState.suggestedActive
+
+    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)) {
         // Header
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 12.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                "Filters",
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            if (uiState.selectedTemporal != null || uiState.selectedCategoryId != null ||
-                uiState.bookmarkedOnly || uiState.goingOnly) {
+            Text("Filters", fontWeight = FontWeight.Bold, fontSize = 18.sp,
+                color = MaterialTheme.colorScheme.onSurface)
+            if (hasAnyFilter) {
                 TextButton(onClick = onClear) {
                     Text("Clear All", color = MaterialTheme.colorScheme.tertiary, fontSize = 13.sp)
                 }
@@ -442,112 +533,147 @@ private fun FilterSheetContent(
         HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
 
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
+            modifier = Modifier.fillMaxWidth().weight(1f)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            // Quick filters
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(
-                    "QUICK FILTERS",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 2.sp,
-                    color = MaterialTheme.colorScheme.tertiary
-                )
-                Row(
-                    modifier = Modifier.horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    listOf("today" to "Today", "this_week" to "This Week", "upcoming" to "Upcoming")
-                        .forEach { (key, label) ->
-                            val selected = uiState.selectedTemporal == key
-                            FilterPill(label = label, selected = selected) {
-                                onTemporalSelect(key)
-                            }
-                        }
-                    if (isLoggedIn) {
-                        FilterPill(
-                            label = "🔖 Bookmarked",
-                            selected = uiState.bookmarkedOnly,
-                            onClick = onBookmarkedToggle
-                        )
-                        FilterPill(
-                            label = "✓ Going",
-                            selected = uiState.goingOnly,
-                            onClick = onGoingToggle
-                        )
+            // ── Quick Filters ──────────────────────────────────────────────────
+            FilterSectionLabel("QUICK FILTERS")
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                listOf(
+                    "now" to "Now",
+                    "today" to "Today",
+                    "weekend" to "Weekend",
+                    "this_week" to "This Week",
+                    "upcoming" to "Upcoming",
+                    "past" to "Past"
+                ).forEach { (key, label) ->
+                    FilterPill(label = label, selected = uiState.selectedQuickFilter == key) {
+                        onQuickFilterSelect(key)
                     }
+                }
+                if (isLoggedIn) {
+                    FilterPill("✨ Suggested for you", uiState.suggestedActive, onSuggestedToggle)
+                    FilterPill("🔖 Bookmarked", uiState.bookmarkedOnly, onBookmarkedToggle)
+                    FilterPill("✓ Going", uiState.goingOnly, onGoingToggle)
                 }
             }
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
 
-            // Categories
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    "CATEGORY",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 2.sp,
-                    color = MaterialTheme.colorScheme.tertiary
-                )
-                uiState.categories.forEach { cat ->
-                    val selected = uiState.selectedCategoryId == cat.id
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
-                            .clickable { onCategorySelect(cat.id) }
-                            .padding(horizontal = 10.dp, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+            // ── Ranking & Proximity ────────────────────────────────────────────
+            FilterSectionLabel("RANKING")
+            FilterSwitchRow(
+                label = "Proximity Ranking",
+                sublabel = "Sort by distance from your current location",
+                checked = uiState.proximitySort,
+                onCheckedChange = { onProximitySortToggle() }
+            )
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+
+            // ── Accessibility ──────────────────────────────────────────────────
+            FilterSectionLabel("ACCESSIBILITY")
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                FilterSwitchRow("Wheelchair Access", checked = uiState.wheelchair,
+                    onCheckedChange = { onWheelchairToggle() })
+                FilterSwitchRow("Accessible Restroom", checked = uiState.accessibleRestroom,
+                    onCheckedChange = { onAccessibleRestroomToggle() })
+                FilterSwitchRow("Elevator Available", checked = uiState.elevator,
+                    onCheckedChange = { onElevatorToggle() })
+                FilterSwitchRow("Seating Available", checked = uiState.seating,
+                    onCheckedChange = { onSeatingToggle() })
+                FilterSwitchRow("Captions Support", checked = uiState.captions,
+                    onCheckedChange = { onCaptionsToggle() })
+                FilterSwitchRow("Quiet-Friendly", checked = uiState.quietFriendly,
+                    onCheckedChange = { onQuietFriendlyToggle() })
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+
+            // ── Category ───────────────────────────────────────────────────────
+            FilterSectionLabel("CATEGORY")
+            uiState.categories.forEach { cat ->
+                val selected = uiState.selectedCategoryId == cat.id
+                Row(
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                        .clickable { onCategorySelect(cat.id) }
+                        .padding(horizontal = 10.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(cat.name, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                    Box(
+                        modifier = Modifier.size(20.dp).clip(RoundedCornerShape(4.dp))
+                            .background(
+                                if (selected) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                            ),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            cat.name,
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Box(
-                            modifier = Modifier
-                                .size(20.dp)
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(
-                                    if (selected) MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (selected) {
-                                Icon(
-                                    Icons.Default.Check, null,
-                                    tint = MaterialTheme.colorScheme.onPrimary,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                            }
-                        }
+                        if (selected) Icon(Icons.Default.Check, null,
+                            tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(14.dp))
                     }
                 }
             }
         }
 
-        // Apply button
         Button(
             onClick = onApply,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-                .height(48.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).height(48.dp),
             shape = RoundedCornerShape(14.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary
-            )
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
         ) {
             Text("Apply Filters", fontWeight = FontWeight.SemiBold)
         }
+    }
+}
+
+@Composable
+private fun FilterSectionLabel(text: String) {
+    Text(
+        text,
+        fontSize = 10.sp,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 2.sp,
+        color = MaterialTheme.colorScheme.tertiary
+    )
+}
+
+@Composable
+private fun FilterSwitchRow(
+    label: String,
+    sublabel: String? = null,
+    checked: Boolean,
+    enabled: Boolean = true,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(label, fontSize = 14.sp, color = if (enabled) MaterialTheme.colorScheme.onSurface
+                 else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
+            if (sublabel != null) {
+                Text(sublabel, fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (enabled) 1f else 0.4f))
+            }
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            enabled = enabled,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                checkedTrackColor = MaterialTheme.colorScheme.primary
+            )
+        )
     }
 }
 
@@ -679,5 +805,68 @@ private fun SmallBadgeIcon(text: String, color: Color) {
     ) {
         Icon(Icons.Default.Lock, null, tint = Color.White, modifier = Modifier.size(9.dp))
         Text(text, color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold)
+    }
+}
+
+/** Requests a fresh location fix and delivers (lat, lng) via [onResult], or null on failure. */
+private fun requestCurrentLocation(context: Context, onResult: (Pair<Double, Double>?) -> Unit) {
+    val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+    val provider = when {
+        lm.isProviderEnabled(LocationManager.GPS_PROVIDER) &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+                PackageManager.PERMISSION_GRANTED -> LocationManager.GPS_PROVIDER
+        lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER) &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
+                PackageManager.PERMISSION_GRANTED -> LocationManager.NETWORK_PROVIDER
+        else -> null
+    }
+    if (provider == null) { onResult(null); return }
+    @Suppress("MissingPermission")
+    lm.requestSingleUpdate(provider, object : LocationListener {
+        override fun onLocationChanged(loc: Location) = onResult(Pair(loc.latitude, loc.longitude))
+        override fun onProviderDisabled(p: String) = onResult(null)
+        override fun onStatusChanged(p: String?, s: Int, e: Bundle?) {}
+    }, Looper.getMainLooper())
+}
+
+@Composable
+fun EventCardSkeleton() {
+    val shimmerColors = listOf(
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+    )
+    val transition = rememberInfiniteTransition(label = "shimmer")
+    val translateAnim by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1000f,
+        animationSpec = infiniteRepeatable(tween(800)),
+        label = "shimmer_offset"
+    )
+    val brush = Brush.linearGradient(
+        colors = shimmerColors,
+        start = Offset(translateAnim - 200f, translateAnim - 200f),
+        end = Offset(translateAnim, translateAnim)
+    )
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column {
+            Box(modifier = Modifier.fillMaxWidth().height(160.dp).background(brush))
+            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box(modifier = Modifier.fillMaxWidth(0.7f).height(16.dp).clip(RoundedCornerShape(4.dp)).background(brush))
+                Box(modifier = Modifier.fillMaxWidth(0.4f).height(12.dp).clip(RoundedCornerShape(4.dp)).background(brush))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    repeat(2) {
+                        Box(modifier = Modifier.width(60.dp).height(20.dp).clip(RoundedCornerShape(20.dp)).background(brush))
+                    }
+                }
+                Box(modifier = Modifier.fillMaxWidth(0.3f).height(12.dp).clip(RoundedCornerShape(4.dp)).background(brush))
+            }
+        }
     }
 }
