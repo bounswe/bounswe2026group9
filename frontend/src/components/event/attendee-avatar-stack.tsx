@@ -50,7 +50,7 @@ export function AttendeeAvatarStack({
           aria-label={`View ${attendee.username}'s profile`}
           title={attendee.username}
           className={cn(
-            "flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white border-2 border-white transition-transform hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-dark focus-visible:ring-offset-1",
+            "focus-visible:ring-brand-dark flex size-9 shrink-0 items-center justify-center rounded-full border-2 border-white text-xs font-bold text-white transition-transform hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1",
             getAvatarColor(attendee.id),
             index > 0 && "-ml-2",
           )}
@@ -59,9 +59,7 @@ export function AttendeeAvatarStack({
         </Link>
       ))}
       {remaining > 0 && (
-        <div className="ml-2 text-sm font-bold text-brand-mid">
-          +{remaining} more
-        </div>
+        <div className="text-brand-mid ml-2 text-sm font-bold">+{remaining} more</div>
       )}
     </div>
   );

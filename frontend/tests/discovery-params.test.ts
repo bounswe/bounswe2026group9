@@ -9,10 +9,13 @@ function lastFetchUrl(fetchMock: ReturnType<typeof vi.fn>): string {
 }
 
 function emptyOk(): Response {
-  return new Response(JSON.stringify({ items: [], total: 0, page: 1, page_size: 20, total_pages: 0 }), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
+  return new Response(
+    JSON.stringify({ items: [], total: 0, page: 1, page_size: 20, total_pages: 0 }),
+    {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    },
+  );
 }
 
 function emptyGeo(): Response {

@@ -84,22 +84,15 @@ describe("FilterSidebar", () => {
     const { onFiltersChange } = renderSidebar();
     const sidebar = screen.getAllByRole("complementary")[0];
     await userEvent.click(within(sidebar).getByRole("button", { name: "Today" }));
-    expect(onFiltersChange).toHaveBeenCalledWith(
-      expect.objectContaining({ temporal: "today" }),
-    );
+    expect(onFiltersChange).toHaveBeenCalledWith(expect.objectContaining({ temporal: "today" }));
   });
 
   it("toggles an accessibility checkbox", async () => {
     const { onFiltersChange } = renderSidebar();
     const sidebar = screen.getAllByRole("complementary")[0];
-    await userEvent.click(
-      within(sidebar).getByRole("checkbox", { name: /wheelchair access/i }),
-    );
-    expect(onFiltersChange).toHaveBeenCalledWith(
-      expect.objectContaining({
-        accessibility: expect.objectContaining({ wheelchair: true }),
-      }),
-    );
+    await userEvent.click(within(sidebar).getByRole("checkbox", { name: /wheelchair access/i }));
+    const lastCall = onFiltersChange.mock.calls.at(-1);
+    expect(lastCall?.[0]).toMatchObject({ accessibility: { wheelchair: true } });
   });
 
   it("flips the Show past events switch", async () => {
@@ -108,9 +101,7 @@ describe("FilterSidebar", () => {
     const sw = within(sidebar).getByRole("switch", { name: /show past events/i });
     expect(sw).toHaveAttribute("aria-checked", "false");
     await userEvent.click(sw);
-    expect(onFiltersChange).toHaveBeenCalledWith(
-      expect.objectContaining({ showPast: true }),
-    );
+    expect(onFiltersChange).toHaveBeenCalledWith(expect.objectContaining({ showPast: true }));
   });
 
   it("changes the sort option", async () => {
@@ -119,9 +110,7 @@ describe("FilterSidebar", () => {
     await userEvent.click(
       within(sidebar).getByRole("radio", { name: /distance .*your location/i }),
     );
-    expect(onFiltersChange).toHaveBeenCalledWith(
-      expect.objectContaining({ sort: "distance" }),
-    );
+    expect(onFiltersChange).toHaveBeenCalledWith(expect.objectContaining({ sort: "distance" }));
   });
 
   it("calls onApply and onClear when the action buttons are clicked", async () => {

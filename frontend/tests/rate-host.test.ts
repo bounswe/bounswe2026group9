@@ -9,19 +9,19 @@ function lastFetchBody(fetchMock: ReturnType<typeof vi.fn>): unknown {
   const call = fetchMock.mock.calls.at(-1);
   if (!call) throw new Error("fetch was not called");
   const init = call[1] as RequestInit;
-  return JSON.parse(String(init.body));
+  if (typeof init.body !== "string") throw new Error("expected fetch body to be a JSON string");
+  return JSON.parse(init.body) as unknown;
 }
 
 describe("rateHost", () => {
   let fetchMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    fetchMock = vi.fn().mockResolvedValue(
-      new Response(null, { status: 201 }),
-    );
+    fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 201 }));
     vi.stubGlobal("fetch", fetchMock);
     setAuthenticatedSession({
       access_token: "tok",
+      token_type: "bearer",
       user: {
         id: "u1",
         username: "tester",
@@ -30,6 +30,12 @@ describe("rateHost", () => {
         date_of_birth: null,
         email_visibility: false,
         phone_visibility: false,
+        role: "registered",
+        auth_provider: "local",
+        email_verified: true,
+        is_active: true,
+        created_at: "2026-01-01T00:00:00Z",
+        updated_at: "2026-01-01T00:00:00Z",
       },
     });
   });

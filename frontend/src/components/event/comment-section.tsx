@@ -5,12 +5,7 @@ import Link from "next/link";
 import { CornerDownRight, Send, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getProfileHref } from "@/lib/profile-route";
-import {
-  fetchComments,
-  postComment,
-  deleteComment,
-  type Comment,
-} from "@/lib/events-api";
+import { fetchComments, postComment, deleteComment, type Comment } from "@/lib/events-api";
 
 const MAX_DEPTH = 3;
 
@@ -38,12 +33,7 @@ function initials(username: string): string {
   return username.slice(0, 2).toUpperCase();
 }
 
-const AVATAR_COLORS = [
-  "bg-brand-dark",
-  "bg-brand-mid",
-  "bg-[#7a5d45]",
-  "bg-[#c4a882]",
-];
+const AVATAR_COLORS = ["bg-brand-dark", "bg-brand-mid", "bg-[#7a5d45]", "bg-[#c4a882]"];
 
 function avatarColor(userId: string): string {
   let hash = 0;
@@ -107,40 +97,47 @@ function CommentNode({
   }
 
   return (
-    <div className={cn("flex gap-3 py-3", depth > 0 && "ml-8 border-l-2 border-brand-mid-alpha/40 pl-4")}>
-      <div className="flex-1 min-w-0">
+    <div
+      className={cn(
+        "flex gap-3 py-3",
+        depth > 0 && "border-brand-mid-alpha/40 ml-8 border-l-2 pl-4",
+      )}
+    >
+      <div className="min-w-0 flex-1">
         <div className="flex items-start gap-3">
           <Link
             href={getProfileHref(comment.user.id, currentUserId)}
             aria-label={`View ${comment.user.username}'s profile`}
             className={cn(
-              "flex shrink-0 items-center justify-center rounded-full text-xs font-bold text-white transition-transform hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-dark focus-visible:ring-offset-1",
+              "focus-visible:ring-brand-dark flex shrink-0 items-center justify-center rounded-full text-xs font-bold text-white transition-transform hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1",
               depth === 0 ? "size-8" : "size-6 text-[10px]",
               avatarColor(comment.user.id),
             )}
           >
             {initials(comment.user.username)}
           </Link>
-          <div className="flex-1 min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="mb-1">
               <Link
                 href={getProfileHref(comment.user.id, currentUserId)}
-                className="text-sm font-bold text-brand-dark hover:underline focus:outline-none focus-visible:underline"
+                className="text-brand-dark text-sm font-bold hover:underline focus:outline-none focus-visible:underline"
               >
                 {comment.user.username}
               </Link>
-              <span className="text-[12px] text-brand-mid ml-2">· {timeAgo(comment.created_at)}</span>
+              <span className="text-brand-mid ml-2 text-[12px]">
+                · {timeAgo(comment.created_at)}
+              </span>
               {currentUserId === comment.user.id && (
                 <button
                   onClick={() => onDelete(comment.id)}
-                  className="ml-2 text-brand-mid hover:text-danger transition-colors"
+                  className="text-brand-mid hover:text-danger ml-2 transition-colors"
                   aria-label="Delete comment"
                 >
                   <Trash2 className="size-3" />
                 </button>
               )}
             </div>
-            <p className="text-[14px] leading-[1.5] text-brand-dark whitespace-pre-wrap break-words">
+            <p className="text-brand-dark text-[14px] leading-[1.5] break-words whitespace-pre-wrap">
               {comment.text}
             </p>
             {canReply && (
@@ -150,11 +147,14 @@ function CommentNode({
                   setShowReplyInput(next);
                   if (next) {
                     setTimeout(() => {
-                      replyInputRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                      replyInputRef.current?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "nearest",
+                      });
                     }, 50);
                   }
                 }}
-                className="mt-1 text-[12px] font-bold text-brand-mid hover:text-brand-dark transition-colors flex items-center gap-1"
+                className="text-brand-mid hover:text-brand-dark mt-1 flex items-center gap-1 text-[12px] font-bold transition-colors"
               >
                 <CornerDownRight className="size-3" />
                 {showReplyInput ? "Cancel" : "Reply"}
@@ -165,13 +165,13 @@ function CommentNode({
 
         {/* Reply input */}
         {showReplyInput && (
-          <div ref={replyInputRef} className="flex gap-2 items-start mt-2 ml-11">
+          <div ref={replyInputRef} className="mt-2 ml-11 flex items-start gap-2">
             <textarea
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
               placeholder={`Reply to ${comment.user.username}...`}
               rows={1}
-              className="flex-1 resize-none rounded-lg border border-brand-mid-alpha bg-white px-3 py-2 text-[13px] text-brand-dark placeholder:text-brand-mid/60 outline-none focus:border-brand-mid transition-colors h-10"
+              className="border-brand-mid-alpha text-brand-dark placeholder:text-brand-mid/60 focus:border-brand-mid h-10 flex-1 resize-none rounded-lg border bg-white px-3 py-2 text-[13px] transition-colors outline-none"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
@@ -180,9 +180,11 @@ function CommentNode({
               }}
             />
             <button
-              onClick={() => { void handleReply(); }}
+              onClick={() => {
+                void handleReply();
+              }}
               disabled={!replyText.trim() || submitting}
-              className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-dark text-white transition-colors hover:bg-brand-dark/85 disabled:bg-brand-mid-alpha disabled:cursor-not-allowed"
+              className="bg-brand-dark hover:bg-brand-dark/85 disabled:bg-brand-mid-alpha flex size-8 shrink-0 items-center justify-center rounded-lg text-white transition-colors disabled:cursor-not-allowed"
             >
               <Send className="size-3.5" />
             </button>
@@ -262,28 +264,38 @@ export function CommentSection({
   }
 
   function handleDelete(commentId: string) {
-    void deleteComment(eventId, commentId).then(() => {
-      // Remove from tree — works for top-level and nested
-      function removeFromList(list: Comment[]): Comment[] {
-        return list
-          .filter((c) => c.id !== commentId)
-          .map((c) => ({ ...c, replies: removeFromList(c.replies ?? []) }));
-      }
-      setComments((prev) => removeFromList(prev));
-    }).catch(() => {});
+    void deleteComment(eventId, commentId)
+      .then(() => {
+        // Remove from tree — works for top-level and nested
+        function removeFromList(list: Comment[]): Comment[] {
+          return list
+            .filter((c) => c.id !== commentId)
+            .map((c) => ({ ...c, replies: removeFromList(c.replies ?? []) }));
+        }
+        setComments((prev) => removeFromList(prev));
+      })
+      .catch(() => {});
   }
 
   return (
     <div ref={scrollRef} className="flex flex-col gap-4 pb-24">
       <h3 className="font-heading text-brand-dark text-lg font-semibold">
-        Comments{!loading && <span className="text-brand-mid text-sm font-normal ml-1">({totalCount})</span>}
+        Comments
+        {!loading && (
+          <span className="text-brand-mid ml-1 text-sm font-normal">({totalCount})</span>
+        )}
       </h3>
 
       {/* Top-level input */}
-      <form onSubmit={(e) => { void handleSubmit(e); }} className="flex gap-3 items-start mb-4">
+      <form
+        onSubmit={(e) => {
+          void handleSubmit(e);
+        }}
+        className="mb-4 flex items-start gap-3"
+      >
         <div
           className={cn(
-            "flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold mt-1",
+            "mt-1 flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold",
             isAuthenticated ? "bg-brand-mid text-white" : "bg-brand-mid-alpha text-brand-mid",
           )}
         >
@@ -298,11 +310,11 @@ export function CommentSection({
             disabled
               ? (disabledReason ?? "Comments are closed")
               : !isAuthenticated
-              ? "Sign in to leave a comment"
-              : "Write a comment..."
+                ? "Sign in to leave a comment"
+                : "Write a comment..."
           }
           rows={1}
-          className="flex-1 resize-none rounded-[10px] border border-brand-mid-alpha bg-white px-3.5 py-2.5 text-[14px] text-brand-dark placeholder:text-brand-mid/60 outline-none focus:border-brand-mid transition-colors disabled:bg-brand-bg disabled:cursor-not-allowed h-12"
+          className="border-brand-mid-alpha text-brand-dark placeholder:text-brand-mid/60 focus:border-brand-mid disabled:bg-brand-bg h-12 flex-1 resize-none rounded-[10px] border bg-white px-3.5 py-2.5 text-[14px] transition-colors outline-none disabled:cursor-not-allowed"
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
@@ -313,7 +325,7 @@ export function CommentSection({
         <button
           type="submit"
           disabled={!text.trim() || submitting || !isAuthenticated || disabled}
-          className="flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-brand-dark text-white transition-colors hover:bg-brand-dark/85 disabled:bg-brand-mid-alpha disabled:cursor-not-allowed"
+          className="bg-brand-dark hover:bg-brand-dark/85 disabled:bg-brand-mid-alpha flex size-10 shrink-0 items-center justify-center rounded-[10px] text-white transition-colors disabled:cursor-not-allowed"
         >
           <Send className="size-4" />
         </button>
@@ -323,21 +335,21 @@ export function CommentSection({
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="flex gap-3 animate-pulse">
-              <div className="size-9 rounded-full bg-brand-mid-alpha shrink-0" />
+            <div key={i} className="flex animate-pulse gap-3">
+              <div className="bg-brand-mid-alpha size-9 shrink-0 rounded-full" />
               <div className="flex-1 space-y-2 pt-1">
-                <div className="h-3 w-1/3 rounded bg-brand-mid-alpha" />
-                <div className="h-3 w-full rounded bg-brand-mid-alpha opacity-60" />
+                <div className="bg-brand-mid-alpha h-3 w-1/3 rounded" />
+                <div className="bg-brand-mid-alpha h-3 w-full rounded opacity-60" />
               </div>
             </div>
           ))}
         </div>
       ) : comments.length === 0 ? (
-        <p className="text-muted-foreground text-sm py-4 text-center">
+        <p className="text-muted-foreground py-4 text-center text-sm">
           No comments yet. Be the first!
         </p>
       ) : (
-        <div className="divide-y divide-brand-dark/10">
+        <div className="divide-brand-dark/10 divide-y">
           {comments.map((comment) => (
             <CommentNode
               key={comment.id}

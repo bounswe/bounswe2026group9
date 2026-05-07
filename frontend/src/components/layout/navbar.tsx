@@ -100,7 +100,7 @@ export function Navbar({
           <Link href="/inbox" className="relative text-white/70 transition-colors hover:text-white">
             <Bell className="size-5" />
             {unreadCount > 0 && (
-              <span className="absolute -right-1.5 -top-1.5 flex size-4 items-center justify-center rounded-full border-2 border-brand-dark bg-red-500 text-[9px] font-bold leading-none text-white">
+              <span className="border-brand-dark absolute -top-1.5 -right-1.5 flex size-4 items-center justify-center rounded-full border-2 bg-red-500 text-[9px] leading-none font-bold text-white">
                 {unreadCount > 9 ? "9+" : unreadCount}
               </span>
             )}
@@ -148,7 +148,7 @@ export function Navbar({
         <Button
           asChild
           size="sm"
-          className="border-0 bg-brand-mid text-white hover:bg-brand-mid/80"
+          className="bg-brand-mid hover:bg-brand-mid/80 border-0 text-white"
         >
           <Link href="/register">Sign Up</Link>
         </Button>
@@ -170,7 +170,7 @@ export function Navbar({
           >
             <Bell className="size-4" />
             {unreadCount > 0 && (
-              <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full border-2 border-brand-dark bg-red-500 text-[9px] font-bold leading-none text-white">
+              <span className="border-brand-dark absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full border-2 bg-red-500 text-[9px] leading-none font-bold text-white">
                 {unreadCount > 9 ? "9+" : unreadCount}
               </span>
             )}
@@ -212,7 +212,7 @@ export function Navbar({
         <Button
           asChild
           size="sm"
-          className="border-0 bg-brand-mid px-2 text-white hover:bg-brand-mid/80"
+          className="bg-brand-mid hover:bg-brand-mid/80 border-0 px-2 text-white"
         >
           <Link href="/register">Sign Up</Link>
         </Button>
@@ -230,8 +230,8 @@ export function Navbar({
             className="group flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/8 text-white transition-opacity hover:opacity-80"
           >
             <span className="relative block size-5" aria-hidden="true">
-              <span className="bg-brand-mid absolute left-0 top-0 size-3 rounded-full" />
-              <span className="absolute bottom-0 right-0 size-3 rounded-full border border-white/70" />
+              <span className="bg-brand-mid absolute top-0 left-0 size-3 rounded-full" />
+              <span className="absolute right-0 bottom-0 size-3 rounded-full border border-white/70" />
             </span>
           </Link>
         </div>
@@ -250,13 +250,18 @@ export function Navbar({
                 onChange={handleSearchChange}
                 placeholder="Search events, categories, places..."
                 aria-label="Search events"
-                className="w-full min-w-0 bg-transparent text-sm text-white placeholder:text-white/45 outline-none"
+                className="w-full min-w-0 bg-transparent text-sm text-white outline-none placeholder:text-white/45"
               />
             </form>
           </div>
         ) : null}
 
-        <div className={cn("ml-auto flex shrink-0 items-center justify-end gap-2 sm:gap-3", showSearch && "lg:min-w-[11rem]")}>
+        <div
+          className={cn(
+            "ml-auto flex shrink-0 items-center justify-end gap-2 sm:gap-3",
+            showSearch && "lg:min-w-[11rem]",
+          )}
+        >
           <div className="flex items-center gap-2 sm:hidden">{renderMobileControls()}</div>
           <div className="hidden items-center gap-3 sm:flex">{renderDesktopControls()}</div>
         </div>
@@ -273,7 +278,12 @@ interface ActionBarProps {
   onToggleFilters: () => void;
 }
 
-export function ActionBar({ view, onViewChange, activeFilterCount, onToggleFilters }: ActionBarProps) {
+export function ActionBar({
+  view,
+  onViewChange,
+  activeFilterCount,
+  onToggleFilters,
+}: ActionBarProps) {
   const { isAuthenticated } = useAuth();
   const router = useRouter();
   const toggleButtonClassName =
@@ -298,7 +308,11 @@ export function ActionBar({ view, onViewChange, activeFilterCount, onToggleFilte
         )}
       </button>
 
-      <div role="group" aria-label="View mode" className="border-brand-mid-alpha flex min-w-0 items-center gap-1 overflow-x-auto rounded-xl border bg-white/35 p-1 shadow-brand-floating">
+      <div
+        role="group"
+        aria-label="View mode"
+        className="border-brand-mid-alpha shadow-brand-floating flex min-w-0 items-center gap-1 overflow-x-auto rounded-xl border bg-white/35 p-1"
+      >
         <button
           type="button"
           onClick={() => onViewChange("map")}
@@ -312,7 +326,14 @@ export function ActionBar({ view, onViewChange, activeFilterCount, onToggleFilte
           )}
         >
           {/* Map icon inline to avoid lucide dep inside navbar */}
-          <svg aria-hidden="true" className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+          <svg
+            aria-hidden="true"
+            className="size-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
             <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" />
             <line x1="9" y1="3" x2="9" y2="18" />
             <line x1="15" y1="6" x2="15" y2="21" />
@@ -332,7 +353,14 @@ export function ActionBar({ view, onViewChange, activeFilterCount, onToggleFilte
               : "text-brand-dark hover:bg-brand-mid-alpha/80",
           )}
         >
-          <svg aria-hidden="true" className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+          <svg
+            aria-hidden="true"
+            className="size-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
             <line x1="8" y1="6" x2="21" y2="6" />
             <line x1="8" y1="12" x2="21" y2="12" />
             <line x1="8" y1="18" x2="21" y2="18" />
@@ -349,7 +377,7 @@ export function ActionBar({ view, onViewChange, activeFilterCount, onToggleFilte
           <Button
             size="icon-sm"
             onClick={() => router.push(CREATE_EVENT_PAGE_PATH)}
-            className="border-0 bg-brand-mid text-white hover:bg-brand-mid/80 sm:hidden"
+            className="bg-brand-mid hover:bg-brand-mid/80 border-0 text-white sm:hidden"
             aria-label="Create Event"
           >
             <Plus className="size-4" />
@@ -357,7 +385,7 @@ export function ActionBar({ view, onViewChange, activeFilterCount, onToggleFilte
           <Button
             size="sm"
             onClick={() => router.push(CREATE_EVENT_PAGE_PATH)}
-            className="hidden gap-1.5 border-0 bg-brand-mid text-white hover:bg-brand-mid/80 sm:flex"
+            className="bg-brand-mid hover:bg-brand-mid/80 hidden gap-1.5 border-0 text-white sm:flex"
           >
             <Plus className="size-4" />
             Create Event

@@ -466,8 +466,8 @@ function DiscoveryPage() {
       prev.categoryIds.length === params.categoryIds.length &&
       prev.categoryIds.every((id, i) => id === params.categoryIds[i]);
     const sameA11y =
-      activeAccessibilityKeys(prev.accessibility).join(",")
-        === activeAccessibilityKeys(params.accessibility).join(",");
+      activeAccessibilityKeys(prev.accessibility).join(",") ===
+      activeAccessibilityKeys(params.accessibility).join(",");
     const changed =
       prev.temporal !== params.temporal ||
       prev.personal !== activePersonalFilter ||
@@ -531,7 +531,9 @@ function DiscoveryPage() {
 
   // ── Fetch categories (once) ────────────────────────────────────────────────────
   useEffect(() => {
-    fetchCategories().then(setCategories).catch(() => setCategories([]));
+    fetchCategories()
+      .then(setCategories)
+      .catch(() => setCategories([]));
   }, []);
 
   useEffect(() => {
@@ -590,8 +592,7 @@ function DiscoveryPage() {
       geoKey,
     );
     const pageCacheKey = `${resultCacheKey}|page:${params.page}`;
-    const canUseSimpleListFetch =
-      !activePersonalFilter && params.categoryIds.length <= 1;
+    const canUseSimpleListFetch = !activePersonalFilter && params.categoryIds.length <= 1;
 
     async function loadEvents() {
       setLoading(true);
@@ -678,9 +679,7 @@ function DiscoveryPage() {
         setTotal(0);
         setTotalPages(1);
         setErrorMessage(
-          err instanceof Error
-            ? err.message
-            : "Couldn't load events. Please try again.",
+          err instanceof Error ? err.message : "Couldn't load events. Please try again.",
         );
       } finally {
         if (!cancelled) {
@@ -691,8 +690,10 @@ function DiscoveryPage() {
 
     void loadEvents();
 
-    return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     discoveryUserKey,
     getFullDiscoveryEvents,
@@ -737,10 +738,14 @@ function DiscoveryPage() {
         }
         setCategoryCounts(counts);
       })
-      .catch(() => { if (!cancelled) setCategoryCounts({}); });
+      .catch(() => {
+        if (!cancelled) setCategoryCounts({});
+      });
 
-    return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     params.search,
     params.temporal,
@@ -777,7 +782,7 @@ function DiscoveryPage() {
       setSearchDraft(params.search);
     }
     lastSyncedSearchRef.current = params.search;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.search]);
 
   useEffect(() => {
@@ -786,7 +791,7 @@ function DiscoveryPage() {
       replaceParams({ search: searchDraft, resetPage: true });
     }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(t);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchDraft]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────────
@@ -802,7 +807,9 @@ function DiscoveryPage() {
   function handleSearchChange(v: string) {
     setSearchDraft(v);
   }
-  function handleFiltersChange(f: FilterState) { setDraftFilters(f); }
+  function handleFiltersChange(f: FilterState) {
+    setDraftFilters(f);
+  }
 
   function applyDraftFilters(draft: FilterState) {
     pushParams({
@@ -856,8 +863,7 @@ function DiscoveryPage() {
   // ── Banners ────────────────────────────────────────────────────────────────────
 
   const showGeoFallbackBanner = distanceMode && geoState.status === "fallback";
-  const showGeoDeniedBanner =
-    distanceMode && geoState.status === "denied" && !bannerDismissed;
+  const showGeoDeniedBanner = distanceMode && geoState.status === "denied" && !bannerDismissed;
 
   // ── Render ─────────────────────────────────────────────────────────────────────
 
@@ -879,15 +885,11 @@ function DiscoveryPage() {
       {(showGeoDeniedBanner || showGeoFallbackBanner || errorMessage) && (
         <div className="border-brand-mid-alpha flex flex-col gap-2 border-b bg-amber-50/70 px-4 py-2 sm:px-6 lg:px-8">
           {showGeoDeniedBanner && (
-            <div
-              role="alert"
-              className="flex items-start gap-2 text-sm text-amber-800"
-            >
+            <div role="alert" className="flex items-start gap-2 text-sm text-amber-800">
               <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
               <span className="flex-1">
-                We couldn&apos;t access your location, so distance sorting was reset.
-                Allow location access in your browser, or sign in and set a default
-                area in your profile.
+                We couldn&apos;t access your location, so distance sorting was reset. Allow location
+                access in your browser, or sign in and set a default area in your profile.
               </span>
               <button
                 type="button"
@@ -900,10 +902,7 @@ function DiscoveryPage() {
             </div>
           )}
           {showGeoFallbackBanner && (
-            <div
-              role="status"
-              className="flex items-center gap-2 text-sm text-brand-dark"
-            >
+            <div role="status" className="text-brand-dark flex items-center gap-2 text-sm">
               <AlertTriangle className="size-4 shrink-0" aria-hidden />
               Using your saved default area for distance sorting.
             </div>
@@ -915,7 +914,7 @@ function DiscoveryPage() {
               <button
                 type="button"
                 onClick={handleRetry}
-                className="rounded-md border border-red-300 bg-white px-2 py-1 text-xs font-bold text-red-700 hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
+                className="rounded-md border border-red-300 bg-white px-2 py-1 text-xs font-bold text-red-700 hover:bg-red-50 focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1 focus-visible:outline-none"
               >
                 Retry
               </button>
@@ -948,7 +947,7 @@ function DiscoveryPage() {
             <div
               className={cn(
                 "flex min-h-0 flex-1 flex-col transition duration-200",
-                loading && "pointer-events-none select-none blur-[3px]",
+                loading && "pointer-events-none blur-[3px] select-none",
               )}
             >
               {params.view === "map" ? (

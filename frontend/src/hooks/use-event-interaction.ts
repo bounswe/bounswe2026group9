@@ -8,12 +8,7 @@ import {
   setGoing as storeSetGoing,
   subscribe,
 } from "@/lib/event-interaction-store";
-import {
-  addBookmark,
-  removeBookmark,
-  setAttendance,
-  removeAttendance,
-} from "@/lib/events-api";
+import { addBookmark, removeBookmark, setAttendance, removeAttendance } from "@/lib/events-api";
 
 interface UseEventInteractionArgs {
   eventId: string;
