@@ -87,7 +87,7 @@ paths_to_mutate = [
     "app/services/notification_emitter.py",
     "app/services/recommendation_emitter.py",
 ]
-runner = "python -m pytest tests/test_event_validators_unit.py tests/test_event_crud_unit.py tests/test_event_read_unit.py tests/test_event_validators_property.py tests/test_rating_unit.py tests/test_notification_emitter_unit.py tests/test_recommendation_emitter_unit.py --no-cov -x -q"
+runner = "python -m pytest tests/test_event_validators_unit.py tests/test_event_crud_unit.py tests/test_event_read_unit.py tests/test_event_validators_property_unit.py tests/test_rating_unit.py tests/test_notification_emitter_unit.py tests/test_recommendation_emitter_unit.py --no-cov -x -q"
 also_copy = ["tests/", "pyproject.toml"]
 
 [tool.bandit]

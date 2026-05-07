@@ -9,9 +9,9 @@ network — that's where most new tests should land.
 | You're verifying… | Add it to | Why |
 |-------------------|-----------|-----|
 | A pure function or service branch with mockable dependencies | `tests/test_<service>_unit.py` | Sub-second, no docker, MagicMock against the repo Protocol |
-| A response *shape* contract a frontend depends on | `tests/test_<area>_snapshot.py` (syrupy) | Shape only; values normalised through `_normalise()` |
-| A property over a generated input space | `tests/test_<area>_property.py` (hypothesis) | Use the strategies in `tests/hypothesis_strategies.py` |
-| A latency budget on a hot path | `tests/test_<area>_benchmarks.py` (pytest-benchmark) | Snapshots committed; CI fails on >50% regression |
+| A response *shape* contract a frontend depends on | `tests/test_<area>_snapshot_unit.py` (syrupy) | Shape only; values normalised through `_normalise()` |
+| A property over a generated input space | `tests/test_<area>_property_unit.py` (hypothesis) | Use the strategies in `tests/hypothesis_strategies.py` |
+| A latency budget on a hot path | `tests/test_<area>_benchmarks_unit.py` (pytest-benchmark) | Snapshots committed; CI fails on >50% regression |
 | One happy-path HTTP contract per endpoint | `tests/test_<router>.py` | Real Supabase (legacy lane) or hermetic stack (PG_CONTAINER=1) |
 | A multi-step user journey | `tests/e2e/test_<scenario>.py` | Hermetic stack only; covers router → service → repo → DB |
 | A SQL migration / RPC | `tests/db/test_migrate.py` (or sibling) | Postgres testcontainer; runs every non-`pg_cron` migration |
@@ -34,7 +34,7 @@ network — that's where most new tests should land.
 
 - Run: `pytest tests/test_*_unit.py --no-cov`
 
-### 2. Property (`tests/test_*_property.py`)
+### 2. Property (`tests/test_*_property_unit.py`)
 - Hypothesis explores input spaces for the validators and
   normalisers
 - Strategies live in `tests/hypothesis_strategies.py` and are reused
@@ -43,22 +43,22 @@ network — that's where most new tests should land.
   `db` fixture so the autouse cleanup_test_users resolves to a
   MagicMock and never touches a real backend
 
-### 3. Snapshot (`tests/test_*_snapshot.py`)
+### 3. Snapshot (`tests/test_*_snapshot_unit.py`)
 - `syrupy` snapshots stored in `tests/__snapshots__/` and committed
   with the test
 - Pin the *shape* — keys present, types, structure — not the values
   (UUIDs and timestamps are stripped by `_normalise()` before the
   diff)
 - Regenerate after an intentional schema change:
-  `pytest tests/test_*_snapshot.py --snapshot-update`
+  `pytest tests/test_*_snapshot_unit.py --snapshot-update`
 
-### 4. Benchmark (`tests/test_ranking_benchmarks.py`)
+### 4. Benchmark (`tests/test_ranking_benchmarks_unit.py`)
 - `pytest-benchmark` times in-memory ranking on synthetic 5k-event
   datasets
-- Snapshot-savable: `pytest tests/test_ranking_benchmarks.py
+- Snapshot-savable: `pytest tests/test_ranking_benchmarks_unit.py
   --benchmark-save=baseline`
 - Compare against baseline:
-  `pytest tests/test_ranking_benchmarks.py --benchmark-compare=baseline`
+  `pytest tests/test_ranking_benchmarks_unit.py --benchmark-compare=baseline`
 - A regression of >50% should fail CI; the workflow doesn't gate
   yet, so reviewers eyeball the numbers in the run log
 
@@ -91,12 +91,10 @@ network — that's where most new tests should land.
 ## Running the full local loop
 
 ```bash
-# Fast feedback (unit + property + snapshot + benchmark smoke)
-pytest tests/test_*_unit.py \
-       tests/test_*_property.py \
-       tests/test_*_snapshot.py \
-       tests/test_ranking_benchmarks.py \
-       --no-cov --benchmark-disable
+# Fast feedback (unit + property + snapshot + benchmark smoke).
+# All four families share the `_unit.py` suffix so the CI unit-fast
+# glob picks them up automatically.
+pytest tests/test_*_unit.py --no-cov --benchmark-disable
 
 # Static analysis
 ruff check .
