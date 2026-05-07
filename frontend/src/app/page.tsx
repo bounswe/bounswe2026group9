@@ -1,35 +1,50 @@
 "use client";
 
 /**
- * Discovery Page — Issue #124
+ * Discovery Page — Issues #124 + #156
  *
- * URL is single source of truth: view, q, temporal, category (comma-separated), page.
+ * URL is the single source of truth. The discovery state is reflected in the
+ * query string so any view can be deep-linked or shared:
  *
- * Category logic:
- *   - Multi-select, OR/union between selected categories
- *   - Temporal (quick filter) is AND on top of the category union
- *   - Category counts are computed from a separate "counts fetch" that has NO
- *     category filter, so counts stay stable regardless of which categories are selected
+ *   /?view=list&q=jazz&temporal=this_week&showPast=1&sort=distance
+ *      &category=<id1>,<id2>&page=2&a11y=wheelchair,quiet_friendly
  *
- * useSearchParams() requires a Suspense boundary → DiscoveryShell wraps DiscoveryPage.
+ * Behaviour:
+ *   - Backend `quick_filter` and accessibility flags are sent verbatim.
+ *   - `sort=distance` is location-aware: the browser's geolocation is requested
+ *     when the option is selected. If it is denied or unavailable, we fall back
+ *     to `use_default_area=true` for authenticated users; otherwise the sort
+ *     resets to `start_time` and a visible banner explains why.
+ *   - The free-text search input is debounced (250 ms) so each keystroke does
+ *     not hammer the API.
  */
 
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AlertTriangle, X as XIcon } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { useAuth } from "@/hooks/use-auth";
 import { Navbar, ActionBar } from "@/components/layout/navbar";
-import { FilterSidebar, type FilterState } from "@/components/discovery/filter-sidebar";
+import {
+  DEFAULT_FILTER_STATE,
+  FilterSidebar,
+  countActiveFilters,
+  type FilterState,
+} from "@/components/discovery/filter-sidebar";
 import { ListView } from "@/components/discovery/list-view";
 import {
   fetchAllEvents,
   fetchEvents,
   fetchCategories,
+  type AccessibilityFilters,
+  type AllEventsResult,
   type Category,
   type DiscoveryParams,
   type EventListItem,
   type PersonalFilter,
+  type QuickFilter,
+  type SortOption,
   type TemporalFilter,
 } from "@/lib/events-api";
 import { cn } from "@/lib/utils";
@@ -49,35 +64,77 @@ interface PageParams {
   search: string;
   temporal: TemporalFilter | null;
   personal: PersonalFilter | null;
-  /** "Suggested for you" — issue #285. Auth-only on the wire (silently ignored
-   *  for guests by the backend, but we also gate the chip in the UI). */
   suggested: boolean;
   /** comma-separated in URL, array in JS */
   categoryIds: string[];
+  showPast: boolean;
+  sort: SortOption;
+  accessibility: AccessibilityFilters;
   page: number;
 }
 
-function isTemporalFilter(value: string | null): value is TemporalFilter {
-  return value === "today" || value === "this_week" || value === "weekend";
+const QUICK_FILTER_VALUES: readonly QuickFilter[] = [
+  "now",
+  "today",
+  "this_week",
+  "weekend",
+  "upcoming",
+];
+const SORT_VALUES: readonly SortOption[] = ["start_time", "distance", "category"];
+const A11Y_KEYS: readonly (keyof AccessibilityFilters)[] = [
+  "wheelchair",
+  "accessible_restroom",
+  "elevator",
+  "seating",
+  "captions",
+  "quiet_friendly",
+];
+
+function isQuickFilter(value: string | null): value is QuickFilter {
+  return value !== null && (QUICK_FILTER_VALUES as readonly string[]).includes(value);
 }
 
 function isPersonalFilter(value: string | null): value is PersonalFilter {
   return value === "bookmarked" || value === "going";
 }
 
+function isSortOption(value: string | null): value is SortOption {
+  return value !== null && (SORT_VALUES as readonly string[]).includes(value);
+}
+
+function readAccessibilityFromUrl(raw: string | null): AccessibilityFilters {
+  if (!raw) return {};
+  const set = new Set(raw.split(",").filter(Boolean));
+  const out: AccessibilityFilters = {};
+  for (const key of A11Y_KEYS) {
+    if (set.has(key)) {
+      out[key] = true;
+    }
+  }
+  return out;
+}
+
 function readParams(sp: ReturnType<typeof useSearchParams>): PageParams {
   const raw = sp.get("category") ?? "";
   const temporal = sp.get("temporal");
   const personal = sp.get("personal");
+  const sort = sp.get("sort");
   return {
     view: sp.get("view") === "list" ? "list" : "map",
     search: sp.get("q") ?? "",
-    temporal: isTemporalFilter(temporal) ? temporal : null,
+    temporal: isQuickFilter(temporal) ? temporal : null,
     personal: isPersonalFilter(personal) ? personal : null,
     suggested: sp.get("suggested") === "1",
     categoryIds: raw ? raw.split(",").filter(Boolean) : [],
+    showPast: sp.get("showPast") === "1",
+    sort: isSortOption(sort) ? sort : "start_time",
+    accessibility: readAccessibilityFromUrl(sp.get("a11y")),
     page: Math.max(1, parseInt(sp.get("page") ?? "1", 10)),
   };
+}
+
+function activeAccessibilityKeys(a11y: AccessibilityFilters): string[] {
+  return A11Y_KEYS.filter((k) => a11y[k] === true);
 }
 
 function buildQS(p: PageParams & { resetPage?: boolean }): string {
@@ -88,12 +145,17 @@ function buildQS(p: PageParams & { resetPage?: boolean }): string {
   if (p.personal) sp.set("personal", p.personal);
   if (p.suggested) sp.set("suggested", "1");
   if (p.categoryIds.length > 0) sp.set("category", p.categoryIds.join(","));
+  if (p.showPast) sp.set("showPast", "1");
+  if (p.sort !== "start_time") sp.set("sort", p.sort);
+  const a11yKeys = activeAccessibilityKeys(p.accessibility);
+  if (a11yKeys.length > 0) sp.set("a11y", a11yKeys.join(","));
   if (!p.resetPage && p.page > 1) sp.set("page", String(p.page));
   const qs = sp.toString();
   return qs ? `?${qs}` : "?";
 }
 
 const LIST_PAGE_SIZE = 12;
+const SEARCH_DEBOUNCE_MS = 250;
 
 interface DiscoveryPageResult {
   items: EventListItem[];
@@ -102,25 +164,41 @@ interface DiscoveryPageResult {
   suggested_fallback: boolean;
 }
 
+interface DiscoveryQueryShape {
+  search: string;
+  temporal: TemporalFilter | null;
+  suggested: boolean;
+  showPast: boolean;
+  sort: SortOption;
+  accessibilityKeys: string[];
+  categoryIds: string[];
+}
+
+function buildQueryShape(p: PageParams, suggested: boolean): DiscoveryQueryShape {
+  return {
+    search: p.search.trim(),
+    temporal: p.temporal,
+    suggested,
+    showPast: p.showPast,
+    sort: p.sort,
+    accessibilityKeys: activeAccessibilityKeys(p.accessibility),
+    categoryIds: [...p.categoryIds].sort(),
+  };
+}
+
 function buildDiscoveryCacheKey(
-  params: Pick<PageParams, "search" | "temporal" | "categoryIds" | "suggested">,
+  shape: DiscoveryQueryShape,
   personal: PersonalFilter | null,
   userKey: string,
+  geoKey: string,
 ): string {
-  return JSON.stringify({
-    search: params.search.trim(),
-    temporal: params.temporal,
-    personal,
-    suggested: params.suggested,
-    categoryIds: [...params.categoryIds].sort(),
-    userKey,
-  });
+  return JSON.stringify({ ...shape, personal, userKey, geoKey });
 }
 
 function paginateDiscoveryEvents(
   items: EventListItem[],
   page: number,
-  suggested_fallback: boolean,
+  suggested_fallback = false,
 ): DiscoveryPageResult {
   const startIndex = (page - 1) * LIST_PAGE_SIZE;
   return {
@@ -133,32 +211,48 @@ function paginateDiscoveryEvents(
 
 function buildDiscoveryQuery(
   params: PageParams,
-  isAuthenticated: boolean,
+  geo: GeoState,
+  suggested: boolean,
 ): DiscoveryParams {
-  return {
-    search: params.search || undefined,
-    temporal_filter:
-      params.temporal === "today" || params.temporal === "this_week"
-        ? params.temporal
-        : undefined,
-    suggested: params.suggested && isAuthenticated ? true : undefined,
+  const out: DiscoveryParams = {
+    search: params.search.trim() || undefined,
   };
-}
-
-function isWeekendEvent(dateStr: string): boolean {
-  const dayOfWeek = new Date(dateStr).getDay();
-  return dayOfWeek === 0 || dayOfWeek === 6;
-}
-
-function applyTemporalFilter(
-  events: EventListItem[],
-  temporal: TemporalFilter | null,
-): EventListItem[] {
-  if (temporal !== "weekend") {
-    return events;
+  if (suggested) {
+    out.suggested = true;
   }
 
-  return events.filter((event) => isWeekendEvent(event.start_datetime));
+  if (params.temporal) {
+    out.quick_filter = params.temporal;
+  } else if (params.showPast) {
+    out.quick_filter = "past";
+  }
+
+  if (params.sort !== "start_time") {
+    out.sort = params.sort;
+  }
+
+  const a11y = params.accessibility;
+  const a11yKeys = activeAccessibilityKeys(a11y);
+  if (a11yKeys.length > 0) {
+    out.accessibility = { ...a11y };
+  }
+
+  // Distance sort needs a location; pass coords (or default-area fallback) when ready.
+  if (params.sort === "distance") {
+    if (geo.coords) {
+      out.near_lat = geo.coords.lat;
+      out.near_lng = geo.coords.lng;
+    } else if (geo.useDefaultArea) {
+      out.use_default_area = true;
+    }
+  }
+
+  return out;
+}
+
+function applyShowPastFilter(events: EventListItem[], showPast: boolean): EventListItem[] {
+  if (showPast) return events;
+  return events.filter((event) => event.status !== "ended");
 }
 
 function applyPersonalFilter(
@@ -168,12 +262,9 @@ function applyPersonalFilter(
   if (personal === "bookmarked") {
     return events.filter((event) => event.is_bookmarked);
   }
-
   if (personal === "going") {
-    // attendance_status is now returned directly by the list endpoint for authenticated users
     return events.filter((event) => event.attendance_status === "going");
   }
-
   return events;
 }
 
@@ -185,31 +276,29 @@ function sortDiscoveryEvents(a: EventListItem, b: EventListItem): number {
   return a.id.localeCompare(b.id);
 }
 
-interface UnionEventsResult {
-  items: EventListItem[];
-  suggested_fallback: boolean;
-}
-
 async function fetchUnionEvents(
   categoryIds: string[],
   query: DiscoveryParams,
-  temporal: TemporalFilter | null,
+  showPast: boolean,
   personal: PersonalFilter | null,
-): Promise<UnionEventsResult> {
+): Promise<AllEventsResult> {
   const applyFilters = (items: EventListItem[]) =>
-    applyPersonalFilter(
-      applyTemporalFilter(items, temporal),
-      personal,
-    );
+    applyPersonalFilter(applyShowPastFilter(items, showPast), personal);
 
   if (categoryIds.length === 0) {
-    const res = await fetchAllEvents(query);
-    return { items: applyFilters(res.items), suggested_fallback: res.suggested_fallback };
+    const result = await fetchAllEvents(query);
+    return {
+      items: applyFilters(result.items),
+      suggested_fallback: result.suggested_fallback,
+    };
   }
 
   if (categoryIds.length === 1) {
-    const res = await fetchAllEvents({ ...query, category_id: categoryIds[0] });
-    return { items: applyFilters(res.items), suggested_fallback: res.suggested_fallback };
+    const result = await fetchAllEvents({ ...query, category_id: categoryIds[0] });
+    return {
+      items: applyFilters(result.items),
+      suggested_fallback: result.suggested_fallback,
+    };
   }
 
   const results = await Promise.all(
@@ -217,19 +306,71 @@ async function fetchUnionEvents(
   );
 
   const eventsById = new Map<string, EventListItem>();
-  for (const res of results) {
-    for (const item of res.items) {
+  for (const result of results) {
+    for (const item of result.items) {
       eventsById.set(item.id, item);
     }
   }
 
-  // Treat fallback as union: any per-category call that fell back means the
-  // user has no history matching that category — surface the hint.
-  const suggested_fallback = results.some((res) => res.suggested_fallback);
   return {
     items: applyFilters(Array.from(eventsById.values()).sort(sortDiscoveryEvents)),
-    suggested_fallback,
+    suggested_fallback: results.some((result) => result.suggested_fallback),
   };
+}
+
+// ─── Geolocation helper ────────────────────────────────────────────────────────
+
+interface GeoState {
+  status: "idle" | "pending" | "ready" | "denied" | "fallback";
+  coords: { lat: number; lng: number } | null;
+  useDefaultArea: boolean;
+}
+
+const IDLE_GEO_STATE: GeoState = { status: "idle", coords: null, useDefaultArea: false };
+
+function hasGeolocation(): boolean {
+  return typeof navigator !== "undefined" && typeof navigator.geolocation !== "undefined";
+}
+
+function useDistanceGeo(enabled: boolean, isAuthenticated: boolean): GeoState {
+  const [resolved, setResolved] = useState<GeoState | null>(null);
+
+  useEffect(() => {
+    if (!enabled || !hasGeolocation()) return;
+
+    let cancelled = false;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (cancelled) return;
+        setResolved({
+          status: "ready",
+          coords: { lat: pos.coords.latitude, lng: pos.coords.longitude },
+          useDefaultArea: false,
+        });
+      },
+      () => {
+        if (cancelled) return;
+        if (isAuthenticated) {
+          setResolved({ status: "fallback", coords: null, useDefaultArea: true });
+        } else {
+          setResolved({ status: "denied", coords: null, useDefaultArea: false });
+        }
+      },
+      { enableHighAccuracy: false, maximumAge: 60_000, timeout: 8_000 },
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, isAuthenticated]);
+
+  if (!enabled) return IDLE_GEO_STATE;
+  if (!hasGeolocation()) {
+    return isAuthenticated
+      ? { status: "fallback", coords: null, useDefaultArea: true }
+      : { status: "denied", coords: null, useDefaultArea: false };
+  }
+  return resolved ?? { status: "pending", coords: null, useDefaultArea: false };
 }
 
 // ─── Loading UI ─────────────────────────────────────────────────────────────────
@@ -272,7 +413,12 @@ function LoadingPulseCard() {
 
 function DiscoveryLoadingOverlay() {
   return (
-    <div className="bg-brand-bg-alpha absolute inset-0 z-20 flex items-center justify-center px-6 backdrop-blur-sm">
+    <div
+      className="bg-brand-bg-alpha absolute inset-0 z-20 flex items-center justify-center px-6 backdrop-blur-sm"
+      role="status"
+      aria-live="polite"
+      aria-label="Loading discovery results"
+    >
       <LoadingPulseCard />
     </div>
   );
@@ -286,27 +432,46 @@ function DiscoveryPage() {
   const { isAuthenticated, user } = useAuth();
   const params = readParams(searchParams);
   const activePersonalFilter = isAuthenticated ? params.personal : null;
+  const activeSuggested = isAuthenticated && params.suggested;
   const discoveryUserKey = isAuthenticated ? (user?.id ?? "authenticated") : "guest";
   const categoryIdsKey = params.categoryIds.join(",");
+  const a11yKey = activeAccessibilityKeys(params.accessibility).join(",");
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [events, setEvents] = useState<EventListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  const [suggestedFallback, setSuggestedFallback] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshTick, setRefreshTick] = useState(0);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const fullResultsCacheRef = useRef(new Map<string, UnionEventsResult>());
-  const pendingFullResultsRef = useRef(new Map<string, Promise<UnionEventsResult>>());
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [suggestedFallback, setSuggestedFallback] = useState(false);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+  const fullResultsCacheRef = useRef(new Map<string, AllEventsResult>());
+  const pendingFullResultsRef = useRef(new Map<string, Promise<AllEventsResult>>());
   const pagedResultsCacheRef = useRef(new Map<string, DiscoveryPageResult>());
+
+  const distanceMode = params.sort === "distance";
+  const geoState = useDistanceGeo(distanceMode, isAuthenticated);
+  const geoKey = useMemo(() => {
+    if (!distanceMode) return "off";
+    if (geoState.status === "ready" && geoState.coords) {
+      return `geo:${geoState.coords.lat.toFixed(2)},${geoState.coords.lng.toFixed(2)}`;
+    }
+    if (geoState.status === "fallback") return "default-area";
+    if (geoState.status === "denied") return "denied";
+    return "pending";
+  }, [distanceMode, geoState]);
+
+  // Reset banner dismissal when geo status moves out of "denied"
+  useEffect(() => {
+    if (geoState.status !== "denied") {
+      setBannerDismissed(false);
+    }
+  }, [geoState.status]);
 
   // categoryCounts come from a separate fetch WITHOUT category filter
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
-
-  // Suggested is auth-only — strip it from the URL state for guests so the
-  // chip never gets a phantom "on" reading and the wire never receives it.
-  const activeSuggested = isAuthenticated && params.suggested;
 
   // Draft filters (not yet pushed to URL)
   const [draftFilters, setDraftFilters] = useState<FilterState>({
@@ -314,6 +479,9 @@ function DiscoveryPage() {
     personal: activePersonalFilter,
     suggested: activeSuggested,
     categoryIds: params.categoryIds,
+    showPast: params.showPast,
+    sort: params.sort,
+    accessibility: { ...params.accessibility },
   });
 
   // Sync draft on back/forward
@@ -322,32 +490,57 @@ function DiscoveryPage() {
     personal: activePersonalFilter,
     suggested: activeSuggested,
     categoryIds: params.categoryIds,
+    showPast: params.showPast,
+    sort: params.sort,
+    accessibility: params.accessibility,
   });
   useEffect(() => {
     const prev = prevRef.current;
     const sameIds =
       prev.categoryIds.length === params.categoryIds.length &&
       prev.categoryIds.every((id, i) => id === params.categoryIds[i]);
-    if (
+    const sameA11y =
+      activeAccessibilityKeys(prev.accessibility).join(",") ===
+      activeAccessibilityKeys(params.accessibility).join(",");
+    const changed =
       prev.temporal !== params.temporal ||
       prev.personal !== activePersonalFilter ||
       prev.suggested !== activeSuggested ||
-      !sameIds
-    ) {
+      prev.showPast !== params.showPast ||
+      prev.sort !== params.sort ||
+      !sameIds ||
+      !sameA11y;
+    if (changed) {
       setDraftFilters({
         temporal: params.temporal,
         personal: activePersonalFilter,
         suggested: activeSuggested,
         categoryIds: params.categoryIds,
+        showPast: params.showPast,
+        sort: params.sort,
+        accessibility: { ...params.accessibility },
       });
       prevRef.current = {
         temporal: params.temporal,
         personal: activePersonalFilter,
         suggested: activeSuggested,
         categoryIds: params.categoryIds,
+        showPast: params.showPast,
+        sort: params.sort,
+        accessibility: params.accessibility,
       };
     }
-  }, [params.temporal, activePersonalFilter, activeSuggested, params.categoryIds]);
+  }, [
+    params.temporal,
+    activePersonalFilter,
+    activeSuggested,
+    params.categoryIds,
+    params.showPast,
+    params.sort,
+    params.accessibility,
+    categoryIdsKey,
+    a11yKey,
+  ]);
 
   // ── URL push / replace ─────────────────────────────────────────────────────────
 
@@ -367,9 +560,24 @@ function DiscoveryPage() {
     [router, searchParams],
   );
 
+  useEffect(() => {
+    if (!isAuthenticated && params.suggested) {
+      replaceParams({ suggested: false, resetPage: true });
+    }
+  }, [isAuthenticated, params.suggested, replaceParams]);
+
+  // Auto-revert sort to start_time if geolocation was rejected and we have no fallback
+  useEffect(() => {
+    if (params.sort === "distance" && geoState.status === "denied") {
+      replaceParams({ sort: "start_time" });
+    }
+  }, [params.sort, geoState.status, replaceParams]);
+
   // ── Fetch categories (once) ────────────────────────────────────────────────────
   useEffect(() => {
-    fetchCategories().then(setCategories).catch(() => setCategories([]));
+    fetchCategories()
+      .then(setCategories)
+      .catch(() => setCategories([]));
   }, []);
 
   useEffect(() => {
@@ -381,12 +589,12 @@ function DiscoveryPage() {
       cacheKey: string,
       query: DiscoveryParams,
       categoryIds: string[],
-      temporal: TemporalFilter | null,
+      showPast: boolean,
       personal: PersonalFilter | null,
     ) => {
-      const cachedResult = fullResultsCacheRef.current.get(cacheKey);
-      if (cachedResult) {
-        return Promise.resolve(cachedResult);
+      const cachedItems = fullResultsCacheRef.current.get(cacheKey);
+      if (cachedItems) {
+        return Promise.resolve(cachedItems);
       }
 
       const pendingRequest = pendingFullResultsRef.current.get(cacheKey);
@@ -394,15 +602,10 @@ function DiscoveryPage() {
         return pendingRequest;
       }
 
-      const request = fetchUnionEvents(
-        categoryIds,
-        query,
-        temporal,
-        personal,
-      )
-        .then((result) => {
-          fullResultsCacheRef.current.set(cacheKey, result);
-          return result;
+      const request = fetchUnionEvents(categoryIds, query, showPast, personal)
+        .then((items) => {
+          fullResultsCacheRef.current.set(cacheKey, items);
+          return items;
         })
         .finally(() => {
           pendingFullResultsRef.current.delete(cacheKey);
@@ -418,42 +621,53 @@ function DiscoveryPage() {
   useEffect(() => {
     let cancelled = false;
 
-    const query = buildDiscoveryQuery(params, isAuthenticated);
-    const resultCacheKey = buildDiscoveryCacheKey(params, activePersonalFilter, discoveryUserKey);
+    // While waiting for geolocation we hold off fetching with sort=distance to
+    // avoid issuing a request without coords (which would cause a backend 422).
+    if (distanceMode && geoState.status === "pending") {
+      return;
+    }
+
+    const query = buildDiscoveryQuery(params, geoState, activeSuggested);
+    const shape = buildQueryShape(params, activeSuggested);
+    const resultCacheKey = buildDiscoveryCacheKey(
+      shape,
+      activePersonalFilter,
+      discoveryUserKey,
+      geoKey,
+    );
     const pageCacheKey = `${resultCacheKey}|page:${params.page}`;
-    const canUseSimpleListFetch =
-      !activePersonalFilter &&
-      params.temporal !== "weekend" &&
-      params.categoryIds.length <= 1;
+    const canUseSimpleListFetch = !activePersonalFilter && params.categoryIds.length <= 1;
 
     async function loadEvents() {
       setLoading(true);
+      setErrorMessage(null);
 
       try {
         let nextResult: DiscoveryPageResult;
 
         if (params.view === "map") {
-          const res = await getFullDiscoveryEvents(
+          const result = await getFullDiscoveryEvents(
             resultCacheKey,
             query,
             params.categoryIds,
-            params.temporal,
+            params.showPast,
             activePersonalFilter,
           );
 
           nextResult = {
-            items: res.items,
-            total: res.items.length,
-            totalPages: res.items.length > 0 ? Math.ceil(res.items.length / LIST_PAGE_SIZE) : 0,
-            suggested_fallback: res.suggested_fallback,
+            items: result.items,
+            total: result.items.length,
+            totalPages:
+              result.items.length > 0 ? Math.ceil(result.items.length / LIST_PAGE_SIZE) : 0,
+            suggested_fallback: result.suggested_fallback,
           };
         } else {
-          const cachedFull = fullResultsCacheRef.current.get(resultCacheKey);
-          if (cachedFull) {
+          const cachedFullResult = fullResultsCacheRef.current.get(resultCacheKey);
+          if (cachedFullResult) {
             nextResult = paginateDiscoveryEvents(
-              cachedFull.items,
+              cachedFullResult.items,
               params.page,
-              cachedFull.suggested_fallback,
+              cachedFullResult.suggested_fallback,
             );
           } else {
             const cachedPage = pagedResultsCacheRef.current.get(pageCacheKey);
@@ -468,7 +682,7 @@ function DiscoveryPage() {
               });
 
               nextResult = {
-                items: res.items,
+                items: applyShowPastFilter(res.items, params.showPast),
                 total: res.total,
                 totalPages: res.total_pages,
                 suggested_fallback: res.suggested_fallback ?? false,
@@ -479,18 +693,22 @@ function DiscoveryPage() {
                 resultCacheKey,
                 query,
                 params.categoryIds,
-                params.temporal,
+                params.showPast,
                 activePersonalFilter,
               ).catch(() => undefined);
             } else {
-              const res = await getFullDiscoveryEvents(
+              const result = await getFullDiscoveryEvents(
                 resultCacheKey,
                 query,
                 params.categoryIds,
-                params.temporal,
+                params.showPast,
                 activePersonalFilter,
               );
-              nextResult = paginateDiscoveryEvents(res.items, params.page, res.suggested_fallback);
+              nextResult = paginateDiscoveryEvents(
+                result.items,
+                params.page,
+                result.suggested_fallback,
+              );
             }
           }
         }
@@ -511,15 +729,15 @@ function DiscoveryPage() {
         setTotal(nextResult.total);
         setTotalPages(nextResult.totalPages);
         setSuggestedFallback(nextResult.suggested_fallback);
-
-        // attendance_status and is_bookmarked are now returned directly by the list endpoint
-        // when authenticated — no separate enrichment needed.
-      } catch {
+      } catch (err: unknown) {
         if (cancelled) return;
         setEvents([]);
         setTotal(0);
         setTotalPages(1);
         setSuggestedFallback(false);
+        setErrorMessage(
+          err instanceof Error ? err.message : "Couldn't load events. Please try again.",
+        );
       } finally {
         if (!cancelled) {
           setLoading(false);
@@ -529,20 +747,26 @@ function DiscoveryPage() {
 
     void loadEvents();
 
-    return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     discoveryUserKey,
     getFullDiscoveryEvents,
     replaceParams,
-    isAuthenticated,
     params.search,
     params.temporal,
-    activePersonalFilter,
     activeSuggested,
+    activePersonalFilter,
     params.page,
     params.view,
+    params.showPast,
+    params.sort,
     categoryIdsKey,
+    a11yKey,
+    geoKey,
+    distanceMode,
     refreshTick,
   ]);
 
@@ -550,21 +774,18 @@ function DiscoveryPage() {
   useEffect(() => {
     let cancelled = false;
 
-    fetchAllEvents({
-      search: params.search || undefined,
-      temporal_filter:
-        params.temporal === "today" || params.temporal === "this_week"
-          ? params.temporal
-          : undefined,
-      // Counts must reflect the same suggested-narrowed set the listing uses,
-      // otherwise the badge totals stop matching what the user actually sees.
-      suggested: activeSuggested ? true : undefined,
-    })
-      .then((res) => {
+    if (distanceMode && geoState.status === "pending") {
+      return;
+    }
+
+    const baseQuery = buildDiscoveryQuery(params, geoState, activeSuggested);
+    delete baseQuery.sort;
+    fetchAllEvents(baseQuery)
+      .then((result) => {
         if (cancelled) return;
         const counts: Record<string, number> = {};
         const filteredItems = applyPersonalFilter(
-          applyTemporalFilter(res.items, params.temporal),
+          applyShowPastFilter(result.items, params.showPast),
           activePersonalFilter,
         );
         if (cancelled) return;
@@ -575,14 +796,23 @@ function DiscoveryPage() {
         }
         setCategoryCounts(counts);
       })
-      .catch(() => { if (!cancelled) setCategoryCounts({}); });
+      .catch(() => {
+        if (!cancelled) setCategoryCounts({});
+      });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     params.search,
     params.temporal,
-    activePersonalFilter,
     activeSuggested,
+    activePersonalFilter,
+    params.showPast,
+    a11yKey,
+    geoKey,
+    distanceMode,
     refreshTick,
   ]);
 
@@ -600,10 +830,28 @@ function DiscoveryPage() {
   }, []);
 
   // ── Active filter count ────────────────────────────────────────────────────────
-  const activeFilterCount =
-    ((draftFilters.temporal || draftFilters.personal) ? 1 : 0) +
-    (draftFilters.suggested ? 1 : 0) +
-    draftFilters.categoryIds.length;
+  const activeFilterCount = countActiveFilters(draftFilters);
+
+  // ── Search debounce ────────────────────────────────────────────────────────────
+
+  const [searchDraft, setSearchDraft] = useState(params.search);
+  const lastSyncedSearchRef = useRef(params.search);
+  useEffect(() => {
+    if (params.search !== lastSyncedSearchRef.current && params.search !== searchDraft) {
+      setSearchDraft(params.search);
+    }
+    lastSyncedSearchRef.current = params.search;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.search]);
+
+  useEffect(() => {
+    if (searchDraft === params.search) return;
+    const t = setTimeout(() => {
+      replaceParams({ search: searchDraft, resetPage: true });
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchDraft]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────────
 
@@ -611,29 +859,52 @@ function DiscoveryPage() {
     setMobileFiltersOpen(false);
     pushParams({ view });
   }
-  function handleSearchSubmit(v: string) { pushParams({ search: v, resetPage: true }); }
-  function handleSearchChange(v: string) { replaceParams({ search: v, resetPage: true }); }
-  function handleFiltersChange(f: FilterState) { setDraftFilters(f); }
+  function handleSearchSubmit(v: string) {
+    setSearchDraft(v);
+    pushParams({ search: v, resetPage: true });
+  }
+  function handleSearchChange(v: string) {
+    setSearchDraft(v);
+  }
+  function handleFiltersChange(f: FilterState) {
+    setDraftFilters(f);
+  }
 
-  function handleApplyFilters() {
-    setMobileFiltersOpen(false);
+  function applyDraftFilters(draft: FilterState) {
     pushParams({
-      temporal: draftFilters.temporal,
-      personal: isAuthenticated ? draftFilters.personal : null,
-      suggested: isAuthenticated ? draftFilters.suggested : false,
-      categoryIds: draftFilters.categoryIds,
+      temporal: draft.temporal,
+      personal: isAuthenticated ? draft.personal : null,
+      suggested: isAuthenticated ? draft.suggested : false,
+      categoryIds: draft.categoryIds,
+      showPast: draft.showPast,
+      sort: draft.sort,
+      accessibility: draft.accessibility,
       resetPage: true,
     });
   }
 
+  function handleApplyFilters() {
+    setMobileFiltersOpen(false);
+    applyDraftFilters(draftFilters);
+  }
+
+  function handleMobileClose() {
+    setMobileFiltersOpen(false);
+    // Issue #156: closing the bottom sheet must update results immediately.
+    applyDraftFilters(draftFilters);
+  }
+
   function handleClearFilters() {
-    setDraftFilters({ temporal: null, personal: null, suggested: false, categoryIds: [] });
+    setDraftFilters({ ...DEFAULT_FILTER_STATE });
     setMobileFiltersOpen(false);
     pushParams({
       temporal: null,
       personal: null,
       suggested: false,
       categoryIds: [],
+      showPast: false,
+      sort: "start_time",
+      accessibility: {},
       resetPage: true,
     });
   }
@@ -643,12 +914,25 @@ function DiscoveryPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  function handleRetry() {
+    fullResultsCacheRef.current.clear();
+    pendingFullResultsRef.current.clear();
+    pagedResultsCacheRef.current.clear();
+    setRefreshTick((tick) => tick + 1);
+  }
+
+  // ── Banners ────────────────────────────────────────────────────────────────────
+
+  const showGeoFallbackBanner = distanceMode && geoState.status === "fallback";
+  const showGeoDeniedBanner = distanceMode && geoState.status === "denied" && !bannerDismissed;
+  const showSuggestedFallbackBanner = activeSuggested && suggestedFallback && !loading;
+
   // ── Render ─────────────────────────────────────────────────────────────────────
 
   return (
     <div className="bg-brand-bg flex h-dvh flex-col overflow-hidden">
       <Navbar
-        searchValue={params.search}
+        searchValue={searchDraft}
         onSearchChange={handleSearchChange}
         onSearchSubmit={handleSearchSubmit}
       />
@@ -659,6 +943,57 @@ function DiscoveryPage() {
         activeFilterCount={activeFilterCount}
         onToggleFilters={() => setMobileFiltersOpen(true)}
       />
+
+      {(showGeoDeniedBanner ||
+        showGeoFallbackBanner ||
+        showSuggestedFallbackBanner ||
+        errorMessage) && (
+        <div className="border-brand-mid-alpha flex flex-col gap-2 border-b bg-amber-50/70 px-4 py-2 sm:px-6 lg:px-8">
+          {showGeoDeniedBanner && (
+            <div role="alert" className="flex items-start gap-2 text-sm text-amber-800">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
+              <span className="flex-1">
+                We couldn&apos;t access your location, so distance sorting was reset. Allow location
+                access in your browser, or sign in and set a default area in your profile.
+              </span>
+              <button
+                type="button"
+                onClick={() => setBannerDismissed(true)}
+                aria-label="Dismiss notice"
+                className="text-amber-800/70 hover:text-amber-900"
+              >
+                <XIcon className="size-4" />
+              </button>
+            </div>
+          )}
+          {showGeoFallbackBanner && (
+            <div role="status" className="text-brand-dark flex items-center gap-2 text-sm">
+              <AlertTriangle className="size-4 shrink-0" aria-hidden />
+              Using your saved default area for distance sorting.
+            </div>
+          )}
+          {showSuggestedFallbackBanner && (
+            <div role="status" className="text-brand-dark flex items-center gap-2 text-sm">
+              <AlertTriangle className="size-4 shrink-0" aria-hidden />
+              Attend events to get personalised suggestions. Showing default results in the
+              meantime.
+            </div>
+          )}
+          {errorMessage && (
+            <div role="alert" className="flex items-center gap-2 text-sm text-red-700">
+              <AlertTriangle className="size-4 shrink-0" aria-hidden />
+              <span className="flex-1">Couldn&apos;t load events. {errorMessage}</span>
+              <button
+                type="button"
+                onClick={handleRetry}
+                className="rounded-md border border-red-300 bg-white px-2 py-1 text-xs font-bold text-red-700 hover:bg-red-50 focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1 focus-visible:outline-none"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-1 overflow-hidden">
         <FilterSidebar
@@ -671,7 +1006,7 @@ function DiscoveryPage() {
           activeCount={activeFilterCount}
           isAuthenticated={isAuthenticated}
           mobileOpen={mobileFiltersOpen}
-          onMobileClose={() => setMobileFiltersOpen(false)}
+          onMobileClose={handleMobileClose}
         />
 
         <main
@@ -680,20 +1015,11 @@ function DiscoveryPage() {
             loading && params.view === "list" ? "overflow-hidden" : "overflow-y-auto",
           )}
         >
-          {activeSuggested && suggestedFallback && !loading && (
-            <div
-              role="status"
-              className="border-brand-mid-alpha bg-brand-surface/60 text-brand-dark mx-4 mt-3 rounded-lg border px-4 py-2.5 text-xs sm:mx-6"
-            >
-              Attend events to get personalised suggestions. Showing default
-              results in the meantime.
-            </div>
-          )}
           <div className="relative flex min-h-0 flex-1">
             <div
               className={cn(
                 "flex min-h-0 flex-1 flex-col transition duration-200",
-                loading && "pointer-events-none select-none blur-[3px]",
+                loading && "pointer-events-none blur-[3px] select-none",
               )}
             >
               {params.view === "map" ? (

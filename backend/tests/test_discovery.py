@@ -287,12 +287,13 @@ class TestListEventsSortOrder:
     def test_sorted_by_start_datetime(self):
         user = _create_test_user("sort")
         cat_ids = _get_category_ids(1)
+        unique = uuid.uuid4().hex[:8]
 
-        e1 = _create_published_event(user["id"], cat_ids, title="Sort Event A", days_from_now=5)
-        e2 = _create_published_event(user["id"], cat_ids, title="Sort Event B", days_from_now=3)
-        e3 = _create_published_event(user["id"], cat_ids, title="Sort Event C", days_from_now=7)
+        e1 = _create_published_event(user["id"], cat_ids, title=f"SortEvt{unique}A", days_from_now=5)
+        e2 = _create_published_event(user["id"], cat_ids, title=f"SortEvt{unique}B", days_from_now=3)
+        e3 = _create_published_event(user["id"], cat_ids, title=f"SortEvt{unique}C", days_from_now=7)
 
-        resp = client.get("/events")
+        resp = client.get(f"/events?search=SortEvt{unique}")
         items = resp.json()["items"]
         event_ids_in_order = [i["id"] for i in items]
 
@@ -881,12 +882,12 @@ class TestListEventsCaptionsRename:
 
 
 class TestListEventsCategorySort:
-    """sort=category requires a narrowing filter to keep memory bounded."""
+    """sort=category may be used on its own; the service materialises the
+    candidate set in memory and ranks in Python within the NFR-01 budget."""
 
-    def test_sort_category_without_narrowing_filter_rejected(self):
+    def test_sort_category_accepted_without_other_filters(self):
         resp = client.get("/events?sort=category")
-        assert resp.status_code == 422
-        assert "narrowing filter" in resp.json()["detail"].lower()
+        assert resp.status_code == 200, resp.text
 
     def test_sort_category_accepted_with_search(self):
         user = _create_test_user("catsearch")

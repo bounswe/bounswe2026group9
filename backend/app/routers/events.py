@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query, UploadFile
 
 from app.database import get_supabase
 from app.middleware.auth import get_current_user_id
+from app.models.attendance import AttendeeStatusItem, CheckInRequest, CheckInResultResponse
 from app.models.errors import (
     AUTH_RESPONSES,
     CONFLICT_RESPONSE,
@@ -25,6 +26,7 @@ from app.models.event import (
 )
 from app.models.geojson import GeoJSONFeatureCollection
 from app.models.user import MessageResponse
+from app.services.attendance import check_in, list_event_attendees
 from app.services.auth import decode_access_token
 from app.services.event import (
     change_event_status,
@@ -130,8 +132,8 @@ def list_events_endpoint(
         description=(
             "Sort order. Defaults to distance when location is provided, otherwise start_time. "
             "sort=distance requires a location (near_lat/near_lng or use_default_area). "
-            "sort=category requires a narrowing filter — search, category_id, quick_filter, "
-            "custom window, accessibility, or location — to keep the in-memory candidate set bounded."
+            "sort=category may be used on its own; the service materialises the full filtered "
+            "candidate set and ranks in Python within the NFR-01 budget."
         ),
     ),
     suggested: bool = Query(
@@ -435,3 +437,49 @@ def get_similar_events_endpoint(
 ):
     db = get_supabase()
     return get_similar_events(db, str(event_id), user_id)
+
+
+# ── QR check-in ───────────────────────────────────────────────────────────────
+
+@router.post(
+    "/{event_id}/check-in",
+    response_model=CheckInResultResponse,
+    summary="Check in an attendee (host only)",
+    description=(
+        "Validates a scanned QR token or a manual `user_id` and marks the "
+        "attendee as checked in. Host-only. Returns 400 for tampered/wrong-event "
+        "payloads, 403 for non-hosts, 404 when the attendee is not Going, "
+        "and 409 on a duplicate scan."
+    ),
+    responses={
+        **AUTH_RESPONSES,
+        **NOT_FOUND_RESPONSE,
+        **FORBIDDEN_RESPONSE,
+        **CONFLICT_RESPONSE,
+    },
+)
+def check_in_endpoint(
+    event_id: UUID,
+    body: CheckInRequest,
+    host_user_id: str = Depends(get_current_user_id),
+):
+    db = get_supabase()
+    return check_in(db, str(event_id), host_user_id, body)
+
+
+@router.get(
+    "/{event_id}/attendees",
+    response_model=list[AttendeeStatusItem],
+    summary="List going attendees with check-in status (host only)",
+    description=(
+        "Returns the full roster of Going attendees with their check-in timestamp. "
+        "Host-only. Returns 403 for non-hosts."
+    ),
+    responses={**AUTH_RESPONSES, **NOT_FOUND_RESPONSE, **FORBIDDEN_RESPONSE},
+)
+def list_attendees_endpoint(
+    event_id: UUID,
+    host_user_id: str = Depends(get_current_user_id),
+):
+    db = get_supabase()
+    return list_event_attendees(db, str(event_id), host_user_id)

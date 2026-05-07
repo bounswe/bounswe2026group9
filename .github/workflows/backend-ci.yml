@@ -107,6 +107,7 @@ jobs:
               tests/test_images.py
               tests/test_bookmarks.py
               tests/test_attendances.py
+              tests/test_checkin.py
               tests/test_notifications.py
               tests/test_notification_emitter.py
     defaults:

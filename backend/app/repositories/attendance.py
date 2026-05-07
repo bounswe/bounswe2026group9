@@ -6,7 +6,7 @@ from supabase import Client
 def get_attendance(db: Client, user_id: str, event_id: str) -> dict | None:
     result = (
         db.table("attendances")
-        .select("id,user_id,event_id,status,marked_at")
+        .select("id,user_id,event_id,status,marked_at,check_in_token,checked_in_at")
         .eq("user_id", user_id)
         .eq("event_id", event_id)
         .execute()
@@ -30,9 +30,65 @@ def update_attendance(db: Client, user_id: str, event_id: str, status: str) -> d
     return result.data[0]
 
 
+def update_attendance_token(db: Client, user_id: str, event_id: str, token: str | None) -> dict:
+    """Set or clear the check-in token for an attendance record."""
+    result = (
+        db.table("attendances")
+        .update({"check_in_token": token})
+        .eq("user_id", user_id)
+        .eq("event_id", event_id)
+        .execute()
+    )
+    return result.data[0]
+
+
 def delete_attendance(db: Client, user_id: str, event_id: str) -> None:
     db.table("attendances").delete().eq("user_id", user_id).eq("event_id", event_id).execute()
 
+
+def get_attendance_by_token(db: Client, token: str) -> dict | None:
+    """Look up an attendance record by its check-in token."""
+    result = (
+        db.table("attendances")
+        .select("id,user_id,event_id,status,marked_at,check_in_token,checked_in_at")
+        .eq("check_in_token", token)
+        .execute()
+    )
+    return result.data[0] if result.data else None
+
+
+def mark_checked_in(db: Client, attendance_id: str) -> dict:
+    """Set checked_in_at = now() for the given attendance row."""
+    result = (
+        db.table("attendances")
+        .update({"checked_in_at": "now()"})
+        .eq("id", attendance_id)
+        .execute()
+    )
+    return result.data[0]
+
+
+def list_going_attendees_with_checkin(db: Client, event_id: str) -> list[dict]:
+    """Return all going attendees for the event, with their check-in status.
+
+    Joins with users to get usernames.
+    """
+    result = (
+        db.table("attendances")
+        .select("user_id,checked_in_at,users!inner(username)")
+        .eq("event_id", event_id)
+        .eq("status", "going")
+        .order("marked_at")
+        .execute()
+    )
+    rows = []
+    for row in (result.data or []):
+        rows.append({
+            "user_id": row["user_id"],
+            "username": row["users"]["username"],
+            "checked_in_at": row["checked_in_at"],
+        })
+    return rows
 
 
 def get_going_user_ids_for_event(db: Client, event_id: str) -> list[str]:

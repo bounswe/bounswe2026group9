@@ -8,6 +8,7 @@ import com.bounswe.group9.mobile.data.remote.EventDetailDto
 import com.bounswe.group9.mobile.data.remote.EventLimitedDto
 import com.bounswe.group9.mobile.data.remote.EventListItemDto
 import com.bounswe.group9.mobile.data.remote.InviteResponseDto
+import com.bounswe.group9.mobile.data.repository.CheckInRepository
 import com.bounswe.group9.mobile.data.repository.EventDetailError
 import com.bounswe.group9.mobile.data.repository.EventDetailResult
 import com.bounswe.group9.mobile.data.repository.EventRepository
@@ -53,7 +54,12 @@ data class EventDetailUiState(
     val inviteSectionError: String? = null,
     // Similar events
     val similarEvents: List<EventListItemDto> = emptyList(),
-    val similarEventsLoading: Boolean = false
+    val similarEventsLoading: Boolean = false,
+    // Attendee QR (own check-in token, only for status='going')
+    val qrSheetVisible: Boolean = false,
+    val qrToken: String? = null,
+    val qrLoading: Boolean = false,
+    val qrError: String? = null
 ) {
     val isLimited: Boolean get() = limitedPreview != null && fullDetail == null
     val hasData: Boolean get() = fullDetail != null || limitedPreview != null
@@ -61,7 +67,8 @@ data class EventDetailUiState(
 
 class EventDetailViewModel(
     private val repository: EventRepository = EventRepository(),
-    private val profileRepository: ProfileRepository = ProfileRepository()
+    private val profileRepository: ProfileRepository = ProfileRepository(),
+    private val checkInRepository: CheckInRepository = CheckInRepository()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(EventDetailUiState())
@@ -324,7 +331,11 @@ class EventDetailViewModel(
                 going_count = newGoingCount,
                 is_full = if (detail.attendee_limit != null) newGoingCount >= detail.attendee_limit else null
             ),
-            actionError = null
+            actionError = null,
+            // Going → un-Going invalidates the QR; close the sheet and drop the cached token
+            qrSheetVisible = false,
+            qrToken = null,
+            qrError = null
         )
 
         viewModelScope.launch {
@@ -511,6 +522,46 @@ class EventDetailViewModel(
                 }
             )
         }
+    }
+
+    // ── Attendee QR ───────────────────────────────────────────────────────────
+
+    fun openQrSheet() {
+        val detail = _uiState.value.fullDetail ?: return
+        val token = currentToken ?: return
+        if (detail.attendance_status != "going") return
+
+        _uiState.value = _uiState.value.copy(
+            qrSheetVisible = true,
+            qrLoading = _uiState.value.qrToken == null,
+            qrError = null
+        )
+        viewModelScope.launch {
+            checkInRepository.getMyQr(token, detail.id).fold(
+                onSuccess = { dto ->
+                    _uiState.value = _uiState.value.copy(
+                        qrToken = dto.token,
+                        qrLoading = false,
+                        qrError = null
+                    )
+                },
+                onFailure = { e ->
+                    _uiState.value = _uiState.value.copy(
+                        qrLoading = false,
+                        qrError = e.message ?: "Could not fetch QR"
+                    )
+                }
+            )
+        }
+    }
+
+    fun closeQrSheet() {
+        _uiState.value = _uiState.value.copy(qrSheetVisible = false)
+    }
+
+    fun retryQr() {
+        _uiState.value = _uiState.value.copy(qrToken = null, qrError = null)
+        openQrSheet()
     }
 
     private fun loadSimilarEvents(eventId: String) {
