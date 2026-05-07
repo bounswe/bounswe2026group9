@@ -1,5 +1,6 @@
 package com.bounswe.group9.mobile.ui.hostprofile
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,7 +26,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bounswe.group9.mobile.data.remote.EventListItemDto
+import com.bounswe.group9.mobile.data.remote.ReviewListItemDto
 import com.bounswe.group9.mobile.ui.common.formatEventDate
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.TimeZone
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,7 +40,8 @@ fun HostProfileScreen(
     token: String?,
     currentUserId: String?,
     onBack: () -> Unit,
-    onEventClick: (String) -> Unit
+    onEventClick: (String) -> Unit,
+    onNavigateToProfile: (String) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -90,8 +96,11 @@ fun HostProfileScreen(
                     isOwnProfile = currentUserId == userId,
                     isAuthenticated = token != null,
                     onRatingChange = { viewModel.onRatingChange(it) },
+                    onReviewTextChange = { viewModel.onReviewTextChange(it) },
                     onSubmitRating = { viewModel.submitRating(userId) },
-                    onEventClick = onEventClick
+                    onEventClick = onEventClick,
+                    onLoadMoreReviews = { viewModel.loadNextReviewsPage() },
+                    onRaterClick = onNavigateToProfile
                 )
             }
         }
@@ -105,8 +114,11 @@ private fun ProfileContent(
     isOwnProfile: Boolean,
     isAuthenticated: Boolean,
     onRatingChange: (Double) -> Unit,
+    onReviewTextChange: (String) -> Unit,
     onSubmitRating: () -> Unit,
-    onEventClick: (String) -> Unit
+    onEventClick: (String) -> Unit,
+    onLoadMoreReviews: () -> Unit,
+    onRaterClick: (String) -> Unit
 ) {
     Column(
         Modifier
@@ -134,7 +146,7 @@ private fun ProfileContent(
 
         Spacer(Modifier.height(16.dp))
 
-        // Rating
+        // Rating card
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp)) {
                 Text("Rating", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
@@ -156,7 +168,6 @@ private fun ProfileContent(
                     Text("No ratings yet", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
 
-                // Rate this host (auth only, not own profile, only after attending an ended event)
                 if (isAuthenticated && !isOwnProfile) {
                     Spacer(Modifier.height(12.dp))
                     if (profile.can_rate) {
@@ -176,16 +187,36 @@ private fun ProfileContent(
                                     )
                                 }
                             }
-                            Spacer(Modifier.width(8.dp))
-                            Button(
-                                onClick = onSubmitRating,
-                                enabled = !uiState.ratingSubmitting
-                            ) {
-                                if (uiState.ratingSubmitting) {
-                                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                                } else {
-                                    Text(if (uiState.ratingSuccess) "Updated" else "Submit", fontSize = 13.sp)
-                                }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = uiState.reviewText,
+                            onValueChange = onReviewTextChange,
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Review (optional)") },
+                            placeholder = { Text("Share your experience…") },
+                            minLines = 2,
+                            maxLines = 5,
+                            supportingText = {
+                                Text(
+                                    "${uiState.reviewText.length} / 1000",
+                                    modifier = Modifier.fillMaxWidth(),
+                                    color = if (uiState.reviewText.length > 900)
+                                        MaterialTheme.colorScheme.error
+                                    else
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Button(
+                            onClick = onSubmitRating,
+                            enabled = !uiState.ratingSubmitting
+                        ) {
+                            if (uiState.ratingSubmitting) {
+                                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                            } else {
+                                Text(if (uiState.ratingSuccess) "Updated" else "Submit", fontSize = 13.sp)
                             }
                         }
                     } else {
@@ -239,7 +270,91 @@ private fun ProfileContent(
             }
         }
 
+        // Reviews
+        Spacer(Modifier.height(16.dp))
+        Text("Reviews", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+        Spacer(Modifier.height(8.dp))
+
+        if (uiState.reviewsLoading && uiState.reviews.isEmpty()) {
+            Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+            }
+        } else if (uiState.reviews.isEmpty()) {
+            Text("No reviews yet", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } else {
+            uiState.reviews.forEach { review ->
+                ReviewRow(review = review, onRaterClick = { onRaterClick(review.rater_id) })
+                Spacer(Modifier.height(8.dp))
+            }
+            if (uiState.reviewsPage < uiState.reviewsTotalPages) {
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    if (uiState.reviewsLoading) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                    } else {
+                        OutlinedButton(onClick = onLoadMoreReviews) {
+                            Text("Load more")
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+        }
+
         Spacer(Modifier.height(32.dp))
+    }
+}
+
+@Composable
+private fun ReviewRow(review: ReviewListItemDto, onRaterClick: () -> Unit) {
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(12.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(16.dp))
+                    }
+                }
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "@${review.rater_username}",
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 14.sp,
+                    modifier = Modifier.clickable { onRaterClick() }
+                )
+                Spacer(Modifier.weight(1f))
+                Text(
+                    formatReviewDate(review.created_at),
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(Modifier.height(6.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val fullStars = review.score.toInt()
+                repeat(5) { i ->
+                    Icon(
+                        Icons.Default.Star,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = if (i < fullStars) Color(0xFFFFC107) else Color(0xFF9E9E9E)
+                    )
+                }
+                Spacer(Modifier.width(4.dp))
+                Text(String.format("%.1f", review.score), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (!review.review_text.isNullOrBlank()) {
+                Spacer(Modifier.height(6.dp))
+                Text(review.review_text, fontSize = 13.sp)
+            }
+        }
     }
 }
 
@@ -279,3 +394,19 @@ private fun HostedEventCard(event: EventListItemDto, onClick: () -> Unit) {
     }
 }
 
+private fun formatReviewDate(iso: String): String {
+    val display = SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).apply {
+        timeZone = TimeZone.getDefault()
+    }
+    val normalized = iso.replace(Regex("""\.\d+""")) { m ->
+        ".${m.value.drop(1).take(3).padEnd(3, '0')}"
+    }
+    val patterns = listOf("yyyy-MM-dd'T'HH:mm:ss.SSSXXX", "yyyy-MM-dd'T'HH:mm:ssXXX")
+    for (pattern in patterns) {
+        try {
+            val date = SimpleDateFormat(pattern, Locale.getDefault()).parse(normalized)
+            if (date != null) return display.format(date)
+        } catch (_: Exception) { }
+    }
+    return iso
+}
