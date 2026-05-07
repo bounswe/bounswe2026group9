@@ -52,3 +52,34 @@ exclude_also = [
     "if __name__ == .__main__.:",
     "@(abc\\.)?abstractmethod",
 ]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+# Tests + the migration runner are pragmatic Python — the production
+# code is the surface we care about typing strictly.
+files = ["app"]
+# Third-party packages without published stubs. These are not optional —
+# without them mypy spends most of its budget on "library X has no
+# stubs" rather than real findings.
+[[tool.mypy.overrides]]
+module = [
+    "supabase.*",
+    "gotrue.*",
+    "postgrest.*",
+    "slowapi.*",
+    "jose.*",
+    "PIL.*",
+    "psycopg.*",
+    "testcontainers.*",
+    "docker.*",
+]
+ignore_missing_imports = true
+
+[tool.bandit]
+# Tests deliberately use weak crypto (fakehash), hard-coded secrets, etc.
+# Production source is the surface that has to be clean.
+exclude_dirs = ["tests", ".venv"]
+# B101: assert-used. Pydantic + FastAPI rely on assertions in places, and
+# the migration runner uses them as runtime contracts. Out of scope here.
+skips = ["B101"]

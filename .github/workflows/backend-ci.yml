@@ -47,6 +47,33 @@ jobs:
       - name: Lint
         run: ruff check .
 
+  static-analysis:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Type check (mypy strict + shrinking baseline)
+        # The baseline file locks today's 408 strict-mode errors. CI fails
+        # if any new error appears (`new > 0`), and a regular `sync` step
+        # in a follow-up PR can ratchet the count down.
+        run: mypy app | mypy-baseline filter
+
+      - name: Security scan (bandit)
+        run: bandit -c pyproject.toml -r app/
+
   unit-fast:
     runs-on: ubuntu-latest
     defaults:

@@ -839,7 +839,7 @@ def delete_event(
         try:
             path = img["image_url"].split(f"/{images.BUCKET_NAME}/")[-1]
             images.delete_from_storage(db, path)
-        except Exception:
+        except Exception:  # nosec B110 — storage cleanup is best-effort
             pass  # Best-effort storage cleanup
 
     events.delete_event(db, event_id)

@@ -154,7 +154,7 @@ def delete_event_image(
         # URL format: .../storage/v1/object/public/event-images/{path}
         path = image_url.split(f"/{images.BUCKET_NAME}/")[-1]
         images.delete_from_storage(db, path)
-    except Exception:
+    except Exception:  # nosec B110 — storage delete is best-effort, DB record is authoritative
         pass  # Storage delete is best-effort, DB record is authoritative
 
     images.delete_event_image(db, image_id)

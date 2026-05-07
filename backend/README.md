@@ -69,7 +69,21 @@ isolation is `TRUNCATE public.* RESTART IDENTITY CASCADE` instead of
 docker exec sem-backend python -m pytest tests/ -v
 ```
 
-### 4. Run linter
+### 4. Run static analysis
+
+Type-check (strict mypy, fails only on **new** errors past the baseline):
+
+```bash
+mypy app | mypy-baseline filter
+```
+
+Security scan:
+
+```bash
+bandit -c pyproject.toml -r app/
+```
+
+### 5. Run linter
 
 ```bash
 docker exec sem-backend ruff check .
