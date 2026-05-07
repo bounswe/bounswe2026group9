@@ -271,10 +271,16 @@ class TestListEventsDefaultArea:
             "default_location_lng": 29.0,
         }).eq("id", user["id"]).execute()
         cat_ids = _get_category_ids(1)
-        ev_near = _create_published_event(user["id"], cat_ids, title="DefArea", days_from_now=2)
+        # Unique title + search filter so this contract test is independent
+        # of how many other events the shared test DB has accumulated near
+        # (41, 29) — same pattern 2f7237e uses for the sort-order test.
+        unique = uuid.uuid4().hex[:8]
+        ev_near = _create_published_event(
+            user["id"], cat_ids, title=f"DefArea{unique}", days_from_now=2,
+        )
 
         resp = client.get(
-            "/events?use_default_area=true&radius_km=100",
+            f"/events?use_default_area=true&radius_km=100&search=DefArea{unique}",
             headers=_auth_header(user["id"]),
         )
         assert resp.status_code == 200, resp.text
