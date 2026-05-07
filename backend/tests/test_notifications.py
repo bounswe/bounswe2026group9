@@ -67,7 +67,7 @@ class TestUnreadCount:
 
         resp = client.get("/notifications/unread-count", headers=headers)
         assert resp.status_code == 200
-        assert resp.json()["count"] == 2
+        assert resp.json()["unread_count"] == 2
 
         _cleanup(db, user_id)
 
