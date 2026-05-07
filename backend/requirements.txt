@@ -19,4 +19,8 @@ psycopg[binary]==3.2.3
 mypy==1.15.0
 mypy-baseline==0.7.3
 bandit==1.8.0
+hypothesis==6.122.3
+syrupy==4.8.1
+pytest-benchmark==5.1.0
+mutmut==3.2.1
 ruff==0.8.6

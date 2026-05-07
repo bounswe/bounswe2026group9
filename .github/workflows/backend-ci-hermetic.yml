@@ -49,6 +49,8 @@ jobs:
               tests/test_notifications.py
               tests/test_notification_emitter.py
               tests/test_recommendation_emitter.py
+          - shard: e2e
+            pytest_args: tests/e2e
     defaults:
       run:
         working-directory: backend

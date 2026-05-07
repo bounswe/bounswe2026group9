@@ -9,6 +9,9 @@ __pycache__/
 .venv/
 .pytest_cache/
 .ruff_cache/
+.hypothesis/
+.mutmut-cache
+.benchmarks/
 .coverage
 .coverage.*
 coverage.xml

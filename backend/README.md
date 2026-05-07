@@ -1,6 +1,13 @@
 # Social Event Mapper — Backend
 
+[![Backend CI](https://github.com/bounswe/bounswe2026group9/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/bounswe/bounswe2026group9/actions/workflows/backend-ci.yml)
+[![Backend CI — Hermetic DB](https://github.com/bounswe/bounswe2026group9/actions/workflows/backend-ci-hermetic.yml/badge.svg)](https://github.com/bounswe/bounswe2026group9/actions/workflows/backend-ci-hermetic.yml)
+
 FastAPI + Supabase backend with JWT authentication, event management, and image upload.
+
+> **Adding tests?** Read [TESTING.md](./TESTING.md) — it lays out the
+> five lanes (unit / property / snapshot / benchmark / hermetic + E2E)
+> and tells you exactly which one a new test belongs in.
 
 ## Setup
 
