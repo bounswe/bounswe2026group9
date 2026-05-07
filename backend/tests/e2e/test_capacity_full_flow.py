@@ -49,9 +49,8 @@ def _auth(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
-@patch("app.repositories.image.upload_to_storage", return_value=MOCK_STORAGE_URL)
 def _publish_event(
-    mock_upload, e2e_client: TestClient, host_token: str, admin_db, *, attendee_limit: int,  # noqa: ARG001
+    e2e_client: TestClient, host_token: str, admin_db, *, attendee_limit: int,
 ) -> tuple[str, str]:
     """Returns (event_id, title) — the title is unique enough to plug
     straight into the discovery search query, which is text-based."""
@@ -79,11 +78,12 @@ def _publish_event(
     assert create.status_code == 201, create.json()
     event_id = create.json()["id"]
 
-    e2e_client.post(
-        f"/events/{event_id}/images",
-        files={"file": ("e2e.jpg", _make_image_bytes(), "image/jpeg")},
-        headers=_auth(host_token),
-    )
+    with patch("app.repositories.image.upload_to_storage", return_value=MOCK_STORAGE_URL):
+        e2e_client.post(
+            f"/events/{event_id}/images",
+            files={"file": ("e2e.jpg", _make_image_bytes(), "image/jpeg")},
+            headers=_auth(host_token),
+        )
     pub = e2e_client.patch(
         f"/events/{event_id}/status",
         json={"status": "published"},

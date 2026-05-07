@@ -53,8 +53,7 @@ def _auth(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
-@patch("app.repositories.image.upload_to_storage", return_value=MOCK_STORAGE_URL)
-def test_itinerary_lifecycle(mock_upload, e2e_client, admin_db) -> None:  # noqa: ARG001
+def test_itinerary_lifecycle(e2e_client, admin_db) -> None:
     host = _register(e2e_client, "ithost")
     cat_id = (
         admin_db.table("categories").select("id").eq("is_predefined", True).limit(1).execute().data[0]["id"]
@@ -102,11 +101,12 @@ def test_itinerary_lifecycle(mock_upload, e2e_client, admin_db) -> None:  # noqa
     assert len(create.json()["segments"]) == 2
 
     # 2. Upload image + publish.
-    e2e_client.post(
-        f"/events/{event_id}/images",
-        files={"file": ("e2e.jpg", _make_image_bytes(), "image/jpeg")},
-        headers=_auth(host["access_token"]),
-    )
+    with patch("app.repositories.image.upload_to_storage", return_value=MOCK_STORAGE_URL):
+        e2e_client.post(
+            f"/events/{event_id}/images",
+            files={"file": ("e2e.jpg", _make_image_bytes(), "image/jpeg")},
+            headers=_auth(host["access_token"]),
+        )
     pub = e2e_client.patch(
         f"/events/{event_id}/status",
         json={"status": "published"},
