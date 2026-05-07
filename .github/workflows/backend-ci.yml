@@ -117,6 +117,7 @@ jobs:
               tests/test_checkin.py
               tests/test_notifications.py
               tests/test_notification_emitter.py
+              tests/test_recommendation_emitter.py
     defaults:
       run:
         working-directory: backend
