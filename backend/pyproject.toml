@@ -21,3 +21,79 @@ known-first-party = ["app"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# `-ra` keeps the existing summary format. Coverage is enabled by default so
+# every local + CI run reports it. The floor (`--cov-fail-under`) starts
+# loose; tighten it once a calibration run on `main` records the baseline so
+# we never gate on a number we haven't measured.
+# `-n auto` is intentionally NOT set here — only the integration-sharded CI
+# job opts in via the `--n` workflow flag, so single-file local runs stay
+# linear and easier to debug.
+addopts = "-ra --cov=app --cov-branch --cov-report=term-missing --cov-report=xml --cov-fail-under=0"
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+source = ["app"]
+branch = true
+# Bring out paths that aren't worth measuring against (FastAPI bootstrap
+# glue, sql migrations as data files, etc.). Tests themselves are excluded
+# automatically via `source` above.
+omit = [
+    "app/database.py",  # thin Supabase singleton, exercised indirectly everywhere
+    "app/main.py",      # FastAPI app object + middleware wiring
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+precision = 1
+exclude_also = [
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+    "@(abc\\.)?abstractmethod",
+]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+# Tests + the migration runner are pragmatic Python — the production
+# code is the surface we care about typing strictly.
+files = ["app"]
+# Third-party packages without published stubs. These are not optional —
+# without them mypy spends most of its budget on "library X has no
+# stubs" rather than real findings.
+[[tool.mypy.overrides]]
+module = [
+    "supabase.*",
+    "gotrue.*",
+    "postgrest.*",
+    "slowapi.*",
+    "jose.*",
+    "PIL.*",
+    "psycopg.*",
+    "testcontainers.*",
+    "docker.*",
+]
+ignore_missing_imports = true
+
+[tool.mutmut]
+# Validators + service helpers are the densest invariant code we have;
+# scope mutmut there so a nightly run finishes in minutes rather than
+# hours. The unit suite (tests/test_*_unit.py + property + snapshot)
+# is the kill set — fast, deterministic, no docker.
+paths_to_mutate = [
+    "app/services/event.py",
+    "app/services/rating.py",
+    "app/services/notification_emitter.py",
+    "app/services/recommendation_emitter.py",
+]
+runner = "python -m pytest tests/test_event_validators_unit.py tests/test_event_crud_unit.py tests/test_event_read_unit.py tests/test_event_validators_property_unit.py tests/test_rating_unit.py tests/test_notification_emitter_unit.py tests/test_recommendation_emitter_unit.py --no-cov -x -q"
+also_copy = ["tests/", "pyproject.toml"]
+
+[tool.bandit]
+# Tests deliberately use weak crypto (fakehash), hard-coded secrets, etc.
+# Production source is the surface that has to be clean.
+exclude_dirs = ["tests", ".venv"]
+# B101: assert-used. Pydantic + FastAPI rely on assertions in places, and
+# the migration runner uses them as runtime contracts. Out of scope here.
+skips = ["B101"]
