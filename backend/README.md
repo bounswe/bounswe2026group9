@@ -37,6 +37,34 @@ Swagger docs: `http://localhost:8888/docs`
 
 ### 3. Run tests
 
+Three lanes are available; pick one based on what you need.
+
+**Fast unit lane** (no network, sub-second):
+
+```bash
+SUPABASE_URL=fake SUPABASE_KEY=fake JWT_SECRET=fake JWT_REFRESH_SECRET=fake \
+  python -m pytest tests/test_*_unit.py --no-cov
+```
+
+**Hermetic integration lane** (testcontainers — needs a running Docker daemon, no Supabase secrets):
+
+```bash
+PG_CONTAINER=1 \
+  JWT_SECRET=hermetic JWT_REFRESH_SECRET=hermetic \
+  SUPABASE_URL=http://localhost:0 SUPABASE_KEY=bootstrap-only \
+  python -m pytest tests/ -v
+```
+
+The conftest spots `PG_CONTAINER=1`, boots a `postgres:16-alpine` +
+`postgrest/postgrest:v12.2.0` stack on a shared Docker network,
+applies every non-`pg_cron` migration through `tests/db/migrate.py`,
+and repoints `app.database._client` at the local stack. Per-test
+isolation is `TRUNCATE public.* RESTART IDENTITY CASCADE` instead of
+`cleanup_test_users`. CI runs this lane via
+`.github/workflows/backend-ci-hermetic.yml` (manual + nightly).
+
+**Legacy integration lane** (shared remote Supabase, what default CI uses today):
+
 ```bash
 docker exec sem-backend python -m pytest tests/ -v
 ```
