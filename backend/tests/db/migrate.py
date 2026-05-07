@@ -59,6 +59,16 @@ BEGIN
     CREATE ROLE service_role NOLOGIN;
   END IF;
 END $$;
+
+-- PostgREST connects as the ``postgres`` superuser (the authenticator),
+-- then issues ``SET LOCAL ROLE <role-from-JWT>`` per request. That switch
+-- only succeeds if the authenticator has membership in the target role.
+-- In real Supabase the authenticator inherits these implicitly; on stock
+-- Postgres we grant them explicitly. ``GRANT role TO role`` is idempotent
+-- — repeated runs are no-ops, so the migrator stays safe to re-apply.
+GRANT anon          TO postgres;
+GRANT authenticated TO postgres;
+GRANT service_role  TO postgres;
 """
 
 _LEDGER_SQL = """
