@@ -41,7 +41,7 @@ def _register(client: TestClient, prefix: str) -> dict:
         "/auth/register",
         json={
             "username": f"{prefix}{suffix}",
-            "email": f"{prefix}{suffix}@e2e.test",
+            "email": f"{prefix}{suffix}@example.com",
             "password": "passw0rd123",
             "date_of_birth": "1990-01-01",
         },
