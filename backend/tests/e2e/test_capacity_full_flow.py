@@ -50,14 +50,17 @@ def _auth(token: str) -> dict[str, str]:
 @patch("app.repositories.image.upload_to_storage", return_value=MOCK_STORAGE_URL)
 def _publish_event(
     mock_upload, e2e_client: TestClient, host_token: str, admin_db, *, attendee_limit: int,  # noqa: ARG001
-) -> str:
+) -> tuple[str, str]:
+    """Returns (event_id, title) — the title is unique enough to plug
+    straight into the discovery search query, which is text-based."""
     cat_id = (
         admin_db.table("categories").select("id").eq("is_predefined", True).limit(1).execute().data[0]["id"]
     )
     start = datetime.now(UTC) + timedelta(days=3)
     end = start + timedelta(hours=2)
+    title = f"CapacityE2E_{uuid.uuid4().hex[:12]}"  # unique → narrows discovery search
     body = {
-        "title": f"Capacity E2E {uuid.uuid4().hex[:6]}",
+        "title": title,
         "description": "capacity contract event",
         "start_datetime": start.isoformat(),
         "end_datetime": end.isoformat(),
@@ -85,7 +88,7 @@ def _publish_event(
         headers=_auth(host_token),
     )
     assert pub.status_code == 200, pub.json()
-    return event_id
+    return event_id, title
 
 
 def test_capacity_enforcement_surfaces_full_in_discovery(e2e_client, admin_db) -> None:
@@ -94,7 +97,7 @@ def test_capacity_enforcement_surfaces_full_in_discovery(e2e_client, admin_db) -
     a2 = _register(e2e_client, "capa2")
     a3 = _register(e2e_client, "capa3")
 
-    event_id = _publish_event(
+    event_id, title = _publish_event(
         e2e_client, host["access_token"], admin_db, attendee_limit=2,
     )
 
@@ -116,15 +119,16 @@ def test_capacity_enforcement_surfaces_full_in_discovery(e2e_client, admin_db) -
     )
     assert third.status_code in (400, 409), third.json()
 
-    # Discovery surfaces the event with is_full=True.
-    listing = e2e_client.get(f"/events?search={event_id[:8]}").json()
+    # Discovery contract: the event must surface in the listing for the
+    # search query (matches the unique title) and carry is_full=True so
+    # the frontend can render the "Full" badge. Anything weaker (e.g. a
+    # guarded `if items:`) silently lets a regression through.
+    listing = e2e_client.get(f"/events?search={title}").json()
     items = [item for item in listing["items"] if item["id"] == event_id]
-    if items:
-        # If the search isn't enough to land it on page 1, the GET-by-id
-        # path is the deterministic check.
-        item = items[0]
-        assert item["is_full"] is True
-        assert item["going_count"] == 2
+    assert items, f"event not found in discovery listing for unique title: {listing}"
+    item = items[0]
+    assert item["is_full"] is True
+    assert item["going_count"] == 2
 
     detail = e2e_client.get(
         f"/events/{event_id}", headers=_auth(host["access_token"]),

@@ -1,12 +1,21 @@
 """Fast unit tests for event service business rules."""
 
 from datetime import UTC, datetime, timedelta
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
 
 from app.services.event import auto_end_event_if_past, validate_event_datetime
+
+
+@pytest.fixture
+def db() -> MagicMock:
+    """Override the conftest session-scoped ``db`` so this file doesn't
+    contact a real Supabase. The autouse ``cleanup_test_users`` fixture
+    requests ``db`` and would otherwise resolve the real client at
+    ``SUPABASE_URL=fake``, which fails before any test runs."""
+    return MagicMock(name="supabase_client")
 
 
 class TestValidateEventDatetime:
