@@ -140,6 +140,10 @@ class TestRecommendationEmitter:
 
         new_event = _create_published_event(host["id"], [cat_a])
 
+        # Other shards running concurrently against the shared test Supabase
+        # may also publish Music events that our listener's attendance
+        # history happens to match. Scope the assertion to recommendations
+        # for *our* event so the contract stays apples-to-apples.
         recs = _get_recs(listener["id"])
-        assert len(recs) == 1
-        assert recs[0]["event_id"] == new_event
+        for_new_event = [r for r in recs if r["event_id"] == new_event]
+        assert len(for_new_event) == 1, recs
