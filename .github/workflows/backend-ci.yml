@@ -7,6 +7,9 @@ on:
       - 'tests_support.py'
       - '.github/workflows/backend-ci.yml'
 
+# Same group per PR + cancel-in-progress so a fresh push on the branch
+# kills the in-flight run before it consumes a Supabase pooler slot the
+# next run would otherwise contend for.
 concurrency:
   group: backend-ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
