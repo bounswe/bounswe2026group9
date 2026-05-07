@@ -32,6 +32,7 @@ keys. The supabase-py client sends an ``Authorization: Bearer
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from jose import jwt as pyjwt  # python-jose, already in requirements.txt
@@ -104,6 +105,7 @@ def boot_supabase_stack(
     network: Network | None = None,
     jwt_secret: str = _DEFAULT_SECRET,
     db_image: str = "postgres:16-alpine",
+    migrate_before_postgrest: Callable[[str], object] | None = None,
 ) -> tuple[StackEndpoints, list[DockerContainer], Network]:
     """Boot Postgres + PostgREST on a shared docker network.
 
@@ -140,6 +142,9 @@ def boot_supabase_stack(
     # mapped port on 127.0.0.1.
     dsn_inside = "postgresql://postgres:postgres@postgres:5432/postgres"
     dsn_host = pg.get_connection_url().replace("+psycopg2", "")
+
+    if migrate_before_postgrest is not None:
+        migrate_before_postgrest(dsn_host)
 
     pgrst = PostgrestContainer(dsn_inside, jwt_secret=jwt_secret)
     pgrst.with_network(network)

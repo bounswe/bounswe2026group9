@@ -80,16 +80,11 @@ def _hermetic_stack_session() -> Iterator[None]:
     from tests.db.migrate import apply_migrations
     from tests.db.postgrest import boot_supabase_stack
 
-    endpoints, containers, network = boot_supabase_stack()
-    apply_migrations(endpoints.db_dsn)
-
-    # PostgREST caches the schema on startup, before our migrations run,
-    # so it doesn't see public.* tables yet. NOTIFY pgrst to reload.
-    import psycopg
-
-    with psycopg.connect(endpoints.db_dsn, autocommit=True) as conn:
-        with conn.cursor() as cur:
-            cur.execute("NOTIFY pgrst, 'reload schema'")
+    # Start PostgREST only after migrations land. Relying on NOTIFY-based
+    # schema reload makes the first E2E request race the cache refresh in CI.
+    endpoints, containers, network = boot_supabase_stack(
+        migrate_before_postgrest=apply_migrations,
+    )
 
     # Patch settings + the lazy singleton so every code path that reads
     # them ends up at the local stack.
