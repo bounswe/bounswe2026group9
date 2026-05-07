@@ -17,13 +17,15 @@ export default function InviteAcceptPage() {
   const router = useRouter();
 
   const [requestStatus, setRequestStatus] = useState<"loading" | "success" | "error">("loading");
-  const [errorMessage, setErrorMessage] = useState("Something went wrong. The invite may be invalid or expired.");
+  const [errorMessage, setErrorMessage] = useState(
+    "Something went wrong. The invite may be invalid or expired.",
+  );
   const status: InviteStatus =
     !isInitialized || requestStatus === "loading"
       ? "loading"
       : !isAuthenticated
-      ? "login-required"
-      : requestStatus;
+        ? "login-required"
+        : requestStatus;
 
   useEffect(() => {
     if (!isInitialized || !id || !token || !isAuthenticated) {
@@ -55,31 +57,33 @@ export default function InviteAcceptPage() {
     <div className="bg-brand-bg min-h-screen">
       <Navbar />
 
-      <div className="flex flex-col items-center justify-center px-6 py-32 text-center max-w-lg mx-auto">
+      <div className="mx-auto flex max-w-lg flex-col items-center justify-center px-6 py-32 text-center">
         {status === "loading" && (
           <>
-            <Loader2 className="size-12 text-brand-mid animate-spin mb-6" />
-            <h1 className="font-heading text-2xl font-bold text-brand-dark mb-2">
+            <Loader2 className="text-brand-mid mb-6 size-12 animate-spin" />
+            <h1 className="font-heading text-brand-dark mb-2 text-2xl font-bold">
               Accepting Invite
             </h1>
-            <p className="text-brand-mid text-sm">Please wait while we process your invitation...</p>
+            <p className="text-brand-mid text-sm">
+              Please wait while we process your invitation...
+            </p>
           </>
         )}
 
         {status === "success" && (
           <>
-            <div className="flex size-16 items-center justify-center rounded-full bg-green-100 mb-6">
+            <div className="mb-6 flex size-16 items-center justify-center rounded-full bg-green-100">
               <CheckCircle className="size-8 text-green-600" />
             </div>
-            <h1 className="font-heading text-2xl font-bold text-brand-dark mb-2">
+            <h1 className="font-heading text-brand-dark mb-2 text-2xl font-bold">
               Invite Accepted!
             </h1>
-            <p className="text-brand-mid text-sm mb-6">
+            <p className="text-brand-mid mb-6 text-sm">
               You now have access to this event. You can view the full event details.
             </p>
             <button
               onClick={() => router.push(`/event/${id}`)}
-              className="rounded-xl bg-brand-dark px-7 py-3.5 text-[15px] font-bold text-white transition-all hover:bg-brand-dark/85 hover:-translate-y-0.5 hover:shadow-lg"
+              className="bg-brand-dark hover:bg-brand-dark/85 rounded-xl px-7 py-3.5 text-[15px] font-bold text-white transition-all hover:-translate-y-0.5 hover:shadow-lg"
             >
               View Event
             </button>
@@ -88,23 +92,21 @@ export default function InviteAcceptPage() {
 
         {status === "error" && (
           <>
-            <div className="flex size-16 items-center justify-center rounded-full bg-red-100 mb-6">
+            <div className="mb-6 flex size-16 items-center justify-center rounded-full bg-red-100">
               <XCircle className="size-8 text-red-500" />
             </div>
-            <h1 className="font-heading text-2xl font-bold text-brand-dark mb-2">
-              Invite Failed
-            </h1>
-            <p className="text-brand-mid text-sm mb-6">{errorMessage}</p>
+            <h1 className="font-heading text-brand-dark mb-2 text-2xl font-bold">Invite Failed</h1>
+            <p className="text-brand-mid mb-6 text-sm">{errorMessage}</p>
             <div className="flex gap-4">
               <Link
                 href={`/event/${id}`}
-                className="rounded-xl bg-brand-dark px-7 py-3.5 text-[15px] font-bold text-white transition-all hover:bg-brand-dark/85"
+                className="bg-brand-dark hover:bg-brand-dark/85 rounded-xl px-7 py-3.5 text-[15px] font-bold text-white transition-all"
               >
                 Go to Event
               </Link>
               <Link
                 href="/"
-                className="rounded-xl border-2 border-brand-dark px-7 py-3.5 text-[15px] font-bold text-brand-dark transition-all hover:bg-brand-dark hover:text-white"
+                className="border-brand-dark text-brand-dark hover:bg-brand-dark rounded-xl border-2 px-7 py-3.5 text-[15px] font-bold transition-all hover:text-white"
               >
                 Browse Events
               </Link>
@@ -114,18 +116,19 @@ export default function InviteAcceptPage() {
 
         {status === "login-required" && (
           <>
-            <div className="flex size-16 items-center justify-center rounded-full bg-brand-mid-alpha mb-6">
-              <Loader2 className="size-8 text-brand-mid" />
+            <div className="bg-brand-mid-alpha mb-6 flex size-16 items-center justify-center rounded-full">
+              <Loader2 className="text-brand-mid size-8" />
             </div>
-            <h1 className="font-heading text-2xl font-bold text-brand-dark mb-2">
+            <h1 className="font-heading text-brand-dark mb-2 text-2xl font-bold">
               Sign In Required
             </h1>
-            <p className="text-brand-mid text-sm mb-6">
-              You need to sign in to accept this invite. After signing in, you&apos;ll be redirected back.
+            <p className="text-brand-mid mb-6 text-sm">
+              You need to sign in to accept this invite. After signing in, you&apos;ll be redirected
+              back.
             </p>
             <Link
               href={`/login?next=/event/${id}/invite/${token}`}
-              className="rounded-xl bg-brand-dark px-7 py-3.5 text-[15px] font-bold text-white transition-all hover:bg-brand-dark/85 hover:-translate-y-0.5 hover:shadow-lg"
+              className="bg-brand-dark hover:bg-brand-dark/85 rounded-xl px-7 py-3.5 text-[15px] font-bold text-white transition-all hover:-translate-y-0.5 hover:shadow-lg"
             >
               Sign In
             </Link>

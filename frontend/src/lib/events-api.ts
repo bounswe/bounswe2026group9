@@ -53,24 +53,70 @@ export interface EventListResponse {
   total_pages: number;
 }
 
-export type TemporalFilter = "today" | "this_week" | "weekend";
+/** Backend-supported quick filter values (`/events?quick_filter=...`). */
+export type QuickFilter = "now" | "today" | "this_week" | "weekend" | "upcoming" | "past";
+
+/** Frontend alias kept for callers that already use TemporalFilter. */
+export type TemporalFilter = QuickFilter;
+
+export type SortOption = "start_time" | "distance" | "category";
+
+export interface AccessibilityFilters {
+  wheelchair?: boolean;
+  accessible_restroom?: boolean;
+  elevator?: boolean;
+  seating?: boolean;
+  captions?: boolean;
+  quiet_friendly?: boolean;
+}
 
 export interface DiscoveryParams {
   search?: string;
   category_id?: string;
-  temporal_filter?: "today" | "this_week";
+  /** Maps directly to the backend `quick_filter` query string. */
+  quick_filter?: QuickFilter;
+  /** Older alias still used in callers; treated identically to `quick_filter`. */
+  temporal_filter?: QuickFilter;
+  near_lat?: number;
+  near_lng?: number;
+  radius_km?: number;
+  use_default_area?: boolean;
+  accessibility?: AccessibilityFilters;
+  sort?: SortOption;
   page?: number;
   page_size?: number;
+}
+
+function appendDiscoveryParams(query: URLSearchParams, params: DiscoveryParams): void {
+  if (params.search?.trim()) query.set("search", params.search.trim());
+  if (params.category_id) query.set("category_id", params.category_id);
+
+  const quick = params.quick_filter ?? params.temporal_filter;
+  if (quick) query.set("quick_filter", quick);
+
+  if (typeof params.near_lat === "number") query.set("near_lat", String(params.near_lat));
+  if (typeof params.near_lng === "number") query.set("near_lng", String(params.near_lng));
+  if (typeof params.radius_km === "number") query.set("radius_km", String(params.radius_km));
+  if (params.use_default_area) query.set("use_default_area", "true");
+
+  const a = params.accessibility;
+  if (a) {
+    if (a.wheelchair) query.set("wheelchair", "true");
+    if (a.accessible_restroom) query.set("accessible_restroom", "true");
+    if (a.elevator) query.set("elevator", "true");
+    if (a.seating) query.set("seating", "true");
+    if (a.captions) query.set("captions", "true");
+    if (a.quiet_friendly) query.set("quiet_friendly", "true");
+  }
+
+  if (params.sort) query.set("sort", params.sort);
 }
 
 // ─── API Functions ─────────────────────────────────────────────────────────────
 
 export async function fetchEvents(params: DiscoveryParams = {}): Promise<EventListResponse> {
   const query = new URLSearchParams();
-
-  if (params.search?.trim()) query.set("search", params.search.trim());
-  if (params.category_id) query.set("category_id", params.category_id);
-  if (params.temporal_filter) query.set("temporal_filter", params.temporal_filter);
+  appendDiscoveryParams(query, params);
   if (params.page && params.page > 1) query.set("page", String(params.page));
   if (params.page_size) query.set("page_size", String(params.page_size));
 
@@ -134,15 +180,15 @@ export interface GeoJSONFeatureCollection {
   features: GeoJSONFeature[];
 }
 
-export async function fetchGeoJsonEvents(params: DiscoveryParams = {}): Promise<GeoJSONFeatureCollection> {
+export async function fetchGeoJsonEvents(
+  params: DiscoveryParams = {},
+): Promise<GeoJSONFeatureCollection> {
   const query = new URLSearchParams();
-
-  if (params.search?.trim()) query.set("search", params.search.trim());
-  if (params.category_id) query.set("category_id", params.category_id);
-  if (params.temporal_filter) query.set("temporal_filter", params.temporal_filter);
-
+  appendDiscoveryParams(query, params);
   const qs = query.toString();
-  return apiRequest<GeoJSONFeatureCollection>(`/events/geojson${qs ? `?${qs}` : ""}`, { auth: "optional" });
+  return apiRequest<GeoJSONFeatureCollection>(`/events/geojson${qs ? `?${qs}` : ""}`, {
+    auth: "optional",
+  });
 }
 
 // ─── Event Detail Types ────────────────────────────────────────────────────────
@@ -264,10 +310,7 @@ export async function fetchEventDetail(id: string): Promise<AnyEventDetail> {
   return { ...(raw as unknown as Omit<EventDetailLimited, "_type">), _type: "limited" };
 }
 
-export async function setAttendance(
-  eventId: string,
-  status: "going",
-): Promise<void> {
+export async function setAttendance(eventId: string, status: "going"): Promise<void> {
   await apiRequest(`/events/${eventId}/attendance`, {
     method: "POST",
     auth: "required",
@@ -276,21 +319,21 @@ export async function setAttendance(
 }
 
 export async function removeAttendance(eventId: string): Promise<void> {
-  await apiRequest(`/events/${eventId}/attendance`, { 
+  await apiRequest(`/events/${eventId}/attendance`, {
     method: "DELETE",
     auth: "required",
   });
 }
 
 export async function addBookmark(eventId: string): Promise<void> {
-  await apiRequest(`/events/${eventId}/bookmark`, { 
+  await apiRequest(`/events/${eventId}/bookmark`, {
     method: "POST",
     auth: "required",
   });
 }
 
 export async function removeBookmark(eventId: string): Promise<void> {
-  await apiRequest(`/events/${eventId}/bookmark`, { 
+  await apiRequest(`/events/${eventId}/bookmark`, {
     method: "DELETE",
     auth: "required",
   });
@@ -308,7 +351,7 @@ export async function changeEventStatus(
 }
 
 export async function deleteEvent(eventId: string): Promise<void> {
-  await apiRequest(`/events/${eventId}`, { 
+  await apiRequest(`/events/${eventId}`, {
     method: "DELETE",
     auth: "required",
   });
@@ -333,7 +376,7 @@ export async function postComment(
 }
 
 export async function deleteComment(eventId: string, commentId: string): Promise<void> {
-  await apiRequest(`/events/${eventId}/comments/${commentId}`, { 
+  await apiRequest(`/events/${eventId}/comments/${commentId}`, {
     method: "DELETE",
     auth: "required",
   });
@@ -343,13 +386,50 @@ export async function fetchHostProfile(userId: string): Promise<HostProfile> {
   return apiRequest<HostProfile>(`/users/${userId}/profile`, { auth: "optional" });
 }
 
-export async function rateHost(userId: string, score: number): Promise<void> {
+export async function rateHost(
+  userId: string,
+  score: number,
+  reviewText?: string | null,
+): Promise<void> {
+  const trimmed = reviewText?.trim();
+  const body: { score: number; review_text?: string } = { score };
+  if (trimmed) body.review_text = trimmed;
   await apiRequest<void>(`/users/${userId}/ratings`, {
     method: "POST",
     auth: "required",
-    body: { score },
+    body,
     parseAs: "void",
   });
+}
+
+// ─── Host Reviews ───────────────────────────────────────────────────────────────
+
+export interface HostReview {
+  id: string;
+  rater_id: string;
+  rater_username: string;
+  score: number;
+  review_text: string | null;
+  created_at: string;
+}
+
+export interface HostReviewListResponse {
+  items: HostReview[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export async function fetchHostReviews(
+  userId: string,
+  page = 1,
+  pageSize = 20,
+): Promise<HostReviewListResponse> {
+  return apiRequest<HostReviewListResponse>(
+    `/users/${userId}/reviews?page=${page}&page_size=${pageSize}`,
+    { auth: "optional" },
+  );
 }
 
 // ─── Notification Types ──────────────────────────────────────────────────────
@@ -388,26 +468,25 @@ export async function fetchNotifications(
   page = 1,
   pageSize = 20,
 ): Promise<NotificationListResponse> {
-  return apiRequest<NotificationListResponse>(
-    `/notifications?page=${page}&page_size=${pageSize}`,
-    { auth: "required" },
-  );
+  return apiRequest<NotificationListResponse>(`/notifications?page=${page}&page_size=${pageSize}`, {
+    auth: "required",
+  });
 }
 
 export async function markNotificationRead(
   notificationId: string,
 ): Promise<NotificationReadResponse> {
-  return apiRequest<NotificationReadResponse>(
-    `/notifications/${notificationId}/read`,
-    { method: "PATCH", auth: "required" },
-  );
+  return apiRequest<NotificationReadResponse>(`/notifications/${notificationId}/read`, {
+    method: "PATCH",
+    auth: "required",
+  });
 }
 
 export async function markAllNotificationsRead(): Promise<NotificationReadAllResponse> {
-  return apiRequest<NotificationReadAllResponse>(
-    `/notifications/read-all`,
-    { method: "PATCH", auth: "required" },
-  );
+  return apiRequest<NotificationReadAllResponse>(`/notifications/read-all`, {
+    method: "PATCH",
+    auth: "required",
+  });
 }
 
 export async function fetchUnreadNotificationCount(): Promise<number> {
@@ -439,11 +518,10 @@ export async function requestAccess(eventId: string): Promise<void> {
 }
 
 export async function fetchAccessRequests(eventId: string): Promise<AccessRequest[]> {
-  const res = await apiRequest<AccessRequestListResponse>(
-    `/events/${eventId}/access-requests`,
-    { auth: "required" },
-  );
-  return res.items ?? res as unknown as AccessRequest[];
+  const res = await apiRequest<AccessRequestListResponse>(`/events/${eventId}/access-requests`, {
+    auth: "required",
+  });
+  return res.items ?? (res as unknown as AccessRequest[]);
 }
 
 export async function updateAccessRequest(
@@ -484,11 +562,10 @@ export async function createInvite(eventId: string): Promise<Invite> {
 }
 
 export async function fetchInvites(eventId: string): Promise<Invite[]> {
-  const res = await apiRequest<InviteListResponse>(
-    `/events/${eventId}/invites`,
-    { auth: "required" },
-  );
-  return res.items ?? res as unknown as Invite[];
+  const res = await apiRequest<InviteListResponse>(`/events/${eventId}/invites`, {
+    auth: "required",
+  });
+  return res.items ?? (res as unknown as Invite[]);
 }
 
 export async function acceptInvite(eventId: string, token: string): Promise<void> {

@@ -890,34 +890,10 @@ def list_events(
         )
     # sort=category fetches the full filtered candidate set into memory and
     # ranks in Python (PostgREST cannot order by an aggregated joined column
-    # in a single round-trip). To keep memory bounded on large datasets, we
-    # require the request to narrow the candidate set first — same shape of
-    # constraint as sort=distance requiring a location.
-    if sort == "category":
-        accessibility_active = any(
-            v is True for v in (accessibility or {}).values()
-        )
-        has_search = bool(search and search.strip())
-        has_window = (
-            quick_filter is not None
-            or start_after is not None
-            or end_before is not None
-        )
-        if not (
-            has_search
-            or category_id is not None
-            or has_window
-            or accessibility_active
-            or has_location
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=(
-                    "sort=category requires a narrowing filter: search, "
-                    "category_id, quick_filter, custom window, accessibility, "
-                    "or a location."
-                ),
-            )
+    # in a single round-trip). The 10k-event NFR target finishes well under
+    # the 2-second budget for an O(N log N) in-memory sort, so we accept the
+    # call even without an explicit narrowing filter — same approach as
+    # sort=distance, which also materialises the full filtered set.
     if sort is None:
         sort = "distance" if has_location else "start_time"
 

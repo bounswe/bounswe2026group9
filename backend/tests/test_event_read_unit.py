@@ -250,15 +250,6 @@ class TestListEvents:
         assert sent["near_lat"] == 41.0
         assert sent["near_lng"] == 29.0
 
-    def test_422_when_sort_category_without_narrowing_filter(self, db, events_repo, users_repo, bookmarks_repo, attendances_repo, invites_repo):
-        with pytest.raises(HTTPException) as exc:
-            event_service.list_events(
-                db,
-                sort="category",
-                **_all(events_repo, users_repo, bookmarks_repo, attendances_repo, invites_repo),
-            )
-        assert exc.value.status_code == 422
-
     def test_empty_result_returns_empty_response(self, db, events_repo, users_repo, bookmarks_repo, attendances_repo, invites_repo):
         events_repo.list_events.return_value = ([], 0)
 
