@@ -58,13 +58,17 @@ function AuthHero({ mobile = false }: { mobile?: boolean }) {
           mobile ? "mx-auto mt-8 max-w-[17rem]" : "mx-auto max-w-xl",
         )}
       >
-        <h1 className={cn("leading-tight text-white", mobile ? "text-3xl" : "text-5xl xl:text-6xl")}>
+        <h1
+          className={cn("leading-tight text-white", mobile ? "text-3xl" : "text-5xl xl:text-6xl")}
+        >
           Discover events around you
         </h1>
         <p
           className={cn(
             "mt-4 text-white/70",
-            mobile ? "mx-auto max-w-[16rem] text-sm leading-6" : "mx-auto max-w-md text-base leading-7",
+            mobile
+              ? "mx-auto max-w-[16rem] text-sm leading-6"
+              : "mx-auto max-w-md text-base leading-7",
           )}
         >
           Browse, create, and join community events happening across your city.

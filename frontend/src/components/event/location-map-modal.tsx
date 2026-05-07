@@ -75,16 +75,18 @@ export function LocationMapModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
-      <div className="relative w-full max-w-2xl mx-4 rounded-xl overflow-hidden bg-white shadow-2xl">
-        <div className="flex items-center justify-between px-5 py-3 border-b border-brand-mid-alpha">
-          <h3 className="font-heading text-brand-dark font-bold text-[16px]">{locationName}</h3>
+      <div className="relative mx-4 w-full max-w-2xl overflow-hidden rounded-xl bg-white shadow-2xl">
+        <div className="border-brand-mid-alpha flex items-center justify-between border-b px-5 py-3">
+          <h3 className="font-heading text-brand-dark text-[16px] font-bold">{locationName}</h3>
           <button
             onClick={onClose}
-            className="flex size-8 items-center justify-center rounded-full hover:bg-brand-mid-alpha transition-colors"
+            className="hover:bg-brand-mid-alpha flex size-8 items-center justify-center rounded-full transition-colors"
           >
-            <X className="size-4 text-brand-dark" />
+            <X className="text-brand-dark size-4" />
           </button>
         </div>
         <div ref={mapContainerRef} className="h-[400px] w-full" />

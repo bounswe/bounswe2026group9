@@ -52,7 +52,10 @@ afterEach(() => {
 
 describe("ListView", () => {
   beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(null, { status: 204 }))));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.resolve(new Response(null, { status: 204 }))),
+    );
   });
 
   it("shows the 'No events found' empty state when there are no items", () => {

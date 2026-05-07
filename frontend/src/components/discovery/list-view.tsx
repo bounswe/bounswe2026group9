@@ -40,7 +40,7 @@ export function ListView({
   return (
     <div className="flex flex-1 flex-col">
       {/* Result count */}
-      <div className="px-4 pb-2 pt-4 sm:px-6 sm:pt-5 lg:px-8 lg:pt-6">
+      <div className="px-4 pt-4 pb-2 sm:px-6 sm:pt-5 lg:px-8 lg:pt-6">
         <p className="text-muted-foreground text-sm">
           Showing <span className="text-brand-dark font-semibold">{events.length}</span> of{" "}
           <span className="text-brand-dark font-semibold">{total}</span> events
@@ -48,7 +48,7 @@ export function ListView({
       </div>
 
       {/* Grid */}
-      <div className="grid flex-1 content-start items-stretch grid-cols-1 gap-4 px-4 pb-4 sm:grid-cols-2 sm:gap-5 sm:px-6 sm:pb-6 xl:grid-cols-3 xl:gap-6 xl:px-8">
+      <div className="grid flex-1 grid-cols-1 content-start items-stretch gap-4 px-4 pb-4 sm:grid-cols-2 sm:gap-5 sm:px-6 sm:pb-6 xl:grid-cols-3 xl:gap-6 xl:px-8">
         {events.map((event) => (
           <EventCard
             key={event.id}

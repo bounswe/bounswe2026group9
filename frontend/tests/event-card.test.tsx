@@ -39,9 +39,7 @@ function makeEvent(overrides: Partial<EventListItem> = {}): EventListItem {
     going_count: 5,
     bookmark_count: 1,
     is_full: false,
-    categories: [
-      { id: "cat-1", name: "Outdoor", is_predefined: true, is_approved: true },
-    ],
+    categories: [{ id: "cat-1", name: "Outdoor", is_predefined: true, is_approved: true }],
     primary_location: null,
     primary_image_url: null,
     ...overrides,
@@ -54,7 +52,10 @@ afterEach(() => {
 
 describe("EventCard", () => {
   beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(null, { status: 204 }))));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.resolve(new Response(null, { status: 204 }))),
+    );
   });
 
   it("renders the event title and category chip", () => {
@@ -88,13 +89,7 @@ describe("EventCard", () => {
   });
 
   it("shows Edit instead of Going when the viewer is the host", () => {
-    render(
-      <EventCard
-        event={makeEvent({ host_id: "me" })}
-        currentUserId="me"
-        isAuthenticated
-      />,
-    );
+    render(<EventCard event={makeEvent({ host_id: "me" })} currentUserId="me" isAuthenticated />);
     expect(screen.getByRole("button", { name: /edit/i })).toBeInTheDocument();
   });
 

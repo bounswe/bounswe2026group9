@@ -16,9 +16,7 @@ export function ImageCarousel({ images, title }: ImageCarouselProps) {
   if (images.length === 0) {
     return (
       <div className="bg-brand-surface flex aspect-[16/9] w-full items-center justify-center rounded-xl">
-        <span className="text-xs font-bold uppercase tracking-widest text-white/40">
-          No Photos
-        </span>
+        <span className="text-xs font-bold tracking-widest text-white/40 uppercase">No Photos</span>
       </div>
     );
   }
@@ -40,14 +38,14 @@ export function ImageCarousel({ images, title }: ImageCarouselProps) {
           {/* Arrows */}
           <button
             onClick={prev}
-            className="absolute left-3 top-1/2 -translate-y-1/2 flex size-9 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm transition-colors hover:bg-black/50 opacity-0 group-hover:opacity-100"
+            className="absolute top-1/2 left-3 flex size-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/30 text-white opacity-0 backdrop-blur-sm transition-colors group-hover:opacity-100 hover:bg-black/50"
             aria-label="Previous image"
           >
             <ChevronLeft className="size-5" />
           </button>
           <button
             onClick={next}
-            className="absolute right-3 top-1/2 -translate-y-1/2 flex size-9 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm transition-colors hover:bg-black/50 opacity-0 group-hover:opacity-100"
+            className="absolute top-1/2 right-3 flex size-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/30 text-white opacity-0 backdrop-blur-sm transition-colors group-hover:opacity-100 hover:bg-black/50"
             aria-label="Next image"
           >
             <ChevronRight className="size-5" />
@@ -61,7 +59,7 @@ export function ImageCarousel({ images, title }: ImageCarouselProps) {
                 onClick={() => setIndex(i)}
                 className={cn(
                   "size-2 rounded-full transition-all",
-                  i === index ? "bg-white scale-125" : "bg-white/50 hover:bg-white/75",
+                  i === index ? "scale-125 bg-white" : "bg-white/50 hover:bg-white/75",
                 )}
                 aria-label={`Go to photo ${i + 1}`}
               />
@@ -69,7 +67,7 @@ export function ImageCarousel({ images, title }: ImageCarouselProps) {
           </div>
 
           {/* Counter */}
-          <span className="absolute right-3 top-3 rounded-full bg-black/40 px-2.5 py-0.5 text-[11px] font-bold text-white backdrop-blur-sm">
+          <span className="absolute top-3 right-3 rounded-full bg-black/40 px-2.5 py-0.5 text-[11px] font-bold text-white backdrop-blur-sm">
             {index + 1} / {images.length}
           </span>
         </>

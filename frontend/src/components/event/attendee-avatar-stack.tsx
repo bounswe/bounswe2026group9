@@ -42,9 +42,9 @@ export function AttendeeAvatarStack({
         <div
           key={attendee.id}
           className={cn(
-            "flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white border-2 border-white",
+            "flex size-9 shrink-0 items-center justify-center rounded-full border-2 border-white text-xs font-bold text-white",
             getAvatarColor(attendee.id),
-            index > 0 && "-ml-2"
+            index > 0 && "-ml-2",
           )}
           title={attendee.username}
         >
@@ -52,9 +52,7 @@ export function AttendeeAvatarStack({
         </div>
       ))}
       {remaining > 0 && (
-        <div className="ml-2 text-sm font-bold text-brand-mid">
-          +{remaining} more
-        </div>
+        <div className="text-brand-mid ml-2 text-sm font-bold">+{remaining} more</div>
       )}
     </div>
   );

@@ -496,7 +496,8 @@ export async function logout() {
 
 export function getGoogleLoginUrl(mode: "login" | "signup" = "login") {
   // Google OAuth requires a full URL redirect to the backend, not the proxy
-  const backendBase = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "") ?? DEFAULT_API_BASE_URL;
+  const backendBase =
+    process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "") ?? DEFAULT_API_BASE_URL;
   return `${backendBase}/auth/google?mode=${mode}`;
 }
 

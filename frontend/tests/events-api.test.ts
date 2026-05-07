@@ -128,7 +128,17 @@ describe("events-api endpoints", () => {
 
   it("postComment POSTs the text and forwards parent_id when given", async () => {
     fetchMock.mockImplementation(() =>
-      Promise.resolve(jsonOk({ id: "c", user: { id: USER_ID, username: "t" }, text: "hi", created_at: "x", event_id: EVENT_ID, parent_id: null, replies: [] })),
+      Promise.resolve(
+        jsonOk({
+          id: "c",
+          user: { id: USER_ID, username: "t" },
+          text: "hi",
+          created_at: "x",
+          event_id: EVENT_ID,
+          parent_id: null,
+          replies: [],
+        }),
+      ),
     );
     await postComment(EVENT_ID, "hi");
     expect(JSON.parse(lastCall(fetchMock).init.body as string)).toEqual({ text: "hi" });
@@ -149,7 +159,9 @@ describe("events-api endpoints", () => {
 
   it("fetchHostProfile GETs /users/{id}/profile", async () => {
     fetchMock.mockImplementationOnce(() =>
-      Promise.resolve(jsonOk({ id: USER_ID, username: "host", hosted_events: [], can_rate: false })),
+      Promise.resolve(
+        jsonOk({ id: USER_ID, username: "host", hosted_events: [], can_rate: false }),
+      ),
     );
     await fetchHostProfile(USER_ID);
     const { url } = lastCall(fetchMock);
@@ -180,9 +192,7 @@ describe("events-api endpoints", () => {
   });
 
   it("markAllNotificationsRead PATCHes /notifications/read-all", async () => {
-    fetchMock.mockImplementationOnce(() =>
-      Promise.resolve(jsonOk({ updated_count: 3 })),
-    );
+    fetchMock.mockImplementationOnce(() => Promise.resolve(jsonOk({ updated_count: 3 })));
     await markAllNotificationsRead();
     const { url, init } = lastCall(fetchMock);
     expect(url).toContain("/notifications/read-all");

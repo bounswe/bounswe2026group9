@@ -93,7 +93,11 @@ function starRating(rating: number) {
 }
 
 function buildGoogleCalendarUrl(event: EventDetail, locationName?: string) {
-  const fmt = (dt: string) => new Date(dt).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  const fmt = (dt: string) =>
+    new Date(dt)
+      .toISOString()
+      .replace(/[-:]/g, "")
+      .replace(/\.\d{3}/, "");
   const params = new URLSearchParams({
     action: "TEMPLATE",
     text: event.title,
@@ -153,28 +157,29 @@ function AgeGate({
   isAuthenticated: boolean;
   userDob: string | null;
 }) {
-
   // If user has dob and is underage — show block screen
   if (userDob && !isAtLeast18(userDob)) {
     return (
-      <div className="min-h-[80vh] relative overflow-hidden flex flex-col items-center justify-center px-6 py-20 text-center">
-        <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 font-heading text-[200px] font-bold text-brand-dark/[0.06] select-none pointer-events-none leading-none max-sm:text-[120px]">
+      <div className="relative flex min-h-[80vh] flex-col items-center justify-center overflow-hidden px-6 py-20 text-center">
+        <span className="font-heading text-brand-dark/[0.06] pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[200px] leading-none font-bold select-none max-sm:text-[120px]">
           18+
         </span>
         <div className="relative z-[1]">
           <div className="mb-6">
-            <AlertTriangle className="size-20 text-red-400 mx-auto" strokeWidth={1.5} />
+            <AlertTriangle className="mx-auto size-20 text-red-400" strokeWidth={1.5} />
           </div>
-          <h1 className="font-heading text-4xl font-bold text-brand-dark mb-4">Age Restricted Event</h1>
-          <p className="text-[17px] leading-[1.7] text-brand-dark/75 max-w-[440px] mb-2">
+          <h1 className="font-heading text-brand-dark mb-4 text-4xl font-bold">
+            Age Restricted Event
+          </h1>
+          <p className="text-brand-dark/75 mb-2 max-w-[440px] text-[17px] leading-[1.7]">
             This event is restricted to attendees aged 18 and above.
           </p>
-          <p className="text-[15px] text-brand-mid max-w-[400px] mb-8">
+          <p className="text-brand-mid mb-8 max-w-[400px] text-[15px]">
             Your account indicates you do not meet the age requirement for this event.
           </p>
           <Link
             href="/"
-            className="inline-flex items-center gap-1.5 text-[15px] font-bold text-brand-mid hover:text-brand-dark transition-colors"
+            className="text-brand-mid hover:text-brand-dark inline-flex items-center gap-1.5 text-[15px] font-bold transition-colors"
           >
             <ArrowLeft className="size-4" />
             Back to Discovery
@@ -186,46 +191,48 @@ function AgeGate({
 
   // Guests and users without a stored DOB cannot access 18+ events by default.
   return (
-    <div className="min-h-[80vh] relative overflow-hidden flex flex-col items-center justify-center px-6 py-20 text-center">
-      <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 font-heading text-[200px] font-bold text-brand-dark/[0.06] select-none pointer-events-none leading-none max-sm:text-[120px]">
+    <div className="relative flex min-h-[80vh] flex-col items-center justify-center overflow-hidden px-6 py-20 text-center">
+      <span className="font-heading text-brand-dark/[0.06] pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[200px] leading-none font-bold select-none max-sm:text-[120px]">
         18+
       </span>
-      <div className="relative z-[1] flex flex-col items-center max-w-[600px]">
+      <div className="relative z-[1] flex max-w-[600px] flex-col items-center">
         <div className="mb-6">
-          <AlertTriangle className="size-20 text-red-400 mx-auto" strokeWidth={1.5} />
+          <AlertTriangle className="mx-auto size-20 text-red-400" strokeWidth={1.5} />
         </div>
-        <h1 className="font-heading text-4xl font-bold text-brand-dark mb-4">Age Restricted Event</h1>
-        <p className="text-[17px] leading-[1.7] text-brand-dark/75 max-w-[440px]">
+        <h1 className="font-heading text-brand-dark mb-4 text-4xl font-bold">
+          Age Restricted Event
+        </h1>
+        <p className="text-brand-dark/75 max-w-[440px] text-[17px] leading-[1.7]">
           This event is restricted to attendees aged 18 and above.
         </p>
 
-        <div className="bg-brand-surface rounded-xl p-8 max-w-[420px] w-full mt-8 text-center">
+        <div className="bg-brand-surface mt-8 w-full max-w-[420px] rounded-xl p-8 text-center">
           {isAuthenticated ? (
             <>
-              <h3 className="font-heading text-xl font-semibold text-brand-dark mb-3">
+              <h3 className="font-heading text-brand-dark mb-3 text-xl font-semibold">
                 Date of birth required
               </h3>
-              <p className="text-[15px] leading-[1.7] text-brand-dark/75 mb-6">
+              <p className="text-brand-dark/75 mb-6 text-[15px] leading-[1.7]">
                 Add your date of birth in your profile settings to access 18+ events.
               </p>
               <Link
                 href="/profile/me"
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-dark border-2 border-brand-dark px-7 py-3.5 text-[15px] font-bold text-white transition-all hover:bg-[#5e4535] hover:border-[#5e4535] hover:-translate-y-0.5 hover:shadow-lg"
+                className="bg-brand-dark border-brand-dark inline-flex items-center justify-center gap-2 rounded-xl border-2 px-7 py-3.5 text-[15px] font-bold text-white transition-all hover:-translate-y-0.5 hover:border-[#5e4535] hover:bg-[#5e4535] hover:shadow-lg"
               >
                 Go to Profile
               </Link>
             </>
           ) : (
             <>
-              <h3 className="font-heading text-xl font-semibold text-brand-dark mb-3">
+              <h3 className="font-heading text-brand-dark mb-3 text-xl font-semibold">
                 Sign in to continue
               </h3>
-              <p className="text-[15px] leading-[1.7] text-brand-dark/75 mb-6">
+              <p className="text-brand-dark/75 mb-6 text-[15px] leading-[1.7]">
                 Sign in with an account that has a verified date of birth to access this 18+ event.
               </p>
               <Link
                 href={`/login?next=/event/${eventId}`}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-dark border-2 border-brand-dark px-7 py-3.5 text-[15px] font-bold text-white transition-all hover:bg-[#5e4535] hover:border-[#5e4535] hover:-translate-y-0.5 hover:shadow-lg"
+                className="bg-brand-dark border-brand-dark inline-flex items-center justify-center gap-2 rounded-xl border-2 px-7 py-3.5 text-[15px] font-bold text-white transition-all hover:-translate-y-0.5 hover:border-[#5e4535] hover:bg-[#5e4535] hover:shadow-lg"
               >
                 Sign In
               </Link>
@@ -235,7 +242,7 @@ function AgeGate({
 
         <Link
           href="/"
-          className="inline-flex items-center gap-1.5 text-[15px] font-bold text-brand-mid hover:text-brand-dark transition-colors mt-6"
+          className="text-brand-mid hover:text-brand-dark mt-6 inline-flex items-center gap-1.5 text-[15px] font-bold transition-colors"
         >
           <ArrowLeft className="size-4" />
           Back to Discovery
@@ -259,16 +266,13 @@ function LimitedView({
   const [requestState, setRequestState] = useState<"idle" | "loading" | "error">("idle");
   const isPendingRequest =
     !isGuest &&
-    (
-      event.access_request_status === "pending" ||
-      isAccessRequestPending(event.id, currentUserId)
-    );
+    (event.access_request_status === "pending" || isAccessRequestPending(event.id, currentUserId));
   const accessStatus: "idle" | "loading" | "pending" | "error" =
     requestState === "loading" || requestState === "error"
       ? requestState
       : isPendingRequest
-      ? "pending"
-      : "idle";
+        ? "pending"
+        : "idle";
 
   useEffect(() => {
     if (isGuest || !currentUserId) {
@@ -316,22 +320,22 @@ function LimitedView({
   }
 
   return (
-    <div className="max-w-screen-xl mx-auto px-10 py-16 flex flex-col items-center gap-6 text-center">
+    <div className="mx-auto flex max-w-screen-xl flex-col items-center gap-6 px-10 py-16 text-center">
       {/* Faint background code */}
-      <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 font-heading text-[200px] font-bold text-brand-dark/[0.06] select-none pointer-events-none leading-none z-0 max-sm:text-[120px]">
+      <span className="font-heading text-brand-dark/[0.06] pointer-events-none absolute top-1/2 left-1/2 z-0 -translate-x-1/2 -translate-y-1/2 text-[200px] leading-none font-bold select-none max-sm:text-[120px]">
         403
       </span>
 
-      <div className="relative z-[1] flex size-16 items-center justify-center rounded-full bg-brand-mid-alpha">
+      <div className="bg-brand-mid-alpha relative z-[1] flex size-16 items-center justify-center rounded-full">
         {isGuest ? (
-          <Users className="size-8 text-brand-mid" />
+          <Users className="text-brand-mid size-8" />
         ) : (
-          <Lock className="size-8 text-brand-mid" />
+          <Lock className="text-brand-mid size-8" />
         )}
       </div>
 
       <div className="relative z-[1]">
-        <div className="flex flex-wrap gap-2 justify-center mb-3">
+        <div className="mb-3 flex flex-wrap justify-center gap-2">
           {event.categories.map((cat) => (
             <span
               key={cat.id}
@@ -341,29 +345,29 @@ function LimitedView({
             </span>
           ))}
         </div>
-        <h1 className="font-heading text-brand-dark text-2xl font-bold mb-2">{event.title}</h1>
+        <h1 className="font-heading text-brand-dark mb-2 text-2xl font-bold">{event.title}</h1>
         <p className="text-brand-mid text-sm font-semibold">
           {formatDate(event.start_datetime)} · {formatTime(event.start_datetime)}
         </p>
       </div>
 
-      <div className="relative z-[1] bg-brand-surface rounded-xl border border-brand-mid-alpha px-6 py-8 w-full max-w-lg">
+      <div className="bg-brand-surface border-brand-mid-alpha relative z-[1] w-full max-w-lg rounded-xl border px-6 py-8">
         {isGuest ? (
           <>
-            <p className="text-brand-dark font-semibold mb-1">Sign in for the full experience</p>
-            <p className="text-brand-mid text-sm mb-5">
+            <p className="text-brand-dark mb-1 font-semibold">Sign in for the full experience</p>
+            <p className="text-brand-mid mb-5 text-sm">
               View the description, location, attendees, and interact with this event.
             </p>
-            <div className="flex gap-3 justify-center">
+            <div className="flex justify-center gap-3">
               <Link
                 href={`/login?next=/event/${event.id}`}
-                className="rounded-lg bg-brand-dark px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-dark/85"
+                className="bg-brand-dark hover:bg-brand-dark/85 rounded-lg px-5 py-2.5 text-sm font-bold text-white transition-colors"
               >
                 Sign In
               </Link>
               <Link
                 href={`/register?next=/event/${event.id}`}
-                className="rounded-lg border border-brand-mid-alpha px-5 py-2.5 text-sm font-bold text-brand-dark transition-colors hover:bg-brand-mid-alpha"
+                className="border-brand-mid-alpha text-brand-dark hover:bg-brand-mid-alpha rounded-lg border px-5 py-2.5 text-sm font-bold transition-colors"
               >
                 Sign Up
               </Link>
@@ -371,30 +375,32 @@ function LimitedView({
           </>
         ) : event.status === "cancelled" ? (
           <>
-            <XCircle className="size-6 text-red-500 mx-auto mb-3 opacity-70" />
-            <p className="text-brand-dark font-semibold mb-1">This event has been cancelled</p>
+            <XCircle className="mx-auto mb-3 size-6 text-red-500 opacity-70" />
+            <p className="text-brand-dark mb-1 font-semibold">This event has been cancelled</p>
             <p className="text-brand-mid text-sm">
               The host cancelled this event. It is no longer taking place.
             </p>
           </>
         ) : (
           <>
-            <Lock className="size-6 text-brand-mid mx-auto mb-3 opacity-50" />
-            <p className="text-brand-dark font-semibold mb-1">This is a private event</p>
-            <p className="text-brand-mid text-sm mb-5">
+            <Lock className="text-brand-mid mx-auto mb-3 size-6 opacity-50" />
+            <p className="text-brand-dark mb-1 font-semibold">This is a private event</p>
+            <p className="text-brand-mid mb-5 text-sm">
               Only the host and invited attendees can view the full details.
             </p>
 
             {accessStatus === "pending" ? (
-              <div className="flex items-center justify-center gap-2 rounded-lg bg-brand-dark/10 px-5 py-3 text-sm font-bold text-brand-dark">
+              <div className="bg-brand-dark/10 text-brand-dark flex items-center justify-center gap-2 rounded-lg px-5 py-3 text-sm font-bold">
                 <Clock className="size-4" />
                 Access Requested — Pending
               </div>
             ) : (
               <button
-                onClick={() => { void handleRequestAccess(); }}
+                onClick={() => {
+                  void handleRequestAccess();
+                }}
                 disabled={accessStatus === "loading"}
-                className="w-full flex items-center justify-center gap-2 rounded-lg bg-brand-dark px-5 py-3 text-sm font-bold text-white transition-all hover:bg-brand-dark/85 hover:-translate-y-0.5 hover:shadow-lg cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                className="bg-brand-dark hover:bg-brand-dark/85 flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg px-5 py-3 text-sm font-bold text-white transition-all hover:-translate-y-0.5 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {accessStatus === "loading" ? (
                   <Loader2 className="size-4 animate-spin" />
@@ -405,7 +411,7 @@ function LimitedView({
               </button>
             )}
             {accessStatus === "error" && (
-              <p className="text-red-500 text-xs mt-2">Failed to send request. Please try again.</p>
+              <p className="mt-2 text-xs text-red-500">Failed to send request. Please try again.</p>
             )}
           </>
         )}
@@ -414,7 +420,7 @@ function LimitedView({
       {/* Back to discovery */}
       <Link
         href="/"
-        className="relative z-[1] inline-flex items-center gap-1.5 text-[15px] font-bold text-brand-mid hover:text-brand-dark transition-colors mt-2"
+        className="text-brand-mid hover:text-brand-dark relative z-[1] mt-2 inline-flex items-center gap-1.5 text-[15px] font-bold transition-colors"
       >
         <ArrowLeft className="size-4" />
         Back to Discovery
@@ -440,15 +446,21 @@ function FullView({
 }) {
   const router = useRouter();
 
-  const { bookmarked, bookmarkCount, going: isGoing, goingCount, toggleBookmark, toggleGoing } =
-    useEventInteraction({
-      eventId: event.id,
-      initialBookmarked: event.is_bookmarked === true,
-      initialBookmarkCount: event.bookmark_count ?? 0,
-      initialGoing: event.attendance_status === "going",
-      initialGoingCount: event.going_count ?? 0,
-      fresh: true, // Detail page has fresh server data — overwrite stale card state
-    });
+  const {
+    bookmarked,
+    bookmarkCount,
+    going: isGoing,
+    goingCount,
+    toggleBookmark,
+    toggleGoing,
+  } = useEventInteraction({
+    eventId: event.id,
+    initialBookmarked: event.is_bookmarked === true,
+    initialBookmarkCount: event.bookmark_count ?? 0,
+    initialGoing: event.attendance_status === "going",
+    initialGoingCount: event.going_count ?? 0,
+    fresh: true, // Detail page has fresh server data — overwrite stale card state
+  });
 
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
@@ -514,16 +526,22 @@ function FullView({
   const isActive = status === "published" || status === "updated";
   const isCancelled = status === "cancelled";
   const isEnded = status === "ended";
-  const isFull = event.is_full === true || (event.attendee_limit != null && goingCount >= event.attendee_limit);
-  const primaryLocation = event.locations && event.locations.length > 0
-    ? (event.locations.find((l) => l.is_primary) ?? event.locations[0])
-    : null;
+  const isFull =
+    event.is_full === true || (event.attendee_limit != null && goingCount >= event.attendee_limit);
+  const primaryLocation =
+    event.locations && event.locations.length > 0
+      ? (event.locations.find((l) => l.is_primary) ?? event.locations[0])
+      : null;
 
   // Fetch invites & access requests for host on private events
   useEffect(() => {
     if (!isHost || event.visibility !== "private") return;
-    void fetchInvites(event.id).then(setInvites).catch(() => {});
-    void fetchAccessRequests(event.id).then(setAccessRequests).catch(() => {});
+    void fetchInvites(event.id)
+      .then(setInvites)
+      .catch(() => {});
+    void fetchAccessRequests(event.id)
+      .then(setAccessRequests)
+      .catch(() => {});
   }, [isHost, event.id, event.visibility]);
 
   async function handleCancel() {
@@ -550,13 +568,16 @@ function FullView({
         setCopiedToken(invite.token);
         setTimeout(() => setCopiedToken(null), 2000);
       } else {
-        setInviteNotice("Invite created, but automatic copy was blocked. Copy the link manually below.");
+        setInviteNotice(
+          "Invite created, but automatic copy was blocked. Copy the link manually below.",
+        );
         setManualInviteUrl(invite.invite_url);
       }
     } catch (err: unknown) {
-      const message = err && typeof err === "object" && "message" in err
-        ? (err as { message: string }).message
-        : "Failed to generate invite link. Please try again.";
+      const message =
+        err && typeof err === "object" && "message" in err
+          ? (err as { message: string }).message
+          : "Failed to generate invite link. Please try again.";
       setInviteError(message);
     } finally {
       setInviteLoading(false);
@@ -591,26 +612,26 @@ function FullView({
   // ── Info banner (full-width strip above back link) ───────────────────────────
 
   const infoBanner = isCancelled ? (
-    <div className="flex items-center gap-2 px-10 py-2.5 text-sm font-bold text-white bg-danger">
+    <div className="bg-danger flex items-center gap-2 px-10 py-2.5 text-sm font-bold text-white">
       <XCircle className="size-4 shrink-0" />
       This event has been cancelled by the host.
     </div>
   ) : isEnded ? (
-    <div className="flex items-center gap-2 px-10 py-2.5 text-sm font-bold text-brand-dark bg-brand-surface">
+    <div className="text-brand-dark bg-brand-surface flex items-center gap-2 px-10 py-2.5 text-sm font-bold">
       <Clock className="size-4 shrink-0" />
       This event has ended.
     </div>
   ) : isFull ? (
-    <div className="flex items-center gap-2 px-10 py-2.5 text-sm font-bold text-white bg-warning">
+    <div className="bg-warning flex items-center gap-2 px-10 py-2.5 text-sm font-bold text-white">
       <Users className="size-4 shrink-0" />
       This event is fully booked. Bookmark it to get notified if a spot opens up.
     </div>
   ) : !isAuthenticated ? (
-    <div className="flex items-center gap-2 px-10 py-2.5 text-sm font-bold text-brand-dark bg-brand-surface">
+    <div className="text-brand-dark bg-brand-surface flex items-center gap-2 px-10 py-2.5 text-sm font-bold">
       <Info className="size-4 shrink-0" />
       <span>
         You are browsing as a guest.{" "}
-        <Link href={`/login?next=/event/${event.id}`} className="underline hover:text-brand-mid">
+        <Link href={`/login?next=/event/${event.id}`} className="hover:text-brand-mid underline">
           Sign in
         </Link>{" "}
         to interact with this event.
@@ -627,17 +648,19 @@ function FullView({
         confirmLabel="Yes, Cancel Event"
         confirmVariant="danger"
         loading={cancelLoading}
-        onConfirm={() => { void handleCancel(); }}
+        onConfirm={() => {
+          void handleCancel();
+        }}
         onCancel={() => setShowCancelDialog(false)}
       />
 
       {infoBanner}
 
       {/* Back link — full width */}
-      <div className="max-w-screen-xl mx-auto">
+      <div className="mx-auto max-w-screen-xl">
         <Link
           href="/"
-          className="inline-flex items-center gap-1.5 px-4 py-4 sm:px-6 lg:px-10 text-sm font-bold text-brand-mid hover:text-brand-dark transition-colors"
+          className="text-brand-mid hover:text-brand-dark inline-flex items-center gap-1.5 px-4 py-4 text-sm font-bold transition-colors sm:px-6 lg:px-10"
         >
           <ArrowLeft className="size-4" />
           Back to Discovery
@@ -647,7 +670,7 @@ function FullView({
       {/* Main content */}
       <div
         className={cn(
-          "max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-10 pb-16 flex gap-8 lg:h-[calc(100vh-120px)] overflow-x-hidden",
+          "mx-auto flex max-w-screen-xl gap-8 overflow-x-hidden px-4 pb-16 sm:px-6 lg:h-[calc(100vh-120px)] lg:px-10",
           isCancelled && "opacity-70",
         )}
       >
@@ -656,569 +679,601 @@ function FullView({
           {/* Scroll indicator track */}
           <div
             ref={leftTrackRef}
-            className="pointer-events-none absolute right-0 top-0 bottom-0 w-[3px] z-10 transition-opacity duration-300"
+            className="pointer-events-none absolute top-0 right-0 bottom-0 z-10 w-[3px] transition-opacity duration-300"
             style={{ opacity: 0 }}
           >
-            <div className="absolute inset-x-0 top-0 bottom-0 bg-brand-mid/10 rounded-full" />
+            <div className="bg-brand-mid/10 absolute inset-x-0 top-0 bottom-0 rounded-full" />
             <div
-              className="absolute inset-x-0 bg-brand-mid/40 rounded-full transition-all duration-100"
+              className="bg-brand-mid/40 absolute inset-x-0 rounded-full transition-all duration-100"
               style={{ top: "var(--thumb-top, 0%)", height: "var(--thumb-height, 20%)" }}
             />
           </div>
-        <div ref={leftColRef} className="lg:h-full overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {/* Carousel */}
-          <div className="mb-6">
-            <ImageCarousel images={event.images ?? []} title={event.title} />
-          </div>
+          <div
+            ref={leftColRef}
+            className="overflow-y-auto [scrollbar-width:none] lg:h-full [&::-webkit-scrollbar]:hidden"
+          >
+            {/* Carousel */}
+            <div className="mb-6">
+              <ImageCarousel images={event.images ?? []} title={event.title} />
+            </div>
 
-          {/* Title + badges */}
-          <div className="mb-4">
-            <div className="flex flex-wrap items-center gap-3 mb-2">
-              <h1 className="font-heading text-brand-dark text-[24px] sm:text-[28px] lg:text-[32px] font-bold leading-tight">
-                {event.title}
-              </h1>
-              {event.visibility === "private" && <StatusBadge variant="private" />}
-              <StatusBadge variant={eventStatusVariant(status, isFull)} />
-              {event.is_age_restricted && (
-                <span className="inline-flex items-center rounded-full bg-brand-dark px-3 py-1 text-[11px] font-extrabold uppercase tracking-wide text-white">
-                  18+
-                </span>
-              )}
-            </div>
-            {/* Categories */}
-            <div className="flex flex-wrap gap-2 mb-2">
-              {(event.categories ?? []).map((cat) => (
-                <span
-                  key={cat.id}
-                  className="bg-brand-dark/10 text-brand-dark rounded-full px-3 py-1 text-[12px] font-bold"
-                >
-                  {cat.name}
-                </span>
-              ))}
-            </div>
-            {/* Meta: Created by · Posted X days ago */}
-            <p className="text-brand-mid text-sm font-semibold mt-2">
-              {host && (
-                <>
-                  Created by{" "}
-                  <Link
-                    href={`/profile/${event.host_id}`}
-                    className="text-brand-dark font-bold hover:underline"
+            {/* Title + badges */}
+            <div className="mb-4">
+              <div className="mb-2 flex flex-wrap items-center gap-3">
+                <h1 className="font-heading text-brand-dark text-[24px] leading-tight font-bold sm:text-[28px] lg:text-[32px]">
+                  {event.title}
+                </h1>
+                {event.visibility === "private" && <StatusBadge variant="private" />}
+                <StatusBadge variant={eventStatusVariant(status, isFull)} />
+                {event.is_age_restricted && (
+                  <span className="bg-brand-dark inline-flex items-center rounded-full px-3 py-1 text-[11px] font-extrabold tracking-wide text-white uppercase">
+                    18+
+                  </span>
+                )}
+              </div>
+              {/* Categories */}
+              <div className="mb-2 flex flex-wrap gap-2">
+                {(event.categories ?? []).map((cat) => (
+                  <span
+                    key={cat.id}
+                    className="bg-brand-dark/10 text-brand-dark rounded-full px-3 py-1 text-[12px] font-bold"
                   >
-                    {host.username}
-                  </Link>
-                  {" · "}
-                </>
-              )}
-              Posted {(() => {
-                const now = new Date();
-                const created = new Date(event.created_at);
-                const days = Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24));
-                if (days === 0) return "today";
-                if (days === 1) return "1 day ago";
-                return `${days} days ago`;
-              })()}
-            </p>
-          </div>
-
-          {/* Description */}
-          <section className="mb-6">
-            <h3 className="font-heading text-brand-dark text-lg font-semibold mb-3">
-              About this event
-            </h3>
-            <p className="text-[15px] leading-[1.7] text-brand-dark whitespace-pre-wrap break-words">
-              {event.description}
-            </p>
-          </section>
-
-          {/* Equipment requirements */}
-          {(event.equipment_requirements ?? []).length > 0 && (
-            <section className="mb-6">
-              <h3 className="font-heading text-brand-dark text-lg font-semibold mb-3">
-                What to bring
-              </h3>
-              <div className="space-y-2">
-                {(event.equipment_requirements ?? []).map((eq) => (
-                  <div key={eq.id} className="flex items-center gap-2 text-sm text-brand-dark">
-                    {eq.is_required ? (
-                      <Check className="size-4 text-brand-mid shrink-0" />
-                    ) : (
-                      <span className="inline-flex size-4 shrink-0 items-center justify-center rounded-full border-2 border-brand-mid-alpha text-[9px] text-brand-mid">○</span>
-                    )}
-                    <span>
-                      {eq.item_name}
-                      {!eq.is_required && (
-                        <span className="ml-1 text-brand-mid/70">(optional)</span>
-                      )}
-                    </span>
-                  </div>
+                    {cat.name}
+                  </span>
                 ))}
               </div>
-            </section>
-          )}
-
-          {/* Venue metadata */}
-          {event.venue_metadata && (
-            <section className="mb-8">
-              <h3 className="font-heading text-brand-dark text-lg font-semibold mb-3">
-                Venue details
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {event.venue_metadata.price && (
-                  <div className="flex items-center gap-2 text-sm text-brand-dark">
-                    <span className="text-base">🎟️</span>
-                    {event.venue_metadata.price}
-                  </div>
+              {/* Meta: Created by · Posted X days ago */}
+              <p className="text-brand-mid mt-2 text-sm font-semibold">
+                {host && (
+                  <>
+                    Created by{" "}
+                    <Link
+                      href={`/profile/${event.host_id}`}
+                      className="text-brand-dark font-bold hover:underline"
+                    >
+                      {host.username}
+                    </Link>
+                    {" · "}
+                  </>
                 )}
-                {event.venue_metadata.language && (
-                  <div className="flex items-center gap-2 text-sm text-brand-dark">
-                    <Globe className="size-4 text-brand-mid" />
-                    {event.venue_metadata.language}
-                  </div>
-                )}
-                {event.venue_metadata.wheelchair_access && (
-                  <div className="flex items-center gap-2 text-sm text-brand-dark">
-                    <Accessibility className="size-4 text-brand-mid" />
-                    Wheelchair accessible
-                  </div>
-                )}
-                {event.venue_metadata.accessible_restroom && (
-                  <div className="flex items-center gap-2 text-sm text-brand-dark">
-                    <Shield className="size-4 text-brand-mid" />
-                    Accessible restroom
-                  </div>
-                )}
-                {event.venue_metadata.elevator_available && (
-                  <div className="flex items-center gap-2 text-sm text-brand-dark">
-                    <Car className="size-4 text-brand-mid" />
-                    Elevator available
-                  </div>
-                )}
-                {event.venue_metadata.seating_available && (
-                  <div className="flex items-center gap-2 text-sm text-brand-dark">
-                    <Users className="size-4 text-brand-mid" />
-                    Seating available
-                  </div>
-                )}
-                {event.venue_metadata.captions_support && (
-                  <div className="flex items-center gap-2 text-sm text-brand-dark">
-                    <Info className="size-4 text-brand-mid" />
-                    Captions support
-                  </div>
-                )}
-                {event.venue_metadata.quiet_friendly && (
-                  <div className="flex items-center gap-2 text-sm text-brand-dark">
-                    <Info className="size-4 text-brand-mid" />
-                    Quiet-friendly
-                  </div>
-                )}
-              </div>
-              {event.venue_metadata.health_requirements && (
-                <p className="mt-3 text-sm text-brand-mid">
-                  {event.venue_metadata.health_requirements}
-                </p>
-              )}
-            </section>
-          )}
-
-          {/* Comments */}
-          {!isCancelled ? (
-            <section>
-              <CommentSection
-                eventId={event.id}
-                isAuthenticated={isAuthenticated}
-                currentUserId={currentUserId}
-                scrollRef={commentScrollRef}
-                disabled={!isActive}
-                disabledReason={!isActive ? "Comments are closed for this event" : undefined}
-              />
-            </section>
-          ) : (
-            <div className="flex items-center gap-2 text-sm text-brand-mid py-4">
-              <MessageSquareOff className="size-4" />
-              Comments are closed for cancelled events.
+                Posted{" "}
+                {(() => {
+                  const now = new Date();
+                  const created = new Date(event.created_at);
+                  const days = Math.floor(
+                    (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24),
+                  );
+                  if (days === 0) return "today";
+                  if (days === 1) return "1 day ago";
+                  return `${days} days ago`;
+                })()}
+              </p>
             </div>
-          )}
+
+            {/* Description */}
+            <section className="mb-6">
+              <h3 className="font-heading text-brand-dark mb-3 text-lg font-semibold">
+                About this event
+              </h3>
+              <p className="text-brand-dark text-[15px] leading-[1.7] break-words whitespace-pre-wrap">
+                {event.description}
+              </p>
+            </section>
+
+            {/* Equipment requirements */}
+            {(event.equipment_requirements ?? []).length > 0 && (
+              <section className="mb-6">
+                <h3 className="font-heading text-brand-dark mb-3 text-lg font-semibold">
+                  What to bring
+                </h3>
+                <div className="space-y-2">
+                  {(event.equipment_requirements ?? []).map((eq) => (
+                    <div key={eq.id} className="text-brand-dark flex items-center gap-2 text-sm">
+                      {eq.is_required ? (
+                        <Check className="text-brand-mid size-4 shrink-0" />
+                      ) : (
+                        <span className="border-brand-mid-alpha text-brand-mid inline-flex size-4 shrink-0 items-center justify-center rounded-full border-2 text-[9px]">
+                          ○
+                        </span>
+                      )}
+                      <span>
+                        {eq.item_name}
+                        {!eq.is_required && (
+                          <span className="text-brand-mid/70 ml-1">(optional)</span>
+                        )}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Venue metadata */}
+            {event.venue_metadata && (
+              <section className="mb-8">
+                <h3 className="font-heading text-brand-dark mb-3 text-lg font-semibold">
+                  Venue details
+                </h3>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {event.venue_metadata.price && (
+                    <div className="text-brand-dark flex items-center gap-2 text-sm">
+                      <span className="text-base">🎟️</span>
+                      {event.venue_metadata.price}
+                    </div>
+                  )}
+                  {event.venue_metadata.language && (
+                    <div className="text-brand-dark flex items-center gap-2 text-sm">
+                      <Globe className="text-brand-mid size-4" />
+                      {event.venue_metadata.language}
+                    </div>
+                  )}
+                  {event.venue_metadata.wheelchair_access && (
+                    <div className="text-brand-dark flex items-center gap-2 text-sm">
+                      <Accessibility className="text-brand-mid size-4" />
+                      Wheelchair accessible
+                    </div>
+                  )}
+                  {event.venue_metadata.accessible_restroom && (
+                    <div className="text-brand-dark flex items-center gap-2 text-sm">
+                      <Shield className="text-brand-mid size-4" />
+                      Accessible restroom
+                    </div>
+                  )}
+                  {event.venue_metadata.elevator_available && (
+                    <div className="text-brand-dark flex items-center gap-2 text-sm">
+                      <Car className="text-brand-mid size-4" />
+                      Elevator available
+                    </div>
+                  )}
+                  {event.venue_metadata.seating_available && (
+                    <div className="text-brand-dark flex items-center gap-2 text-sm">
+                      <Users className="text-brand-mid size-4" />
+                      Seating available
+                    </div>
+                  )}
+                  {event.venue_metadata.captions_support && (
+                    <div className="text-brand-dark flex items-center gap-2 text-sm">
+                      <Info className="text-brand-mid size-4" />
+                      Captions support
+                    </div>
+                  )}
+                  {event.venue_metadata.quiet_friendly && (
+                    <div className="text-brand-dark flex items-center gap-2 text-sm">
+                      <Info className="text-brand-mid size-4" />
+                      Quiet-friendly
+                    </div>
+                  )}
+                </div>
+                {event.venue_metadata.health_requirements && (
+                  <p className="text-brand-mid mt-3 text-sm">
+                    {event.venue_metadata.health_requirements}
+                  </p>
+                )}
+              </section>
+            )}
+
+            {/* Comments */}
+            {!isCancelled ? (
+              <section>
+                <CommentSection
+                  eventId={event.id}
+                  isAuthenticated={isAuthenticated}
+                  currentUserId={currentUserId}
+                  scrollRef={commentScrollRef}
+                  disabled={!isActive}
+                  disabledReason={!isActive ? "Comments are closed for this event" : undefined}
+                />
+              </section>
+            ) : (
+              <div className="text-brand-mid flex items-center gap-2 py-4 text-sm">
+                <MessageSquareOff className="size-4" />
+                Comments are closed for cancelled events.
+              </div>
+            )}
+          </div>
         </div>
-        </div>{/* close relative wrapper for left column */}
+        {/* close relative wrapper for left column */}
 
         {/* ── Right sidebar ────────────────────────────────────────────── */}
-        <div className="hidden lg:flex relative flex-[0_0_calc(35%-2rem)] min-w-0">
+        <div className="relative hidden min-w-0 flex-[0_0_calc(35%-2rem)] lg:flex">
           {/* Scroll indicator track */}
           <div
             ref={rightTrackRef}
-            className="pointer-events-none absolute right-0 top-0 bottom-0 w-[3px] z-10 transition-opacity duration-300"
+            className="pointer-events-none absolute top-0 right-0 bottom-0 z-10 w-[3px] transition-opacity duration-300"
             style={{ opacity: 0 }}
           >
-            <div className="absolute inset-x-0 top-0 bottom-0 bg-brand-mid/10 rounded-full" />
+            <div className="bg-brand-mid/10 absolute inset-x-0 top-0 bottom-0 rounded-full" />
             <div
-              className="absolute inset-x-0 bg-brand-mid/40 rounded-full transition-all duration-100"
+              className="bg-brand-mid/40 absolute inset-x-0 rounded-full transition-all duration-100"
               style={{ top: "var(--thumb-top, 0%)", height: "var(--thumb-height, 20%)" }}
             />
           </div>
-        <div ref={rightColRef} className="h-full w-full overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex-col gap-4 flex">
-          {/* Action buttons */}
-          <div className="bg-white rounded-xl border border-brand-mid-alpha p-5 space-y-2">
-            {isHost ? (
-              <>
-                <p className="text-[11px] font-bold uppercase tracking-widest text-brand-mid mb-3">
-                  Host Actions
-                </p>
-                <button
-                  onClick={() => router.push(`/edit-event/${event.id}`)}
-                  disabled={isCancelled || isEnded}
-                  className="w-full flex items-center justify-center gap-2 rounded-[10px] border-2 border-brand-dark py-3 text-[15px] font-bold text-brand-dark transition-colors hover:bg-brand-dark/10 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <Edit className="size-[18px]" />
-                  Edit Event
-                </button>
-                {isActive && (
-                  <button
-                    onClick={() => setShowCancelDialog(true)}
-                    className="w-full flex items-center justify-center gap-2 rounded-[10px] border-2 border-danger py-3 text-[15px] font-bold text-danger transition-colors hover:bg-danger/8 cursor-pointer"
-                  >
-                    <XCircle className="size-[18px]" />
-                    Cancel Event
-                  </button>
-                )}
-                <Link
-                  href={`/event/${event.id}/attendees`}
-                  className="w-full flex items-center justify-center gap-2 rounded-[10px] bg-brand-dark py-3 text-[15px] font-bold text-white transition-colors hover:bg-brand-dark/85"
-                >
-                  <Users className="size-[18px]" />
-                  Manage Attendees
-                </Link>
-              </>
-            ) : isAuthenticated ? (
-              <>
-                <button
-                  onClick={() => { void toggleGoing(); }}
-                  onMouseDown={() => setGoingPressed(true)}
-                  onMouseUp={() => setGoingPressed(false)}
-                  onMouseLeave={() => setGoingPressed(false)}
-                  disabled={!isActive || (isFull && !isGoing)}
-                  className={cn(
-                    "w-full flex items-center justify-center gap-2 rounded-[10px] py-3 text-[15px] font-bold transition-all duration-150 cursor-pointer",
-                    isGoing
-                      ? "bg-brand-dark text-white hover:bg-brand-dark/80 hover:shadow-md"
-                      : !isActive || (isFull && !isGoing)
-                      ? "bg-brand-mid-alpha text-brand-dark/40 !cursor-not-allowed"
-                      : "bg-brand-mid text-white hover:bg-brand-mid/80 hover:shadow-md",
-                    goingPressed && !(!isActive || (isFull && !isGoing))
-                      && "scale-[0.97] shadow-none",
-                  )}
-                >
-                  <Check className="size-[18px]" />
-                  {isGoing
-                    ? "Attended ✓"
-                    : isFull
-                    ? "Sold Out"
-                    : isEnded
-                    ? "Event has ended"
-                    : isCancelled
-                    ? "Event Cancelled"
-                    : "Going"}
-                </button>
-                <button
-                  onClick={() => { void toggleBookmark(); }}
-                  onMouseDown={() => setBookmarkPressed(true)}
-                  onMouseUp={() => setBookmarkPressed(false)}
-                  onMouseLeave={() => setBookmarkPressed(false)}
-                  className={cn(
-                    "w-full flex items-center justify-center gap-2 rounded-[10px] border-2 py-3 text-[15px] font-bold transition-all duration-150 cursor-pointer",
-                    bookmarked
-                      ? "bg-brand-dark border-brand-dark text-white hover:bg-brand-dark/80 hover:shadow-md"
-                      : "border-brand-dark text-brand-dark hover:bg-brand-dark/10 hover:shadow-md",
-                    bookmarkPressed && "scale-[0.97] shadow-none",
-                  )}
-                >
-                  {bookmarked ? <BookmarkCheck className="size-[18px]" /> : <Bookmark className="size-[18px]" />}
-                  {bookmarked ? "Saved" : "Bookmark"}
-                </button>
-                <p className="text-[12px] text-brand-mid text-center">
-                  {goingCount} going · {bookmarkCount} bookmarked
-                </p>
-              </>
-            ) : (
-              <>
-                <Link
-                  href={`/login?next=/event/${event.id}`}
-                  className="w-full flex items-center justify-center gap-2 rounded-[10px] bg-brand-mid-alpha py-3 text-[15px] font-bold text-brand-dark/60 transition-all duration-150 hover:bg-brand-mid/20 hover:text-brand-dark hover:shadow-md active:scale-[0.97]"
-                >
-                  Sign in to mark as Going
-                </Link>
-                <Link
-                  href={`/login?next=/event/${event.id}`}
-                  className="w-full flex items-center justify-center gap-2 rounded-[10px] border-2 border-brand-mid-alpha py-3 text-[15px] font-bold text-brand-dark/60 transition-all duration-150 hover:bg-brand-mid/10 hover:text-brand-dark hover:shadow-md active:scale-[0.97]"
-                >
-                  Sign in to Bookmark
-                </Link>
-                <p className="text-[12px] text-brand-mid text-center">
-                  {goingCount} going · {bookmarkCount} bookmarked
-                </p>
-              </>
-            )}
-          </div>
-
-          {/* Invite management — host only, private events */}
-          {isHost && event.visibility === "private" && (
-            <div className="bg-white rounded-xl border border-brand-mid-alpha p-5 space-y-4">
-              <p className="text-[11px] font-bold uppercase tracking-widest text-brand-mid">
-                Manage Invites
-              </p>
-
-              {/* Generate invite link */}
-              <button
-                onClick={() => { void handleCreateInvite(); }}
-                disabled={inviteLoading || !isActive}
-                className="w-full flex items-center justify-center gap-2 rounded-[10px] border-2 border-brand-dark py-3 text-[15px] font-bold text-brand-dark transition-colors hover:bg-brand-dark/10 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                {inviteLoading ? (
-                  <Loader2 className="size-[18px] animate-spin" />
-                ) : (
-                  <Link2 className="size-[18px]" />
-                )}
-                {inviteLoading ? "Generating…" : "Generate Invite Link"}
-              </button>
-              {inviteError && (
-                <p className="text-[12px] text-red-500">{inviteError}</p>
-              )}
-              {inviteNotice && (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-                  <p className="text-[12px] font-medium text-amber-700">{inviteNotice}</p>
-                </div>
-              )}
-              {manualInviteUrl && (
-                <div className="space-y-2 rounded-lg bg-brand-bg px-3 py-3">
-                  <p className="text-[11px] font-bold uppercase tracking-widest text-brand-mid">
-                    Manual Copy
-                  </p>
-                  <input
-                    readOnly
-                    value={manualInviteUrl}
-                    onFocus={(e) => e.currentTarget.select()}
-                    className="w-full rounded-lg border border-brand-mid-alpha bg-white px-3 py-2 text-[12px] text-brand-dark outline-none"
-                  />
-                </div>
-              )}
-
-              {/* Invite list */}
-              {invites.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-[12px] font-bold text-brand-mid">
-                    {invites.length} invite{invites.length !== 1 ? "s" : ""} created
-                  </p>
-                  {invites.slice(0, 5).map((inv) => (
-                    <div
-                      key={inv.id}
-                      className="flex items-center justify-between gap-2 rounded-lg bg-brand-bg px-3 py-2"
-                    >
-                      <span className="text-[13px] text-brand-dark font-mono truncate flex-1">
-                        …{inv.token.slice(-8)}
-                      </span>
-                      <span className={cn(
-                        "text-[11px] font-bold",
-                        inv.max_uses !== null && inv.use_count >= inv.max_uses
-                          ? "text-brand-mid"
-                          : "text-green-600",
-                      )}>
-                        {inv.max_uses !== null && inv.use_count >= inv.max_uses
-                          ? `Used (${inv.use_count})`
-                          : inv.max_uses !== null
-                          ? `Active (${inv.use_count}/${inv.max_uses})`
-                          : `Active (${inv.use_count})`}
-                      </span>
-                      <button
-                        onClick={() => { void handleCopyInviteLink(inv); }}
-                        className="p-1 rounded hover:bg-brand-mid-alpha transition-colors"
-                        title="Copy invite link"
-                      >
-                        {copiedToken === inv.token ? (
-                          <CheckCircle className="size-4 text-green-600" />
-                        ) : (
-                          <Copy className="size-4 text-brand-mid" />
-                        )}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Pending access requests */}
-              {accessRequests.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-[12px] font-bold text-brand-dark">
-                    Pending Requests ({accessRequests.length})
-                  </p>
-                  {accessRequests.map((req) => (
-                    <div
-                      key={req.id}
-                      className="flex items-center justify-between gap-2 rounded-lg bg-brand-bg px-3 py-2"
-                    >
-                      <span className="text-[13px] font-bold text-brand-dark truncate flex-1">
-                        {req.username}
-                      </span>
-                      <div className="flex gap-1.5">
-                        <button
-                          onClick={() => { void handleAccessRequestAction(req.id, "approved"); }}
-                          disabled={requestActionLoading === req.id}
-                          className="rounded-md bg-green-600 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-green-700 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        >
-                          {requestActionLoading === req.id ? "…" : "Approve"}
-                        </button>
-                        <button
-                          onClick={() => { void handleAccessRequestAction(req.id, "rejected"); }}
-                          disabled={requestActionLoading === req.id}
-                          className="rounded-md bg-red-500 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-red-600 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        >
-                          Reject
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Host card — surface background */}
-          {host ? (
-            <div className="bg-brand-surface rounded-xl border border-brand-mid-alpha p-5">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="bg-brand-mid flex size-16 shrink-0 items-center justify-center rounded-full text-[22px] font-bold text-white">
-                  {host.username.slice(0, 2).toUpperCase()}
-                </div>
-                <div>
-                  <p className="font-bold text-[16px] text-brand-dark">{host.username}</p>
-                  <p className="text-[13px] text-brand-mid">
-                    {isHost ? "You are the host" : "Event Host"}
-                  </p>
-                </div>
-              </div>
-              {host.average_rating !== null && (
-                <div className="flex items-center gap-1.5 mb-1">
-                  <div className="flex">{starRating(host.average_rating)}</div>
-                  <span className="text-[13px] font-bold text-brand-dark ml-1">
-                    {host.average_rating.toFixed(1)}
-                  </span>
-                </div>
-              )}
-              <p className="text-[13px] text-brand-mid mb-3">
-                {host.hosted_events_count} events hosted
-              </p>
-              {event.host_id && (
-                <Link
-                  href={`/profile/${event.host_id}`}
-                  className="text-[13px] font-bold text-brand-mid hover:text-brand-dark transition-colors"
-                >
-                  View Profile →
-                </Link>
-              )}
-            </div>
-          ) : (
-            <div className="bg-brand-surface rounded-xl border border-brand-mid-alpha p-5 animate-pulse">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="size-16 rounded-full bg-brand-mid-alpha shrink-0" />
-                <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-brand-mid-alpha rounded w-24" />
-                  <div className="h-3 bg-brand-mid-alpha rounded w-16" />
-                </div>
-              </div>
-              <div className="h-3 bg-brand-mid-alpha rounded w-32" />
-            </div>
-          )}
-
-          {/* Date & Time */}
-          <div className="bg-white rounded-xl border border-brand-mid-alpha p-5">
-            <div className="flex items-center gap-2 mb-2">
-              <Calendar className="size-[18px] text-brand-mid shrink-0" />
-              <strong className="text-[14px] text-brand-dark">Date &amp; Time</strong>
-            </div>
-            <p className="text-[15px] font-bold text-brand-dark">
-              {formatDate(event.start_datetime)}
-            </p>
-            <p className="text-[14px] text-brand-mid mb-2">
-              {formatTime(event.start_datetime)} – {formatTime(event.end_datetime)}
-            </p>
-            <a
-              href={buildGoogleCalendarUrl(event, primaryLocation?.name)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[13px] font-bold text-brand-mid hover:text-brand-dark transition-colors flex items-center gap-1"
-            >
-              <Calendar className="size-3.5" />
-              Add to Google Calendar
-            </a>
-          </div>
-
-          {/* Location */}
-          {primaryLocation && (
-            <div className="bg-white rounded-xl border border-brand-mid-alpha p-5">
-              <div className="flex items-center gap-2 mb-2">
-                <MapPin className="size-[18px] text-brand-mid shrink-0" />
-                <strong className="text-[14px] text-brand-dark">Location</strong>
-              </div>
-              <p className="text-[15px] font-bold text-brand-dark mb-0.5">
-                {primaryLocation.name}
-              </p>
-              {/* Map placeholder — opens modal */}
-              <button
-                onClick={() => setShowMapModal(true)}
-                className="mt-2 h-[120px] w-full rounded-lg bg-brand-surface flex items-center justify-center text-[14px] font-bold text-brand-dark cursor-pointer hover:bg-brand-mid-alpha hover:shadow-md active:scale-[0.99] transition-all duration-150"
-              >
-                🗺 VIEW ON MAP
-              </button>
-            </div>
-          )}
-
-          {/* Attendees */}
-          {(isActive || isEnded) && (
-            <div className="bg-white rounded-xl border border-brand-mid-alpha p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <Users className="size-[18px] text-brand-mid shrink-0" />
-                <strong className="text-[14px] text-brand-dark">Attendees</strong>
-              </div>
-              {/* Avatar stack */}
-              {event.attendees && event.attendees.length > 0 && (
-                <div className="mb-3">
-                  <AttendeeAvatarStack attendees={event.attendees} maxShow={5} />
-                </div>
-              )}
-              {event.attendee_limit ? (
+          <div
+            ref={rightColRef}
+            className="flex h-full w-full flex-col gap-4 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {/* Action buttons */}
+            <div className="border-brand-mid-alpha space-y-2 rounded-xl border bg-white p-5">
+              {isHost ? (
                 <>
-                  <div className="h-1.5 rounded-full bg-brand-dark/10 overflow-hidden mb-2">
-                    <div
-                      className="h-full rounded-full bg-brand-mid transition-all"
-                      style={{ width: `${Math.min(100, (goingCount / event.attendee_limit) * 100)}%` }}
-                    />
-                  </div>
-                  <p className="text-[13px] text-brand-mid">
-                    {goingCount} of {event.attendee_limit} spots filled
+                  <p className="text-brand-mid mb-3 text-[11px] font-bold tracking-widest uppercase">
+                    Host Actions
+                  </p>
+                  <button
+                    onClick={() => router.push(`/edit-event/${event.id}`)}
+                    disabled={isCancelled || isEnded}
+                    className="border-brand-dark text-brand-dark hover:bg-brand-dark/10 flex w-full cursor-pointer items-center justify-center gap-2 rounded-[10px] border-2 py-3 text-[15px] font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <Edit className="size-[18px]" />
+                    Edit Event
+                  </button>
+                  {isActive && (
+                    <button
+                      onClick={() => setShowCancelDialog(true)}
+                      className="border-danger text-danger hover:bg-danger/8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-[10px] border-2 py-3 text-[15px] font-bold transition-colors"
+                    >
+                      <XCircle className="size-[18px]" />
+                      Cancel Event
+                    </button>
+                  )}
+                  <Link
+                    href={`/event/${event.id}/attendees`}
+                    className="bg-brand-dark hover:bg-brand-dark/85 flex w-full items-center justify-center gap-2 rounded-[10px] py-3 text-[15px] font-bold text-white transition-colors"
+                  >
+                    <Users className="size-[18px]" />
+                    Manage Attendees
+                  </Link>
+                </>
+              ) : isAuthenticated ? (
+                <>
+                  <button
+                    onClick={() => {
+                      void toggleGoing();
+                    }}
+                    onMouseDown={() => setGoingPressed(true)}
+                    onMouseUp={() => setGoingPressed(false)}
+                    onMouseLeave={() => setGoingPressed(false)}
+                    disabled={!isActive || (isFull && !isGoing)}
+                    className={cn(
+                      "flex w-full cursor-pointer items-center justify-center gap-2 rounded-[10px] py-3 text-[15px] font-bold transition-all duration-150",
+                      isGoing
+                        ? "bg-brand-dark hover:bg-brand-dark/80 text-white hover:shadow-md"
+                        : !isActive || (isFull && !isGoing)
+                          ? "bg-brand-mid-alpha text-brand-dark/40 !cursor-not-allowed"
+                          : "bg-brand-mid hover:bg-brand-mid/80 text-white hover:shadow-md",
+                      goingPressed &&
+                        !(!isActive || (isFull && !isGoing)) &&
+                        "scale-[0.97] shadow-none",
+                    )}
+                  >
+                    <Check className="size-[18px]" />
+                    {isGoing
+                      ? "Attended ✓"
+                      : isFull
+                        ? "Sold Out"
+                        : isEnded
+                          ? "Event has ended"
+                          : isCancelled
+                            ? "Event Cancelled"
+                            : "Going"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      void toggleBookmark();
+                    }}
+                    onMouseDown={() => setBookmarkPressed(true)}
+                    onMouseUp={() => setBookmarkPressed(false)}
+                    onMouseLeave={() => setBookmarkPressed(false)}
+                    className={cn(
+                      "flex w-full cursor-pointer items-center justify-center gap-2 rounded-[10px] border-2 py-3 text-[15px] font-bold transition-all duration-150",
+                      bookmarked
+                        ? "bg-brand-dark border-brand-dark hover:bg-brand-dark/80 text-white hover:shadow-md"
+                        : "border-brand-dark text-brand-dark hover:bg-brand-dark/10 hover:shadow-md",
+                      bookmarkPressed && "scale-[0.97] shadow-none",
+                    )}
+                  >
+                    {bookmarked ? (
+                      <BookmarkCheck className="size-[18px]" />
+                    ) : (
+                      <Bookmark className="size-[18px]" />
+                    )}
+                    {bookmarked ? "Saved" : "Bookmark"}
+                  </button>
+                  <p className="text-brand-mid text-center text-[12px]">
+                    {goingCount} going · {bookmarkCount} bookmarked
                   </p>
                 </>
               ) : (
-                <p className="text-[13px] text-brand-mid">{goingCount} attending</p>
+                <>
+                  <Link
+                    href={`/login?next=/event/${event.id}`}
+                    className="bg-brand-mid-alpha text-brand-dark/60 hover:bg-brand-mid/20 hover:text-brand-dark flex w-full items-center justify-center gap-2 rounded-[10px] py-3 text-[15px] font-bold transition-all duration-150 hover:shadow-md active:scale-[0.97]"
+                  >
+                    Sign in to mark as Going
+                  </Link>
+                  <Link
+                    href={`/login?next=/event/${event.id}`}
+                    className="border-brand-mid-alpha text-brand-dark/60 hover:bg-brand-mid/10 hover:text-brand-dark flex w-full items-center justify-center gap-2 rounded-[10px] border-2 py-3 text-[15px] font-bold transition-all duration-150 hover:shadow-md active:scale-[0.97]"
+                  >
+                    Sign in to Bookmark
+                  </Link>
+                  <p className="text-brand-mid text-center text-[12px]">
+                    {goingCount} going · {bookmarkCount} bookmarked
+                  </p>
+                </>
               )}
             </div>
-          )}
 
-          {/* Requirements */}
-          {(event.is_age_restricted || event.venue_metadata?.wheelchair_access) && (
-            <div className="bg-white rounded-xl border border-brand-mid-alpha p-5">
-              <div className="flex items-center gap-2 mb-2">
-                <Shield className="size-[18px] text-brand-mid shrink-0" />
-                <strong className="text-[14px] text-brand-dark">Requirements</strong>
+            {/* Invite management — host only, private events */}
+            {isHost && event.visibility === "private" && (
+              <div className="border-brand-mid-alpha space-y-4 rounded-xl border bg-white p-5">
+                <p className="text-brand-mid text-[11px] font-bold tracking-widest uppercase">
+                  Manage Invites
+                </p>
+
+                {/* Generate invite link */}
+                <button
+                  onClick={() => {
+                    void handleCreateInvite();
+                  }}
+                  disabled={inviteLoading || !isActive}
+                  className="border-brand-dark text-brand-dark hover:bg-brand-dark/10 flex w-full cursor-pointer items-center justify-center gap-2 rounded-[10px] border-2 py-3 text-[15px] font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {inviteLoading ? (
+                    <Loader2 className="size-[18px] animate-spin" />
+                  ) : (
+                    <Link2 className="size-[18px]" />
+                  )}
+                  {inviteLoading ? "Generating…" : "Generate Invite Link"}
+                </button>
+                {inviteError && <p className="text-[12px] text-red-500">{inviteError}</p>}
+                {inviteNotice && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                    <p className="text-[12px] font-medium text-amber-700">{inviteNotice}</p>
+                  </div>
+                )}
+                {manualInviteUrl && (
+                  <div className="bg-brand-bg space-y-2 rounded-lg px-3 py-3">
+                    <p className="text-brand-mid text-[11px] font-bold tracking-widest uppercase">
+                      Manual Copy
+                    </p>
+                    <input
+                      readOnly
+                      value={manualInviteUrl}
+                      onFocus={(e) => e.currentTarget.select()}
+                      className="border-brand-mid-alpha text-brand-dark w-full rounded-lg border bg-white px-3 py-2 text-[12px] outline-none"
+                    />
+                  </div>
+                )}
+
+                {/* Invite list */}
+                {invites.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-brand-mid text-[12px] font-bold">
+                      {invites.length} invite{invites.length !== 1 ? "s" : ""} created
+                    </p>
+                    {invites.slice(0, 5).map((inv) => (
+                      <div
+                        key={inv.id}
+                        className="bg-brand-bg flex items-center justify-between gap-2 rounded-lg px-3 py-2"
+                      >
+                        <span className="text-brand-dark flex-1 truncate font-mono text-[13px]">
+                          …{inv.token.slice(-8)}
+                        </span>
+                        <span
+                          className={cn(
+                            "text-[11px] font-bold",
+                            inv.max_uses !== null && inv.use_count >= inv.max_uses
+                              ? "text-brand-mid"
+                              : "text-green-600",
+                          )}
+                        >
+                          {inv.max_uses !== null && inv.use_count >= inv.max_uses
+                            ? `Used (${inv.use_count})`
+                            : inv.max_uses !== null
+                              ? `Active (${inv.use_count}/${inv.max_uses})`
+                              : `Active (${inv.use_count})`}
+                        </span>
+                        <button
+                          onClick={() => {
+                            void handleCopyInviteLink(inv);
+                          }}
+                          className="hover:bg-brand-mid-alpha rounded p-1 transition-colors"
+                          title="Copy invite link"
+                        >
+                          {copiedToken === inv.token ? (
+                            <CheckCircle className="size-4 text-green-600" />
+                          ) : (
+                            <Copy className="text-brand-mid size-4" />
+                          )}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Pending access requests */}
+                {accessRequests.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-brand-dark text-[12px] font-bold">
+                      Pending Requests ({accessRequests.length})
+                    </p>
+                    {accessRequests.map((req) => (
+                      <div
+                        key={req.id}
+                        className="bg-brand-bg flex items-center justify-between gap-2 rounded-lg px-3 py-2"
+                      >
+                        <span className="text-brand-dark flex-1 truncate text-[13px] font-bold">
+                          {req.username}
+                        </span>
+                        <div className="flex gap-1.5">
+                          <button
+                            onClick={() => {
+                              void handleAccessRequestAction(req.id, "approved");
+                            }}
+                            disabled={requestActionLoading === req.id}
+                            className="cursor-pointer rounded-md bg-green-600 px-2.5 py-1 text-[11px] font-bold text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {requestActionLoading === req.id ? "…" : "Approve"}
+                          </button>
+                          <button
+                            onClick={() => {
+                              void handleAccessRequestAction(req.id, "rejected");
+                            }}
+                            disabled={requestActionLoading === req.id}
+                            className="cursor-pointer rounded-md bg-red-500 px-2.5 py-1 text-[11px] font-bold text-white transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              {event.is_age_restricted && (
-                <p className="text-[14px] text-brand-dark">18+ event · ID required</p>
-              )}
-              {event.venue_metadata?.wheelchair_access && (
-                <p className="text-[14px] text-brand-mid">Wheelchair accessible</p>
-              )}
+            )}
+
+            {/* Host card — surface background */}
+            {host ? (
+              <div className="bg-brand-surface border-brand-mid-alpha rounded-xl border p-5">
+                <div className="mb-3 flex items-center gap-3">
+                  <div className="bg-brand-mid flex size-16 shrink-0 items-center justify-center rounded-full text-[22px] font-bold text-white">
+                    {host.username.slice(0, 2).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="text-brand-dark text-[16px] font-bold">{host.username}</p>
+                    <p className="text-brand-mid text-[13px]">
+                      {isHost ? "You are the host" : "Event Host"}
+                    </p>
+                  </div>
+                </div>
+                {host.average_rating !== null && (
+                  <div className="mb-1 flex items-center gap-1.5">
+                    <div className="flex">{starRating(host.average_rating)}</div>
+                    <span className="text-brand-dark ml-1 text-[13px] font-bold">
+                      {host.average_rating.toFixed(1)}
+                    </span>
+                  </div>
+                )}
+                <p className="text-brand-mid mb-3 text-[13px]">
+                  {host.hosted_events_count} events hosted
+                </p>
+                {event.host_id && (
+                  <Link
+                    href={`/profile/${event.host_id}`}
+                    className="text-brand-mid hover:text-brand-dark text-[13px] font-bold transition-colors"
+                  >
+                    View Profile →
+                  </Link>
+                )}
+              </div>
+            ) : (
+              <div className="bg-brand-surface border-brand-mid-alpha animate-pulse rounded-xl border p-5">
+                <div className="mb-3 flex items-center gap-3">
+                  <div className="bg-brand-mid-alpha size-16 shrink-0 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <div className="bg-brand-mid-alpha h-4 w-24 rounded" />
+                    <div className="bg-brand-mid-alpha h-3 w-16 rounded" />
+                  </div>
+                </div>
+                <div className="bg-brand-mid-alpha h-3 w-32 rounded" />
+              </div>
+            )}
+
+            {/* Date & Time */}
+            <div className="border-brand-mid-alpha rounded-xl border bg-white p-5">
+              <div className="mb-2 flex items-center gap-2">
+                <Calendar className="text-brand-mid size-[18px] shrink-0" />
+                <strong className="text-brand-dark text-[14px]">Date &amp; Time</strong>
+              </div>
+              <p className="text-brand-dark text-[15px] font-bold">
+                {formatDate(event.start_datetime)}
+              </p>
+              <p className="text-brand-mid mb-2 text-[14px]">
+                {formatTime(event.start_datetime)} – {formatTime(event.end_datetime)}
+              </p>
+              <a
+                href={buildGoogleCalendarUrl(event, primaryLocation?.name)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-brand-mid hover:text-brand-dark flex items-center gap-1 text-[13px] font-bold transition-colors"
+              >
+                <Calendar className="size-3.5" />
+                Add to Google Calendar
+              </a>
             </div>
-          )}
+
+            {/* Location */}
+            {primaryLocation && (
+              <div className="border-brand-mid-alpha rounded-xl border bg-white p-5">
+                <div className="mb-2 flex items-center gap-2">
+                  <MapPin className="text-brand-mid size-[18px] shrink-0" />
+                  <strong className="text-brand-dark text-[14px]">Location</strong>
+                </div>
+                <p className="text-brand-dark mb-0.5 text-[15px] font-bold">
+                  {primaryLocation.name}
+                </p>
+                {/* Map placeholder — opens modal */}
+                <button
+                  onClick={() => setShowMapModal(true)}
+                  className="bg-brand-surface text-brand-dark hover:bg-brand-mid-alpha mt-2 flex h-[120px] w-full cursor-pointer items-center justify-center rounded-lg text-[14px] font-bold transition-all duration-150 hover:shadow-md active:scale-[0.99]"
+                >
+                  🗺 VIEW ON MAP
+                </button>
+              </div>
+            )}
+
+            {/* Attendees */}
+            {(isActive || isEnded) && (
+              <div className="border-brand-mid-alpha rounded-xl border bg-white p-5">
+                <div className="mb-3 flex items-center gap-2">
+                  <Users className="text-brand-mid size-[18px] shrink-0" />
+                  <strong className="text-brand-dark text-[14px]">Attendees</strong>
+                </div>
+                {/* Avatar stack */}
+                {event.attendees && event.attendees.length > 0 && (
+                  <div className="mb-3">
+                    <AttendeeAvatarStack attendees={event.attendees} maxShow={5} />
+                  </div>
+                )}
+                {event.attendee_limit ? (
+                  <>
+                    <div className="bg-brand-dark/10 mb-2 h-1.5 overflow-hidden rounded-full">
+                      <div
+                        className="bg-brand-mid h-full rounded-full transition-all"
+                        style={{
+                          width: `${Math.min(100, (goingCount / event.attendee_limit) * 100)}%`,
+                        }}
+                      />
+                    </div>
+                    <p className="text-brand-mid text-[13px]">
+                      {goingCount} of {event.attendee_limit} spots filled
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-brand-mid text-[13px]">{goingCount} attending</p>
+                )}
+              </div>
+            )}
+
+            {/* Requirements */}
+            {(event.is_age_restricted || event.venue_metadata?.wheelchair_access) && (
+              <div className="border-brand-mid-alpha rounded-xl border bg-white p-5">
+                <div className="mb-2 flex items-center gap-2">
+                  <Shield className="text-brand-mid size-[18px] shrink-0" />
+                  <strong className="text-brand-dark text-[14px]">Requirements</strong>
+                </div>
+                {event.is_age_restricted && (
+                  <p className="text-brand-dark text-[14px]">18+ event · ID required</p>
+                )}
+                {event.venue_metadata?.wheelchair_access && (
+                  <p className="text-brand-mid text-[14px]">Wheelchair accessible</p>
+                )}
+              </div>
+            )}
+          </div>
         </div>
-        </div>{/* close relative wrapper for right column */}
+        {/* close relative wrapper for right column */}
       </div>
 
       {/* Map modal */}
@@ -1300,16 +1355,14 @@ export default function EventDetailPage() {
     }
   }, [event, user?.id]);
 
-  const isHost =
-    event?._type === "full" && !!user && !!event.host_id && event.host_id === user.id;
+  const isHost = event?._type === "full" && !!user && !!event.host_id && event.host_id === user.id;
 
   const isGuest = !isAuthenticated;
-  const isAgeBlocked =
-    Boolean(
-      event?.is_age_restricted &&
-      !isHost &&
-      (!isAuthenticated || !user?.date_of_birth || !isAtLeast18(user.date_of_birth)),
-    );
+  const isAgeBlocked = Boolean(
+    event?.is_age_restricted &&
+    !isHost &&
+    (!isAuthenticated || !user?.date_of_birth || !isAtLeast18(user.date_of_birth)),
+  );
 
   return (
     <div className="bg-brand-bg min-h-screen">
@@ -1318,19 +1371,19 @@ export default function EventDetailPage() {
       {loading ? (
         <div className="flex items-center justify-center py-32">
           <div className="flex flex-col items-center gap-3">
-            <div className="size-10 rounded-full border-4 border-brand-mid border-t-transparent animate-spin" />
-            <p className="text-sm text-brand-mid">Loading event…</p>
+            <div className="border-brand-mid size-10 animate-spin rounded-full border-4 border-t-transparent" />
+            <p className="text-brand-mid text-sm">Loading event…</p>
           </div>
         </div>
       ) : notFound || !event ? (
-        <div className="flex flex-col items-center justify-center gap-4 text-center px-6 py-32">
+        <div className="flex flex-col items-center justify-center gap-4 px-6 py-32 text-center">
           <p className="font-heading text-brand-dark text-2xl font-bold">Event not found</p>
           <p className="text-brand-mid text-sm">
             This event may have been removed or the link is incorrect.
           </p>
           <Link
             href="/"
-            className="rounded-lg bg-brand-dark px-5 py-2.5 text-sm font-bold text-white hover:bg-brand-dark/85 transition-colors"
+            className="bg-brand-dark hover:bg-brand-dark/85 rounded-lg px-5 py-2.5 text-sm font-bold text-white transition-colors"
           >
             Back to Discovery
           </Link>
