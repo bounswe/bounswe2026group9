@@ -189,11 +189,11 @@ jobs:
           path: backend/coverage.xml
           retention-days: 14
 
-  e2e-hermetic:
-    # Cross-feature E2E scenarios from issue #153 run on every PR against a
-    # hermetic Postgres + PostgREST stack — required check, not nightly-only.
-    # The full hermetic-vs-Supabase parity sweep stays in
-    # `backend-ci-hermetic.yml`; this job is just the three E2E flows.
+  e2e:
+    # Cross-feature E2E scenarios from issue #153 run on every PR as a
+    # required check. The opt-in hermetic parity sweep stays in
+    # `backend-ci-hermetic.yml`; this PR lane follows the shared
+    # TEST_SUPABASE_* integration environment used by the other shards.
     needs:
       - lint
       - unit-fast
@@ -203,15 +203,12 @@ jobs:
         working-directory: backend
 
     env:
-      # Hermetic stack mints its own JWTs; the supabase Client constructor
-      # validates URL/KEY at import time so we seed plausible placeholders
-      # — the in-process bootstrap in tests/conftest.py overwrites both.
-      JWT_SECRET: hermetic-pr-jwt-secret
-      JWT_REFRESH_SECRET: hermetic-pr-jwt-refresh-secret
+      SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.TEST_SUPABASE_KEY }}
+      JWT_SECRET: ${{ secrets.TEST_JWT_SECRET }}
+      JWT_REFRESH_SECRET: ${{ secrets.TEST_JWT_REFRESH_SECRET }}
       ENVIRONMENT: development
-      SUPABASE_URL: http://localhost:0
-      SUPABASE_KEY: bootstrap-only-overwritten-by-conftest
-      PG_CONTAINER: "1"
+      TEST_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-e2e
 
     steps:
       - uses: actions/checkout@v4
@@ -225,16 +222,9 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Pull container images ahead of time
-        # Container pulls dominate cold-cache wall time; do it explicitly
-        # so the test phase reflects code-time, not image-fetch time.
-        run: |
-          docker pull postgres:16-alpine
-          docker pull postgrest/postgrest:v12.2.0
-
       - name: Run E2E scenarios
         # The three cross-feature scenarios listed in issue #153:
         # private-access full flow, capacity → Full in discovery, full
-        # itinerary lifecycle. Single-process — TRUNCATE-per-test gives
-        # us the isolation parallel xdist would otherwise provide.
+        # itinerary lifecycle. Single-process so the multi-step scenarios
+        # remain easy to debug from the CI log.
         run: pytest tests/e2e -v -ra --durations=10 --no-cov

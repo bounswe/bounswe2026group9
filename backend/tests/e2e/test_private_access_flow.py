@@ -25,6 +25,8 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 from PIL import Image as PILImage
 
+from tests_support import build_test_identity
+
 MOCK_STORAGE_URL = "https://example.com/storage/v1/object/public/event-images/e2e.jpg"
 
 
@@ -36,12 +38,12 @@ def _make_image_bytes() -> bytes:
 
 
 def _register(client: TestClient, prefix: str) -> dict:
-    suffix = uuid.uuid4().hex[:8]
+    username, email = build_test_identity(prefix)
     resp = client.post(
         "/auth/register",
         json={
-            "username": f"{prefix}{suffix}",
-            "email": f"{prefix}{suffix}@example.com",
+            "username": username,
+            "email": email,
             "password": "passw0rd123",
             "date_of_birth": "1990-01-01",
         },
