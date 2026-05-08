@@ -1,8 +1,9 @@
 # Backend Testing Guide
 
-Five test lanes exist; pick one based on what you're verifying. The
+Four CI test lanes exist; pick one based on what you're verifying. The
 fastest lane (unit) runs in under a second and never touches the
-network — that's where most new tests should land.
+network — that's where most new tests should land. A fifth, hermetic
+lane is local-only (no CI workflow drives it today).
 
 ## TL;DR — adding a test
 
@@ -12,9 +13,9 @@ network — that's where most new tests should land.
 | A response *shape* contract a frontend depends on | `tests/test_<area>_snapshot_unit.py` (syrupy) | Shape only; values normalised through `_normalise()` |
 | A property over a generated input space | `tests/test_<area>_property_unit.py` (hypothesis) | Use the strategies in `tests/hypothesis_strategies.py` |
 | A latency budget on a hot path | `tests/test_<area>_benchmarks_unit.py` (pytest-benchmark) | Snapshots committed; CI fails on >50% regression |
-| One happy-path HTTP contract per endpoint | `tests/test_<router>.py` | Real Supabase (legacy lane) or hermetic stack (PG_CONTAINER=1) |
-| A multi-step user journey | `tests/e2e/test_<scenario>.py` | Hermetic stack only; covers router → service → repo → DB |
-| A SQL migration / RPC | `tests/db/test_migrate.py` (or sibling) | Postgres testcontainer; runs every non-`pg_cron` migration |
+| One happy-path HTTP contract per endpoint | `tests/test_<router>.py` | Shared TEST_SUPABASE_* integration project |
+| A multi-step user journey | `tests/e2e/test_<scenario>.py` | Same shared integration project; covers router → service → repo → DB |
+| A SQL migration / RPC | `tests/db/test_migrate.py` (or sibling) | Local-only — Postgres testcontainer (PG_CONTAINER=1) |
 
 ## The five lanes
 
@@ -62,10 +63,14 @@ network — that's where most new tests should land.
 - A regression of >50% should fail CI; the workflow doesn't gate
   yet, so reviewers eyeball the numbers in the run log
 
-### 5. Hermetic integration + E2E (`PG_CONTAINER=1`)
-- `tests/db/` (smoke + migration) and `tests/e2e/` (cross-feature)
-  + the existing integration suite all run against a Postgres +
-  PostgREST stack booted by testcontainers
+### 5. Hermetic integration (`PG_CONTAINER=1`, local-only)
+- The same `tests/db/` migration + smoke suite plus the integration
+  suite can run against a Postgres + PostgREST stack booted by
+  testcontainers. No CI workflow drives it today — the previous
+  ``backend-ci-hermetic.yml`` was removed because the container boot
+  + auth-role wiring was unstable on hosted runners. Keep the local
+  command around because the infrastructure code is still useful for
+  one-off "is my migration self-consistent?" checks.
 - Local:
 
   ```bash
@@ -75,18 +80,9 @@ network — that's where most new tests should land.
     pytest tests/ -v
   ```
 
-- CI: `.github/workflows/backend-ci-hermetic.yml` (manual + nightly,
-  6 shards including `e2e`)
 - Per-test isolation is `TRUNCATE public.* RESTART IDENTITY CASCADE`
   — the autouse `cleanup_test_users` switches to TRUNCATE when
-  `PG_CONTAINER=1`
-
-### 6. Mutation (`mutmut`, opt-in)
-- `.github/workflows/backend-mutation.yml` runs nightly
-- Targets `app/services/event.py`, `rating.py`, `notification_emitter.py`,
-  `recommendation_emitter.py`; the kill set is the unit + property +
-  snapshot suite
-- Local: `mutmut run` (slow — runs the kill set per surviving mutant)
+  `PG_CONTAINER=1`.
 
 ## Running the full local loop
 
@@ -102,9 +98,9 @@ mypy app | mypy-baseline filter
 bandit -c pyproject.toml -r app/
 ```
 
-The hermetic + E2E + mutation lanes need Docker. The legacy lane
-needs the shared `TEST_SUPABASE_*` secrets and is what the default
-backend-ci workflow runs today.
+The hermetic local lane needs Docker. The default CI lane runs against
+the shared `TEST_SUPABASE_*` integration project — that's what gates
+PRs today and that's what every `backend-ci.yml` job points at.
 
 ## Debugging a failing test
 

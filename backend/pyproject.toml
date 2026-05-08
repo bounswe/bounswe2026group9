@@ -76,20 +76,6 @@ module = [
 ]
 ignore_missing_imports = true
 
-[tool.mutmut]
-# Validators + service helpers are the densest invariant code we have;
-# scope mutmut there so a nightly run finishes in minutes rather than
-# hours. The unit suite (tests/test_*_unit.py + property + snapshot)
-# is the kill set — fast, deterministic, no docker.
-paths_to_mutate = [
-    "app/services/event.py",
-    "app/services/rating.py",
-    "app/services/notification_emitter.py",
-    "app/services/recommendation_emitter.py",
-]
-runner = "python -m pytest tests/test_event_validators_unit.py tests/test_event_crud_unit.py tests/test_event_read_unit.py tests/test_event_validators_property_unit.py tests/test_rating_unit.py tests/test_notification_emitter_unit.py tests/test_recommendation_emitter_unit.py --no-cov -x -q"
-also_copy = ["tests/", "pyproject.toml"]
-
 [tool.bandit]
 # Tests deliberately use weak crypto (fakehash), hard-coded secrets, etc.
 # Production source is the surface that has to be clean.

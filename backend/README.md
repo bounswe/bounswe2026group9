@@ -1,13 +1,13 @@
 # Social Event Mapper — Backend
 
 [![Backend CI](https://github.com/bounswe/bounswe2026group9/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/bounswe/bounswe2026group9/actions/workflows/backend-ci.yml)
-[![Backend CI — Hermetic DB](https://github.com/bounswe/bounswe2026group9/actions/workflows/backend-ci-hermetic.yml/badge.svg)](https://github.com/bounswe/bounswe2026group9/actions/workflows/backend-ci-hermetic.yml)
 
 FastAPI + Supabase backend with JWT authentication, event management, and image upload.
 
 > **Adding tests?** Read [TESTING.md](./TESTING.md) — it lays out the
-> five lanes (unit / property / snapshot / benchmark / hermetic + E2E)
-> and tells you exactly which one a new test belongs in.
+> four CI lanes (unit / property / snapshot / benchmark) plus the
+> shared-Supabase integration + E2E lanes, and tells you exactly which
+> one a new test belongs in.
 
 ## Setup
 
@@ -53,7 +53,7 @@ SUPABASE_URL=fake SUPABASE_KEY=fake JWT_SECRET=fake JWT_REFRESH_SECRET=fake \
   python -m pytest tests/test_*_unit.py --no-cov
 ```
 
-**Hermetic integration lane** (testcontainers — needs a running Docker daemon, no Supabase secrets):
+**Hermetic integration lane** (testcontainers — local-only, needs a running Docker daemon, no Supabase secrets):
 
 ```bash
 PG_CONTAINER=1 \
@@ -67,10 +67,10 @@ The conftest spots `PG_CONTAINER=1`, boots a `postgres:16-alpine` +
 applies every non-`pg_cron` migration through `tests/db/migrate.py`,
 and repoints `app.database._client` at the local stack. Per-test
 isolation is `TRUNCATE public.* RESTART IDENTITY CASCADE` instead of
-`cleanup_test_users`. CI runs this lane via
-`.github/workflows/backend-ci-hermetic.yml` (manual + nightly).
+`cleanup_test_users`. **No CI workflow drives this today** — it's
+useful for one-off local checks of migrations against a fresh DB.
 
-**Legacy integration lane** (shared remote Supabase, what default CI uses today):
+**Default integration lane** (shared TEST_SUPABASE_*, what default CI gates on):
 
 ```bash
 docker exec sem-backend python -m pytest tests/ -v

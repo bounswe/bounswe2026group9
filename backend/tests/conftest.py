@@ -9,8 +9,8 @@ Two modes, selected by the ``PG_CONTAINER`` env var:
 - ``PG_CONTAINER=1`` — *hermetic lane*. A session-scoped Postgres +
   PostgREST stack boots via testcontainers; ``app.database._client``
   is repointed at the local stack, and per-test isolation switches
-  to ``TRUNCATE public.*`` so each test starts on a clean schema. The
-  ``backend-ci-hermetic.yml`` workflow runs CI in this mode.
+  to ``TRUNCATE public.*`` so each test starts on a clean schema.
+  Local-only — no CI workflow drives this today.
 
 Switching modes requires no test-side changes — every existing
 fixture (``client``, ``db``, ``registered_user``) keeps the same
