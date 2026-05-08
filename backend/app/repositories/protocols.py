@@ -382,7 +382,7 @@ class EventRepoProtocol(Protocol):
     ) -> tuple[list[dict], int]: ...
 
     def get_similar_candidates(
-        self, db: Client, event_id: str, limit: int = 30
+        self, db: Client, event_id: str, category_ids: list[str] | None = None, limit: int = 50
     ) -> list[dict]: ...
 
 

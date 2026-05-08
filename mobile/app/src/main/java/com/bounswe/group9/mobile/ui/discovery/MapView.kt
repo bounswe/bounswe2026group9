@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -47,10 +48,14 @@ fun EventMapView(
     events: List<EventListItemDto>,
     onEventClick: (String) -> Unit,
     onBookmarkToggle: ((String) -> Unit)? = null,
-    token: String? = null
+    token: String? = null,
+    visible: Boolean = true,
+    onRefresh: (() -> Unit)? = null
 ) {
     var selectedEvent by remember { mutableStateOf<EventListItemDto?>(null) }
     val markerToEvent = remember { mutableMapOf<Long, EventListItemDto>() }
+    val mapViewRef = remember { mutableStateOf<MapView?>(null) }
+    val mapRef = remember { mutableStateOf<org.maplibre.android.maps.MapLibreMap?>(null) }
 
     // Keep selectedEvent in sync with events list (reflects optimistic bookmark update)
     val currentSelectedId = selectedEvent?.id
@@ -59,12 +64,51 @@ fun EventMapView(
         if (updated != null && updated != selectedEvent) selectedEvent = updated
     }
 
+    // Redraw markers whenever events list changes
+    LaunchedEffect(events) {
+        val map = mapRef.value ?: return@LaunchedEffect
+        val context = mapViewRef.value?.context ?: return@LaunchedEffect
+        map.clear()
+        markerToEvent.clear()
+        selectedEvent = null
+        val icon = IconFactory.getInstance(context).fromBitmap(createMarkerBitmap())
+        events.filter { it.primary_location != null }.forEach { event ->
+            val loc = event.primary_location!!
+            val marker = map.addMarker(
+                MarkerOptions()
+                    .position(LatLng(loc.latitude, loc.longitude))
+                    .icon(icon)
+            )
+            marker?.let { markerToEvent[it.id] = event }
+        }
+        map.setOnMarkerClickListener { marker ->
+            selectedEvent = markerToEvent[marker.id]
+            true
+        }
+        map.addOnMapClickListener {
+            selectedEvent = null
+            true
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            mapViewRef.value?.onPause()
+            mapViewRef.value?.onStop()
+            mapViewRef.value?.onDestroy()
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(
             factory = { context ->
                 MapLibre.getInstance(context)
                 MapView(context).apply {
+                    onCreate(null)
+                    onStart()
+                    onResume()
                     getMapAsync { map ->
+                        mapRef.value = map
                         map.setStyle(MAP_STYLE) { _ ->
                             map.cameraPosition = CameraPosition.Builder()
                                 .target(LatLng(DEFAULT_LAT, DEFAULT_LNG))
@@ -95,14 +139,31 @@ fun EventMapView(
                             }
                         }
                     }
-                    onCreate(null)
+                    mapViewRef.value = this
                 }
+            },
+            update = { view ->
+                view.visibility = if (visible) android.view.View.VISIBLE else android.view.View.INVISIBLE
             },
             modifier = Modifier.fillMaxSize()
         )
 
-        // Popup card when marker tapped
-        selectedEvent?.let { event ->
+        // Refresh button — top-right corner, only shown when map is visible
+        if (visible && onRefresh != null) {
+            SmallFloatingActionButton(
+                onClick = onRefresh,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(12.dp),
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.onSurface
+            ) {
+                Icon(Icons.Default.Refresh, contentDescription = "Refresh map", modifier = Modifier.size(18.dp))
+            }
+        }
+
+        // Popup card when marker tapped (only when map is actually visible)
+        if (visible) selectedEvent?.let { event ->
             EventMapPopup(
                 event = event,
                 onDismiss = { selectedEvent = null },

@@ -233,3 +233,7 @@ class EventListResponse(AppBaseModel):
     # history to bias the listing on. UI can render a "Attend events to get
     # personalised suggestions" hint. Always False when ?suggested wasn't set.
     suggested_fallback: bool = False
+    # "no_history"  — user has never attended any ended event
+    # "no_match"    — user has history but no current events match their categories
+    # None          — suggestions are non-empty (no fallback triggered)
+    suggested_fallback_reason: str | None = None

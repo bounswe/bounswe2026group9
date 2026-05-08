@@ -503,8 +503,17 @@ def get_primary_images_for_events(db: Client, event_ids: list[str]) -> dict[str,
     return images
 
 
-def get_similar_candidates(db: Client, event_id: str, limit: int = 30) -> list[dict]:
+def get_similar_candidates(
+    db: Client,
+    event_id: str,
+    category_ids: list[str] | None = None,
+    limit: int = 50,
+) -> list[dict]:
     """Return published/updated future events (public + private) excluding the source.
+
+    When category_ids is provided (cluster-expanded set from the service layer)
+    the query pre-filters to events that share at least one of those categories,
+    which dramatically improves candidate quality when there are many events.
 
     Private events are included to match Discovery's behaviour: they appear in
     the list with a teaser (no description) so the viewer can still tap through
@@ -512,6 +521,35 @@ def get_similar_candidates(db: Client, event_id: str, limit: int = 30) -> list[d
     redaction as list_events when building the response.
     """
     now = datetime.now(UTC)
+
+    if category_ids:
+        # Fetch event IDs that overlap with the given categories, then join back.
+        cat_rows = (
+            db.table("event_categories")
+            .select("event_id")
+            .in_("category_id", category_ids)
+            .execute()
+        )
+        overlap_ids = list({row["event_id"] for row in (cat_rows.data or [])} - {event_id})
+        if not overlap_ids:
+            return []
+
+        # Chunk to stay under PostgREST URL limits (36 chars/UUID + overhead).
+        results: list[dict] = []
+        for i in range(0, len(overlap_ids), 100):
+            chunk = overlap_ids[i:i + 100]
+            rows = (
+                db.table("events")
+                .select(_EVENT_COLS)
+                .in_("id", chunk)
+                .in_("status", ["published", "updated"])
+                .gte("end_datetime", now.isoformat())
+                .execute()
+            )
+            results.extend(rows.data or [])
+        return results
+
+    # Fallback (no category hint): date-ordered pool, same as before.
     result = (
         db.table("events")
         .select(_EVENT_COLS)

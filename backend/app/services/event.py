@@ -59,6 +59,9 @@ def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     return 2 * r * math.asin(math.sqrt(a))
 
 
+from app.services.category_clusters import expand_category_ids as _expand_suggested_category_ids
+
+
 # --- Validators ---
 
 def _ensure_timezone_aware(value: datetime, field_name: str) -> datetime:
@@ -902,15 +905,16 @@ def list_events(
     # Resolve "Suggested for you" — only meaningful for authenticated users.
     suggested_category_ids: set[str] | None = None
     suggested_fallback = False
+    suggested_fallback_reason: str | None = None
     if suggested and user_id:
-        suggested_category_ids = attendances.get_attended_ended_event_categories(
-            db, user_id,
-        )
-        if not suggested_category_ids:
-            # User has no attendance history yet — fall back to default listing
-            # but signal the empty-history hint to the UI.
-            suggested_category_ids = None
+        exact_ids = attendances.get_attended_ended_event_categories(db, user_id)
+        if not exact_ids:
+            # User has no attendance history — fall back to default listing.
             suggested_fallback = True
+            suggested_fallback_reason = "no_history"
+        else:
+            # Expand to include similar categories from the same cluster(s).
+            suggested_category_ids = _expand_suggested_category_ids(db, exact_ids)
 
     event_rows, total = events.list_events(
         db,
@@ -931,9 +935,14 @@ def list_events(
 
     total_pages = (total + page_size - 1) // page_size if total > 0 else 0
     if not event_rows:
+        # User had history but no current events match their (expanded) categories.
+        if suggested and suggested_category_ids and not suggested_fallback:
+            suggested_fallback = True
+            suggested_fallback_reason = "no_match"
         return EventListResponse(
             items=[], total=total, page=page, page_size=page_size,
             total_pages=total_pages, suggested_fallback=suggested_fallback,
+            suggested_fallback_reason=suggested_fallback_reason,
         )
 
     # For sort in {distance, category} the repo returned the full filtered set;
@@ -1031,6 +1040,7 @@ def list_events(
     return EventListResponse(
         items=items, total=total, page=page, page_size=page_size,
         total_pages=total_pages, suggested_fallback=suggested_fallback,
+        suggested_fallback_reason=suggested_fallback_reason,
     )
 
 
@@ -1100,6 +1110,11 @@ def get_similar_events(
     source_categories = events.get_event_categories(db, event_id)
     source_cat_ids = {c["id"] for c in source_categories}
 
+    # Expand source categories to include cluster-similar ones for a broader
+    # candidate pool and scoring (e.g. a Sports event also surfaces Outdoor).
+    expanded_cat_ids = _expand_suggested_category_ids(db, source_cat_ids)
+    cluster_only_ids = expanded_cat_ids - source_cat_ids  # similar but not exact
+
     # Source primary location — reuse the batch lookup so we go through the
     # repo seam instead of poking db.table directly.
     source_locs = events.get_primary_locations_for_events(db, [event_id])
@@ -1107,7 +1122,11 @@ def get_similar_events(
     source_lat = source_loc.get("latitude")
     source_lng = source_loc.get("longitude")
 
-    candidates = events.get_similar_candidates(db, event_id, limit=30)
+    # Pass the expanded category IDs so the repo pre-filters at DB level
+    # instead of returning an arbitrary date-ordered pool.
+    candidates = events.get_similar_candidates(
+        db, event_id, category_ids=list(expanded_cat_ids)
+    )
     if not candidates:
         return []
 
@@ -1119,7 +1138,10 @@ def get_similar_events(
     for cand in candidates:
         cid = cand["id"]
         cand_cat_ids = {c["id"] for c in cats_by_event.get(cid, [])}
-        overlap = len(source_cat_ids & cand_cat_ids)
+
+        # Exact category overlap scores higher than cluster-similar overlap.
+        exact_overlap = len(source_cat_ids & cand_cat_ids)
+        cluster_overlap = len(cluster_only_ids & cand_cat_ids)
         host_match = 1 if cand["host_id"] == source["host_id"] else 0
 
         proximity_bonus = 0
@@ -1130,7 +1152,9 @@ def get_similar_events(
                 if dist <= 50:
                     proximity_bonus = 1
 
-        score = overlap * 3 + host_match * 2 + proximity_bonus
+        score = exact_overlap * 3 + cluster_overlap * 1 + host_match * 2 + proximity_bonus
+        if score == 0:
+            continue  # no signal at all, skip
         scored.append((score, cand))
 
     scored.sort(key=lambda x: (-x[0], x[1]["start_datetime"], x[1]["id"]))

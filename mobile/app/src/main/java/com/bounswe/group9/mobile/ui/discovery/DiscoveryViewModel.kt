@@ -73,7 +73,8 @@ class DiscoveryViewModel(
         // Always clear stale fallback flag — the next response will repopulate it.
         _uiState.value = _uiState.value.copy(
             suggestedActive = !_uiState.value.suggestedActive,
-            suggestedFallback = false
+            suggestedFallback = false,
+            suggestedFallbackReason = null
         )
     }
 
@@ -178,7 +179,8 @@ class DiscoveryViewModel(
             nearLat = null,
             nearLng = null,
             suggestedActive = false,
-            suggestedFallback = false
+            suggestedFallback = false,
+            suggestedFallbackReason = null
         )
         loadEvents(reset = true)
     }
@@ -240,7 +242,8 @@ class DiscoveryViewModel(
                         isLoadingMore = false,
                         errorMessage = null,
                         // Only meaningful when the user actually asked for suggested.
-                        suggestedFallback = if (state.suggestedActive) response.suggested_fallback else false
+                        suggestedFallback = if (state.suggestedActive) response.suggested_fallback else false,
+                        suggestedFallbackReason = if (state.suggestedActive) response.suggested_fallback_reason else null
                     )
                 },
                 onFailure = { e ->
