@@ -191,9 +191,8 @@ jobs:
 
   e2e:
     # Cross-feature E2E scenarios from issue #153 run on every PR as a
-    # required check. The opt-in hermetic parity sweep stays in
-    # `backend-ci-hermetic.yml`; this PR lane follows the shared
-    # TEST_SUPABASE_* integration environment used by the other shards.
+    # required check. Same shared TEST_SUPABASE_* integration project
+    # the other shards use, so the test environment stays uniform.
     needs:
       - lint
       - unit-fast

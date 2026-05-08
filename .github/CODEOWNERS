@@ -1,8 +1,7 @@
 # Code ownership for backend testing surface.
-# The list owns review focus on test infrastructure changes — the actual
-# kill set, the migration runner, the hermetic stack wiring, and the
-# governance docs. Adding more owners later is fine; the point is that
-# at least one reviewer is paged whenever the testing posture moves.
+# Pages a reviewer whenever the test infrastructure or its governance
+# moves. Adding more owners is fine — the point is that test-system
+# changes never land without somebody who owns the gate seeing them.
 
 backend/tests/                              @Ihsan2004
 backend/tests/db/                           @Ihsan2004
@@ -14,5 +13,3 @@ backend/TESTING_ROADMAP.md                  @Ihsan2004
 backend/mypy-baseline.txt                   @Ihsan2004
 
 .github/workflows/backend-ci.yml            @Ihsan2004
-.github/workflows/backend-ci-hermetic.yml   @Ihsan2004
-.github/workflows/backend-mutation.yml      @Ihsan2004
