@@ -36,6 +36,7 @@ from app.repositories.protocols import (
     InviteRepoProtocol,
     UserRepoProtocol,
 )
+from app.services.category_clusters import expand_category_ids as _expand_suggested_category_ids
 from app.services.rate_limit import is_rate_limit_exempt_email
 
 # Aliases kept for the (still-large) parts of this module that haven't been
@@ -58,8 +59,6 @@ def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlam / 2) ** 2
     return 2 * r * math.asin(math.sqrt(a))
 
-
-from app.services.category_clusters import expand_category_ids as _expand_suggested_category_ids
 
 
 # --- Validators ---
@@ -1153,8 +1152,6 @@ def get_similar_events(
                     proximity_bonus = 1
 
         score = exact_overlap * 3 + cluster_overlap * 1 + host_match * 2 + proximity_bonus
-        if score == 0:
-            continue  # no signal at all, skip
         scored.append((score, cand))
 
     scored.sort(key=lambda x: (-x[0], x[1]["start_datetime"], x[1]["id"]))

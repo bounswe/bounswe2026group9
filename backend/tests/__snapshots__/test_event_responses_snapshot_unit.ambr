@@ -129,6 +129,7 @@
     'page': 1,
     'page_size': 20,
     'suggested_fallback': False,
+    'suggested_fallback_reason': None,
     'total': 1,
     'total_pages': 1,
   })

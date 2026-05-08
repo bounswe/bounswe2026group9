@@ -43,6 +43,25 @@ private val DEFAULT_LAT = 41.0082
 private val DEFAULT_LNG = 28.9784
 private val DEFAULT_ZOOM = 10.0
 
+private fun addEventMarkers(
+    map: org.maplibre.android.maps.MapLibreMap,
+    context: android.content.Context,
+    events: List<EventListItemDto>,
+    markerToEvent: MutableMap<Long, EventListItemDto>,
+    onMarkerClick: (EventListItemDto?) -> Unit,
+) {
+    val icon = IconFactory.getInstance(context).fromBitmap(createMarkerBitmap())
+    events.filter { it.primary_location != null }.forEach { event ->
+        val loc = event.primary_location!!
+        val marker = map.addMarker(
+            MarkerOptions().position(LatLng(loc.latitude, loc.longitude)).icon(icon)
+        )
+        marker?.let { markerToEvent[it.id] = event }
+    }
+    map.setOnMarkerClickListener { marker -> onMarkerClick(markerToEvent[marker.id]); true }
+    map.addOnMapClickListener { onMarkerClick(null); true }
+}
+
 @Composable
 fun EventMapView(
     events: List<EventListItemDto>,
@@ -71,24 +90,7 @@ fun EventMapView(
         map.clear()
         markerToEvent.clear()
         selectedEvent = null
-        val icon = IconFactory.getInstance(context).fromBitmap(createMarkerBitmap())
-        events.filter { it.primary_location != null }.forEach { event ->
-            val loc = event.primary_location!!
-            val marker = map.addMarker(
-                MarkerOptions()
-                    .position(LatLng(loc.latitude, loc.longitude))
-                    .icon(icon)
-            )
-            marker?.let { markerToEvent[it.id] = event }
-        }
-        map.setOnMarkerClickListener { marker ->
-            selectedEvent = markerToEvent[marker.id]
-            true
-        }
-        map.addOnMapClickListener {
-            selectedEvent = null
-            true
-        }
+        addEventMarkers(map, context, events, markerToEvent) { selectedEvent = it }
     }
 
     DisposableEffect(Unit) {
@@ -114,29 +116,7 @@ fun EventMapView(
                                 .target(LatLng(DEFAULT_LAT, DEFAULT_LNG))
                                 .zoom(DEFAULT_ZOOM)
                                 .build()
-
-                            val icon = IconFactory.getInstance(context)
-                                .fromBitmap(createMarkerBitmap())
-
-                            events.filter { it.primary_location != null }.forEach { event ->
-                                val loc = event.primary_location!!
-                                val marker = map.addMarker(
-                                    MarkerOptions()
-                                        .position(LatLng(loc.latitude, loc.longitude))
-                                        .icon(icon)
-                                )
-                                marker?.let { markerToEvent[it.id] = event }
-                            }
-
-                            map.setOnMarkerClickListener { marker ->
-                                selectedEvent = markerToEvent[marker.id]
-                                true
-                            }
-
-                            map.addOnMapClickListener {
-                                selectedEvent = null
-                                true
-                            }
+                            addEventMarkers(map, context, events, markerToEvent) { selectedEvent = it }
                         }
                     }
                     mapViewRef.value = this

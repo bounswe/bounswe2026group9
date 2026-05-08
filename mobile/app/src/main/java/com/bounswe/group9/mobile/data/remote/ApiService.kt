@@ -87,11 +87,6 @@ data class EventListResponse(
      * Older backends omit the field; Gson defaults it to false.
      */
     val suggested_fallback: Boolean = false,
-    /**
-     * "no_history"  — user has never attended any ended event
-     * "no_match"    — user attended events but no current events match those categories
-     * null          — suggestions are non-empty (no fallback triggered)
-     */
     val suggested_fallback_reason: String? = null
 )
 
