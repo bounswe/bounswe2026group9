@@ -1,6 +1,7 @@
 """Event repository — all database operations for events and related tables."""
 
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from supabase import Client
 
@@ -535,7 +536,7 @@ def get_similar_candidates(
             return []
 
         # Chunk to stay under PostgREST URL limits (36 chars/UUID + overhead).
-        results: list[dict] = []
+        results: list[dict[str, Any]] = []
         for i in range(0, len(overlap_ids), 100):
             chunk = overlap_ids[i:i + 100]
             rows = (

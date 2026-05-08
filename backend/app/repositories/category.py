@@ -1,5 +1,7 @@
 """Category repository — database operations for categories."""
 
+from typing import Any
+
 from supabase import Client
 
 
@@ -38,7 +40,7 @@ def insert_category(db: Client, data: dict) -> dict | None:
     return result.data[0] if result.data else None
 
 
-def get_categories_by_ids(db: Client, ids: list[str]) -> list[dict]:
+def get_categories_by_ids(db: Client, ids: list[str]) -> list[dict[str, Any]]:
     """Fetch name for a list of category UUIDs (used by suggestion cluster expansion)."""
     if not ids:
         return []
@@ -51,7 +53,7 @@ def get_categories_by_ids(db: Client, ids: list[str]) -> list[dict]:
     return result.data or []
 
 
-def get_categories_by_names(db: Client, names: list[str]) -> list[dict]:
+def get_categories_by_names(db: Client, names: list[str]) -> list[dict[str, Any]]:
     """Fetch id for a list of exact category names (used by suggestion cluster expansion)."""
     if not names:
         return []
