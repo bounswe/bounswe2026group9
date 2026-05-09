@@ -264,6 +264,8 @@ class AttendanceRepoProtocol(Protocol):
         self, db: Client, user_id: str
     ) -> set[str]: ...
 
+    def get_going_event_ids_for_user(self, db: Client, user_id: str) -> list[str]: ...
+
 
 class UserRepoProtocol(Protocol):
     """Surface used by services that look up user records by id."""
@@ -290,6 +292,8 @@ class EventRepoProtocol(Protocol):
     """
 
     def get_event_by_id(self, db: Client, event_id: str) -> dict | None: ...
+
+    def get_events_by_ids(self, db: Client, event_ids: list[str]) -> list[dict[str, Any]]: ...
 
     def get_primary_locations_for_events(
         self, db: Client, event_ids: list[str]
@@ -382,7 +386,7 @@ class EventRepoProtocol(Protocol):
     ) -> tuple[list[dict], int]: ...
 
     def get_similar_candidates(
-        self, db: Client, event_id: str, limit: int = 30
+        self, db: Client, event_id: str, category_ids: list[str] | None = None, limit: int = 50
     ) -> list[dict]: ...
 
 

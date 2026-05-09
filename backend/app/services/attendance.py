@@ -18,6 +18,7 @@ from app.models.attendance import (
     CheckInResultResponse,
     QrTokenResponse,
 )
+from app.models.event import CategoryResponse, EventListItemResponse, LocationResponse
 from app.repositories import attendance as _attendance_repo
 from app.repositories import event as _event_repo
 from app.repositories import user as _user_repo
@@ -316,3 +317,67 @@ def list_event_attendees(
         )
         for row in rows
     ]
+
+
+def get_my_going_events(
+    db: Client,
+    user_id: str,
+    *,
+    attendances: AttendanceRepoProtocol = _attendance_repo,
+    events: EventRepoProtocol = _event_repo,
+) -> list[EventListItemResponse]:
+    """Return all events the current user has marked as 'going', newest first."""
+    from app.repositories import bookmark as _bookmark_repo
+
+    event_ids = attendances.get_going_event_ids_for_user(db, user_id)
+    if not event_ids:
+        return []
+
+    event_rows = events.get_events_by_ids(db, event_ids)
+    if not event_rows:
+        return []
+
+    ids = [e["id"] for e in event_rows]
+    categories_by_event = events.get_categories_for_events(db, ids)
+    primary_locations = events.get_primary_locations_for_events(db, ids)
+    primary_images = events.get_primary_images_for_events(db, ids)
+    bookmark_counts = _bookmark_repo.get_bookmark_counts_for_events(db, ids)
+    is_bookmarked_map = _bookmark_repo.get_bookmark_status_for_events(db, user_id, ids)
+
+    items = []
+    for event in event_rows:
+        eid = event["id"]
+        raw_cats = categories_by_event.get(eid, [])
+        cats = [CategoryResponse(id=c["id"], name=c["name"], is_predefined=c.get("is_predefined", False), is_approved=c.get("is_approved", True)) for c in raw_cats]
+        loc_data = primary_locations.get(eid)
+        loc = LocationResponse(
+            id=loc_data["id"],
+            name=loc_data["name"],
+            latitude=loc_data["latitude"],
+            longitude=loc_data["longitude"],
+            is_primary=loc_data.get("is_primary", True),
+            order_index=loc_data.get("order_index", 0),
+            location_address=loc_data.get("location_address"),
+        ) if loc_data else None
+        items.append(EventListItemResponse(
+            id=event["id"],
+            host_id=event["host_id"],
+            title=event["title"],
+            description=event["description"],
+            start_datetime=event["start_datetime"],
+            end_datetime=event["end_datetime"],
+            visibility=event["visibility"],
+            is_age_restricted=event["is_age_restricted"],
+            attendee_limit=event["attendee_limit"],
+            attendee_count=event["attendee_count"],
+            status=event["status"],
+            is_bookmarked=eid in is_bookmarked_map,
+            attendance_status="going",
+            going_count=event["attendee_count"],
+            bookmark_count=bookmark_counts.get(eid, 0),
+            is_full=(event["attendee_count"] >= event["attendee_limit"]) if event["attendee_limit"] else None,
+            categories=cats,
+            primary_location=loc,
+            primary_image_url=primary_images.get(eid),
+        ))
+    return items

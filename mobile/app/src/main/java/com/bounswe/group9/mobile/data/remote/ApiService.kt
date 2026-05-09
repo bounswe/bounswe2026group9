@@ -86,7 +86,8 @@ data class EventListResponse(
      * ordering (no past attendance / no category match). Lets the UI show a hint.
      * Older backends omit the field; Gson defaults it to false.
      */
-    val suggested_fallback: Boolean = false
+    val suggested_fallback: Boolean = false,
+    val suggested_fallback_reason: String? = null
 )
 
 // ── Bookmark & Attendance ─────────────────────────────────────────────────────
@@ -586,6 +587,11 @@ interface ApiService {
     ): AccessRequestResponseDto
 
     // ── Check-in (QR) ──
+
+    @GET("attendances/me/events")
+    suspend fun getMyGoingEvents(
+        @Header("Authorization") token: String
+    ): List<EventListItemDto>
 
     @GET("attendances/me/{event_id}/qr")
     suspend fun getMyAttendeeQr(

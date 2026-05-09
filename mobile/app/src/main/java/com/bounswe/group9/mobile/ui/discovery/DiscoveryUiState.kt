@@ -28,6 +28,8 @@ data class DiscoveryUiState(
     val suggestedActive: Boolean = false,
     /** Server flag: true when the user has no past-attendance history so the response fell back to default ordering. */
     val suggestedFallback: Boolean = false,
+    /** "no_history" | "no_match" | null — reason for fallback; null means suggestions are active. */
+    val suggestedFallbackReason: String? = null,
     val isLoading: Boolean = false,
     val isLoadingMore: Boolean = false,
     val errorMessage: String? = null,

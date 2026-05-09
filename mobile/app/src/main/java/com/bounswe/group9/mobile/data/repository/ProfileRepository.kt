@@ -2,6 +2,7 @@ package com.bounswe.group9.mobile.data.repository
 
 import android.util.Log
 import com.bounswe.group9.mobile.data.remote.BookmarkListResponseDto
+import com.bounswe.group9.mobile.data.remote.EventListItemDto
 import com.bounswe.group9.mobile.data.remote.HostProfileDto
 import com.bounswe.group9.mobile.data.remote.MyProfileDto
 import com.bounswe.group9.mobile.data.remote.ProfileUpdateRequestDto
@@ -65,6 +66,20 @@ class ProfileRepository {
             Result.failure(Exception(parseErrorMessage(body, e.code())))
         } catch (e: Exception) {
             Log.e("ProfileRepository", "getBookmarks failed: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getMyGoingEvents(token: String): Result<List<EventListItemDto>> {
+        return try {
+            val result = RetrofitProvider.apiService.getMyGoingEvents("Bearer $token")
+            Result.success(result)
+        } catch (e: retrofit2.HttpException) {
+            val body = e.response()?.errorBody()?.string() ?: "Unknown error"
+            Log.e("ProfileRepository", "getMyGoingEvents HTTP ${e.code()}: $body")
+            Result.failure(Exception(parseErrorMessage(body, e.code())))
+        } catch (e: Exception) {
+            Log.e("ProfileRepository", "getMyGoingEvents failed: ${e.message}", e)
             Result.failure(e)
         }
     }
