@@ -51,6 +51,11 @@ export interface EventListResponse {
   page: number;
   page_size: number;
   total_pages: number;
+  /**
+   * Set by the backend when suggested=true was requested but the user has no
+   * past attendance history to bias on.
+   */
+  suggested_fallback?: boolean;
 }
 
 /** Backend-supported quick filter values (`/events?quick_filter=...`). */
@@ -82,9 +87,16 @@ export interface DiscoveryParams {
   radius_km?: number;
   use_default_area?: boolean;
   accessibility?: AccessibilityFilters;
+  /** Bias results toward categories from the authenticated user's past attendance. */
+  suggested?: boolean;
   sort?: SortOption;
   page?: number;
   page_size?: number;
+}
+
+export interface AllEventsResult {
+  items: EventListItem[];
+  suggested_fallback: boolean;
 }
 
 function appendDiscoveryParams(query: URLSearchParams, params: DiscoveryParams): void {
@@ -109,6 +121,7 @@ function appendDiscoveryParams(query: URLSearchParams, params: DiscoveryParams):
     if (a.quiet_friendly) query.set("quiet_friendly", "true");
   }
 
+  if (params.suggested) query.set("suggested", "true");
   if (params.sort) query.set("sort", params.sort);
 }
 
@@ -124,12 +137,13 @@ export async function fetchEvents(params: DiscoveryParams = {}): Promise<EventLi
   return apiRequest<EventListResponse>(`/events${qs ? `?${qs}` : ""}`, { auth: "optional" });
 }
 
-export async function fetchAllEvents(params: DiscoveryParams = {}): Promise<EventListItem[]> {
+export async function fetchAllEvents(params: DiscoveryParams = {}): Promise<AllEventsResult> {
   const pageSize = 100;
   const firstPage = await fetchEvents({ ...params, page: 1, page_size: pageSize });
+  const suggested_fallback = firstPage.suggested_fallback ?? false;
 
   if (firstPage.total_pages <= 1) {
-    return firstPage.items;
+    return { items: firstPage.items, suggested_fallback };
   }
 
   const remainingPages = await Promise.all(
@@ -138,7 +152,10 @@ export async function fetchAllEvents(params: DiscoveryParams = {}): Promise<Even
     ),
   );
 
-  return [firstPage, ...remainingPages].flatMap((page) => page.items);
+  return {
+    items: [firstPage, ...remainingPages].flatMap((page) => page.items),
+    suggested_fallback,
+  };
 }
 
 export async function fetchCategories(): Promise<Category[]> {

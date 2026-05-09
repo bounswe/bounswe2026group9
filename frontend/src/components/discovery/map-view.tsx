@@ -191,6 +191,9 @@ export function MapView({ currentUserId, isAuthenticated }: MapViewProps) {
           search: searchParams.get("q") ?? undefined,
           category_id: searchParams.get("category")?.split(",")[0] ?? undefined,
         };
+        if (isAuthenticated && searchParams.get("suggested") === "1") {
+          params.suggested = true;
+        }
 
         const temporalRaw = searchParams.get("temporal");
         const VALID_QUICK: readonly QuickFilter[] = [
@@ -244,7 +247,7 @@ export function MapView({ currentUserId, isAuthenticated }: MapViewProps) {
     return () => {
       cancelled = true;
     };
-  }, [searchParams]);
+  }, [isAuthenticated, searchParams]);
 
   return (
     <div className="relative flex-1">

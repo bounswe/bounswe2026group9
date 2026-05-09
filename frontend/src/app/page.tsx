@@ -38,6 +38,7 @@ import {
   fetchEvents,
   fetchCategories,
   type AccessibilityFilters,
+  type AllEventsResult,
   type Category,
   type DiscoveryParams,
   type EventListItem,
@@ -63,6 +64,7 @@ interface PageParams {
   search: string;
   temporal: TemporalFilter | null;
   personal: PersonalFilter | null;
+  suggested: boolean;
   /** comma-separated in URL, array in JS */
   categoryIds: string[];
   showPast: boolean;
@@ -122,6 +124,7 @@ function readParams(sp: ReturnType<typeof useSearchParams>): PageParams {
     search: sp.get("q") ?? "",
     temporal: isQuickFilter(temporal) ? temporal : null,
     personal: isPersonalFilter(personal) ? personal : null,
+    suggested: sp.get("suggested") === "1",
     categoryIds: raw ? raw.split(",").filter(Boolean) : [],
     showPast: sp.get("showPast") === "1",
     sort: isSortOption(sort) ? sort : "start_time",
@@ -140,6 +143,7 @@ function buildQS(p: PageParams & { resetPage?: boolean }): string {
   if (p.search) sp.set("q", p.search);
   if (p.temporal) sp.set("temporal", p.temporal);
   if (p.personal) sp.set("personal", p.personal);
+  if (p.suggested) sp.set("suggested", "1");
   if (p.categoryIds.length > 0) sp.set("category", p.categoryIds.join(","));
   if (p.showPast) sp.set("showPast", "1");
   if (p.sort !== "start_time") sp.set("sort", p.sort);
@@ -157,21 +161,24 @@ interface DiscoveryPageResult {
   items: EventListItem[];
   total: number;
   totalPages: number;
+  suggested_fallback: boolean;
 }
 
 interface DiscoveryQueryShape {
   search: string;
   temporal: TemporalFilter | null;
+  suggested: boolean;
   showPast: boolean;
   sort: SortOption;
   accessibilityKeys: string[];
   categoryIds: string[];
 }
 
-function buildQueryShape(p: PageParams): DiscoveryQueryShape {
+function buildQueryShape(p: PageParams, suggested: boolean): DiscoveryQueryShape {
   return {
     search: p.search.trim(),
     temporal: p.temporal,
+    suggested,
     showPast: p.showPast,
     sort: p.sort,
     accessibilityKeys: activeAccessibilityKeys(p.accessibility),
@@ -188,19 +195,31 @@ function buildDiscoveryCacheKey(
   return JSON.stringify({ ...shape, personal, userKey, geoKey });
 }
 
-function paginateDiscoveryEvents(items: EventListItem[], page: number): DiscoveryPageResult {
+function paginateDiscoveryEvents(
+  items: EventListItem[],
+  page: number,
+  suggested_fallback = false,
+): DiscoveryPageResult {
   const startIndex = (page - 1) * LIST_PAGE_SIZE;
   return {
     items: items.slice(startIndex, startIndex + LIST_PAGE_SIZE),
     total: items.length,
     totalPages: items.length > 0 ? Math.ceil(items.length / LIST_PAGE_SIZE) : 0,
+    suggested_fallback,
   };
 }
 
-function buildDiscoveryQuery(params: PageParams, geo: GeoState): DiscoveryParams {
+function buildDiscoveryQuery(
+  params: PageParams,
+  geo: GeoState,
+  suggested: boolean,
+): DiscoveryParams {
   const out: DiscoveryParams = {
     search: params.search.trim() || undefined,
   };
+  if (suggested) {
+    out.suggested = true;
+  }
 
   if (params.temporal) {
     out.quick_filter = params.temporal;
@@ -262,16 +281,24 @@ async function fetchUnionEvents(
   query: DiscoveryParams,
   showPast: boolean,
   personal: PersonalFilter | null,
-): Promise<EventListItem[]> {
+): Promise<AllEventsResult> {
   const applyFilters = (items: EventListItem[]) =>
     applyPersonalFilter(applyShowPastFilter(items, showPast), personal);
 
   if (categoryIds.length === 0) {
-    return applyFilters(await fetchAllEvents(query));
+    const result = await fetchAllEvents(query);
+    return {
+      items: applyFilters(result.items),
+      suggested_fallback: result.suggested_fallback,
+    };
   }
 
   if (categoryIds.length === 1) {
-    return applyFilters(await fetchAllEvents({ ...query, category_id: categoryIds[0] }));
+    const result = await fetchAllEvents({ ...query, category_id: categoryIds[0] });
+    return {
+      items: applyFilters(result.items),
+      suggested_fallback: result.suggested_fallback,
+    };
   }
 
   const results = await Promise.all(
@@ -279,13 +306,16 @@ async function fetchUnionEvents(
   );
 
   const eventsById = new Map<string, EventListItem>();
-  for (const items of results) {
-    for (const item of items) {
+  for (const result of results) {
+    for (const item of result.items) {
       eventsById.set(item.id, item);
     }
   }
 
-  return applyFilters(Array.from(eventsById.values()).sort(sortDiscoveryEvents));
+  return {
+    items: applyFilters(Array.from(eventsById.values()).sort(sortDiscoveryEvents)),
+    suggested_fallback: results.some((result) => result.suggested_fallback),
+  };
 }
 
 // ─── Geolocation helper ────────────────────────────────────────────────────────
@@ -399,9 +429,10 @@ function DiscoveryLoadingOverlay() {
 function DiscoveryPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, status, user } = useAuth();
   const params = readParams(searchParams);
   const activePersonalFilter = isAuthenticated ? params.personal : null;
+  const activeSuggested = isAuthenticated && params.suggested;
   const discoveryUserKey = isAuthenticated ? (user?.id ?? "authenticated") : "guest";
   const categoryIdsKey = params.categoryIds.join(",");
   const a11yKey = activeAccessibilityKeys(params.accessibility).join(",");
@@ -414,9 +445,10 @@ function DiscoveryPage() {
   const [refreshTick, setRefreshTick] = useState(0);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [suggestedFallback, setSuggestedFallback] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
-  const fullResultsCacheRef = useRef(new Map<string, EventListItem[]>());
-  const pendingFullResultsRef = useRef(new Map<string, Promise<EventListItem[]>>());
+  const fullResultsCacheRef = useRef(new Map<string, AllEventsResult>());
+  const pendingFullResultsRef = useRef(new Map<string, Promise<AllEventsResult>>());
   const pagedResultsCacheRef = useRef(new Map<string, DiscoveryPageResult>());
 
   const distanceMode = params.sort === "distance";
@@ -445,6 +477,7 @@ function DiscoveryPage() {
   const [draftFilters, setDraftFilters] = useState<FilterState>({
     temporal: params.temporal,
     personal: activePersonalFilter,
+    suggested: activeSuggested,
     categoryIds: params.categoryIds,
     showPast: params.showPast,
     sort: params.sort,
@@ -455,6 +488,7 @@ function DiscoveryPage() {
   const prevRef = useRef({
     temporal: params.temporal,
     personal: activePersonalFilter,
+    suggested: activeSuggested,
     categoryIds: params.categoryIds,
     showPast: params.showPast,
     sort: params.sort,
@@ -471,6 +505,7 @@ function DiscoveryPage() {
     const changed =
       prev.temporal !== params.temporal ||
       prev.personal !== activePersonalFilter ||
+      prev.suggested !== activeSuggested ||
       prev.showPast !== params.showPast ||
       prev.sort !== params.sort ||
       !sameIds ||
@@ -479,6 +514,7 @@ function DiscoveryPage() {
       setDraftFilters({
         temporal: params.temporal,
         personal: activePersonalFilter,
+        suggested: activeSuggested,
         categoryIds: params.categoryIds,
         showPast: params.showPast,
         sort: params.sort,
@@ -487,6 +523,7 @@ function DiscoveryPage() {
       prevRef.current = {
         temporal: params.temporal,
         personal: activePersonalFilter,
+        suggested: activeSuggested,
         categoryIds: params.categoryIds,
         showPast: params.showPast,
         sort: params.sort,
@@ -496,6 +533,7 @@ function DiscoveryPage() {
   }, [
     params.temporal,
     activePersonalFilter,
+    activeSuggested,
     params.categoryIds,
     params.showPast,
     params.sort,
@@ -521,6 +559,12 @@ function DiscoveryPage() {
     },
     [router, searchParams],
   );
+
+  useEffect(() => {
+    if (status === "guest" && params.suggested) {
+      replaceParams({ suggested: false, resetPage: true });
+    }
+  }, [status, params.suggested, replaceParams]);
 
   // Auto-revert sort to start_time if geolocation was rejected and we have no fallback
   useEffect(() => {
@@ -583,8 +627,8 @@ function DiscoveryPage() {
       return;
     }
 
-    const query = buildDiscoveryQuery(params, geoState);
-    const shape = buildQueryShape(params);
+    const query = buildDiscoveryQuery(params, geoState, activeSuggested);
+    const shape = buildQueryShape(params, activeSuggested);
     const resultCacheKey = buildDiscoveryCacheKey(
       shape,
       activePersonalFilter,
@@ -602,7 +646,7 @@ function DiscoveryPage() {
         let nextResult: DiscoveryPageResult;
 
         if (params.view === "map") {
-          const items = await getFullDiscoveryEvents(
+          const result = await getFullDiscoveryEvents(
             resultCacheKey,
             query,
             params.categoryIds,
@@ -611,14 +655,20 @@ function DiscoveryPage() {
           );
 
           nextResult = {
-            items,
-            total: items.length,
-            totalPages: items.length > 0 ? Math.ceil(items.length / LIST_PAGE_SIZE) : 0,
+            items: result.items,
+            total: result.items.length,
+            totalPages:
+              result.items.length > 0 ? Math.ceil(result.items.length / LIST_PAGE_SIZE) : 0,
+            suggested_fallback: result.suggested_fallback,
           };
         } else {
-          const cachedFullItems = fullResultsCacheRef.current.get(resultCacheKey);
-          if (cachedFullItems) {
-            nextResult = paginateDiscoveryEvents(cachedFullItems, params.page);
+          const cachedFullResult = fullResultsCacheRef.current.get(resultCacheKey);
+          if (cachedFullResult) {
+            nextResult = paginateDiscoveryEvents(
+              cachedFullResult.items,
+              params.page,
+              cachedFullResult.suggested_fallback,
+            );
           } else {
             const cachedPage = pagedResultsCacheRef.current.get(pageCacheKey);
             if (cachedPage) {
@@ -635,6 +685,7 @@ function DiscoveryPage() {
                 items: applyShowPastFilter(res.items, params.showPast),
                 total: res.total,
                 totalPages: res.total_pages,
+                suggested_fallback: res.suggested_fallback ?? false,
               };
               pagedResultsCacheRef.current.set(pageCacheKey, nextResult);
 
@@ -646,14 +697,18 @@ function DiscoveryPage() {
                 activePersonalFilter,
               ).catch(() => undefined);
             } else {
-              const items = await getFullDiscoveryEvents(
+              const result = await getFullDiscoveryEvents(
                 resultCacheKey,
                 query,
                 params.categoryIds,
                 params.showPast,
                 activePersonalFilter,
               );
-              nextResult = paginateDiscoveryEvents(items, params.page);
+              nextResult = paginateDiscoveryEvents(
+                result.items,
+                params.page,
+                result.suggested_fallback,
+              );
             }
           }
         }
@@ -673,11 +728,13 @@ function DiscoveryPage() {
         setEvents(nextResult.items);
         setTotal(nextResult.total);
         setTotalPages(nextResult.totalPages);
+        setSuggestedFallback(nextResult.suggested_fallback);
       } catch (err: unknown) {
         if (cancelled) return;
         setEvents([]);
         setTotal(0);
         setTotalPages(1);
+        setSuggestedFallback(false);
         setErrorMessage(
           err instanceof Error ? err.message : "Couldn't load events. Please try again.",
         );
@@ -700,6 +757,7 @@ function DiscoveryPage() {
     replaceParams,
     params.search,
     params.temporal,
+    activeSuggested,
     activePersonalFilter,
     params.page,
     params.view,
@@ -720,14 +778,14 @@ function DiscoveryPage() {
       return;
     }
 
-    const baseQuery = buildDiscoveryQuery(params, geoState);
+    const baseQuery = buildDiscoveryQuery(params, geoState, activeSuggested);
     delete baseQuery.sort;
     fetchAllEvents(baseQuery)
-      .then((items) => {
+      .then((result) => {
         if (cancelled) return;
         const counts: Record<string, number> = {};
         const filteredItems = applyPersonalFilter(
-          applyShowPastFilter(items, params.showPast),
+          applyShowPastFilter(result.items, params.showPast),
           activePersonalFilter,
         );
         if (cancelled) return;
@@ -749,6 +807,7 @@ function DiscoveryPage() {
   }, [
     params.search,
     params.temporal,
+    activeSuggested,
     activePersonalFilter,
     params.showPast,
     a11yKey,
@@ -815,6 +874,7 @@ function DiscoveryPage() {
     pushParams({
       temporal: draft.temporal,
       personal: isAuthenticated ? draft.personal : null,
+      suggested: isAuthenticated ? draft.suggested : false,
       categoryIds: draft.categoryIds,
       showPast: draft.showPast,
       sort: draft.sort,
@@ -840,6 +900,7 @@ function DiscoveryPage() {
     pushParams({
       temporal: null,
       personal: null,
+      suggested: false,
       categoryIds: [],
       showPast: false,
       sort: "start_time",
@@ -864,6 +925,7 @@ function DiscoveryPage() {
 
   const showGeoFallbackBanner = distanceMode && geoState.status === "fallback";
   const showGeoDeniedBanner = distanceMode && geoState.status === "denied" && !bannerDismissed;
+  const showSuggestedFallbackBanner = activeSuggested && suggestedFallback && !loading;
 
   // ── Render ─────────────────────────────────────────────────────────────────────
 
@@ -882,7 +944,10 @@ function DiscoveryPage() {
         onToggleFilters={() => setMobileFiltersOpen(true)}
       />
 
-      {(showGeoDeniedBanner || showGeoFallbackBanner || errorMessage) && (
+      {(showGeoDeniedBanner ||
+        showGeoFallbackBanner ||
+        showSuggestedFallbackBanner ||
+        errorMessage) && (
         <div className="border-brand-mid-alpha flex flex-col gap-2 border-b bg-amber-50/70 px-4 py-2 sm:px-6 lg:px-8">
           {showGeoDeniedBanner && (
             <div role="alert" className="flex items-start gap-2 text-sm text-amber-800">
@@ -905,6 +970,13 @@ function DiscoveryPage() {
             <div role="status" className="text-brand-dark flex items-center gap-2 text-sm">
               <AlertTriangle className="size-4 shrink-0" aria-hidden />
               Using your saved default area for distance sorting.
+            </div>
+          )}
+          {showSuggestedFallbackBanner && (
+            <div role="status" className="text-brand-dark flex items-center gap-2 text-sm">
+              <AlertTriangle className="size-4 shrink-0" aria-hidden />
+              Attend events to get personalised suggestions. Showing default results in the
+              meantime.
             </div>
           )}
           {errorMessage && (

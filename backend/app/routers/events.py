@@ -246,6 +246,13 @@ def list_events_geojson_endpoint(
         default=None,
         pattern="^(start_time|distance|category)$",
     ),
+    suggested: bool = Query(
+        default=False,
+        description=(
+            "Bias the GeoJSON map layer toward categories the authenticated user "
+            "attended on past ended events. Silently ignored for guests."
+        ),
+    ),
     user_id: str | None = Depends(_optional_user_id),
 ):
     if quick_filter is not None and (start_after is not None or end_before is not None):
@@ -289,6 +296,7 @@ def list_events_geojson_endpoint(
             "quiet_friendly": quiet_friendly,
         },
         sort=sort,
+        suggested=suggested,
     )
 
 
