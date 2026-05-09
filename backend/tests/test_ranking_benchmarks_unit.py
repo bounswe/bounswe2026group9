@@ -31,6 +31,13 @@ from app.services import event as event_service
 # but small enough that the test stays under the per-shard budget.
 _N = 5_000
 
+# Issue #152 / NFR-01 + NFR-06: discovery search must return within 2 s
+# against a 10 k-event dataset. The hard-cap test below asserts that
+# explicitly — anything that pushes the in-memory ranking path past
+# this budget fails CI loudly rather than going unnoticed.
+_N_NFR = 10_000
+_NFR_DISCOVERY_BUDGET_SECONDS = 2.0
+
 
 @pytest.fixture
 def db() -> MagicMock:
@@ -208,3 +215,148 @@ def test_haversine_pure_function() -> None:
     # Istanbul → Tokyo, ~8945 km (great-circle, mean Earth radius 6371 km).
     distance = event_service._haversine_km(41.0, 29.0, 35.68, 139.69)
     assert math.isclose(distance, 8944.7, abs_tol=5)
+
+
+# ── NFR-01 / NFR-06: discovery on 10 k events under 2 s ───────────────────
+
+
+@pytest.fixture(scope="session")
+def synthetic_events_nfr() -> list[dict[str, Any]]:
+    """10 k synthetic events — separate seed from the 5 k fixture so the
+    existing baseline benchmarks don't drift."""
+    rng = random.Random(0xDEC0DE)
+    rows: list[dict[str, Any]] = []
+    for i in range(_N_NFR):
+        rows.append(
+            {
+                "id": _uuid_from_int(0x40_00_00_00 + i),
+                "host_id": _uuid_from_int(rng.randint(0, 0xFFFFFFFF)),
+                "title": f"NFR Event {i}",
+                "description": "synthetic-nfr",
+                "start_datetime": "2030-06-01T10:00:00+00:00",
+                "end_datetime": "2030-06-01T12:00:00+00:00",
+                "visibility": "public",
+                "is_age_restricted": False,
+                "attendee_limit": None,
+                "attendee_count": rng.randint(0, 200),
+                "status": "published",
+                "created_at": "2030-05-01T00:00:00+00:00",
+                "updated_at": "2030-05-15T00:00:00+00:00",
+            },
+        )
+    return rows
+
+
+@pytest.fixture(scope="session")
+def synthetic_locations_nfr(
+    synthetic_events_nfr: list[dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    rng = random.Random(0xC0DE)
+    return {
+        e["id"]: {
+            "id": _uuid_from_int(0x50_00_00_00 + i),
+            "name": "loc",
+            "latitude": 41.0 + rng.uniform(-0.5, 0.5),
+            "longitude": 29.0 + rng.uniform(-0.5, 0.5),
+            "is_primary": True,
+            "order_index": 0,
+        }
+        for i, e in enumerate(synthetic_events_nfr)
+    }
+
+
+@pytest.fixture(scope="session")
+def synthetic_categories_nfr(
+    synthetic_events_nfr: list[dict[str, Any]],
+) -> dict[str, list[dict[str, Any]]]:
+    rng = random.Random(0xCAFEBABE)
+    pool = [
+        {
+            "id": _uuid_from_int(0x60_00_00_00 + i),
+            "name": f"NFR Cat {i}",
+            "is_predefined": True,
+            "is_approved": True,
+        }
+        for i in range(8)
+    ]
+    return {e["id"]: [rng.choice(pool)] for e in synthetic_events_nfr}
+
+
+def test_list_events_distance_sort_10k_meets_nfr_budget(
+    benchmark,
+    db: MagicMock,
+    synthetic_events_nfr: list[dict[str, Any]],
+    synthetic_locations_nfr: dict[str, dict[str, Any]],
+    synthetic_categories_nfr: dict[str, list[dict[str, Any]]],
+) -> None:
+    """NFR-01 / NFR-06: discovery search returns within 2 s on 10 k events.
+
+    The integration path (PostgREST + network) adds latency on top of
+    this in-memory rank, but the dominant cost in the 10 k regime is
+    the Python sort — the SQL filter is paginated by the DB and the
+    Python step is the only one whose budget grows with N. If this
+    in-memory step alone exceeds the 2 s NFR cap on a CI runner, the
+    end-to-end path can't possibly meet it, so failing here is the
+    right gate.
+    """
+    events_repo = MagicMock(name="event_repo")
+    events_repo.list_events.return_value = (synthetic_events_nfr, _N_NFR)
+    events_repo.get_primary_locations_for_events.return_value = synthetic_locations_nfr
+    events_repo.get_categories_for_events.return_value = synthetic_categories_nfr
+    events_repo.get_primary_images_for_events.return_value = {}
+
+    def _run() -> None:
+        event_service.list_events(
+            db,
+            near_lat=41.0,
+            near_lng=29.0,
+            sort="distance",
+            page=1,
+            page_size=20,
+            **_all_repos(events_repo),
+        )
+
+    benchmark.pedantic(_run, rounds=5, iterations=1, warmup_rounds=1)
+    if benchmark.stats is None:
+        # Running with --benchmark-disable (the unit-fast lane does this).
+        # The body still ran once, so the code path is covered; the NFR
+        # budget assertion only matters when timing is collected.
+        return
+    assert benchmark.stats["median"] < _NFR_DISCOVERY_BUDGET_SECONDS, (
+        f"Discovery 10k median {benchmark.stats['median']:.3f}s exceeded NFR-01 "
+        f"budget of {_NFR_DISCOVERY_BUDGET_SECONDS}s"
+    )
+
+
+def test_list_events_category_sort_10k_meets_nfr_budget(
+    benchmark,
+    db: MagicMock,
+    synthetic_events_nfr: list[dict[str, Any]],
+    synthetic_locations_nfr: dict[str, dict[str, Any]],
+    synthetic_categories_nfr: dict[str, list[dict[str, Any]]],
+) -> None:
+    """Same 2 s budget for the category-sort path — that path also
+    materialises the full filtered set and ranks in Python."""
+    events_repo = MagicMock(name="event_repo")
+    events_repo.list_events.return_value = (synthetic_events_nfr, _N_NFR)
+    events_repo.get_primary_locations_for_events.return_value = synthetic_locations_nfr
+    events_repo.get_categories_for_events.return_value = synthetic_categories_nfr
+    events_repo.get_primary_images_for_events.return_value = {}
+
+    def _run() -> None:
+        event_service.list_events(
+            db,
+            search="NFR Event",  # narrowing filter required by sort=category
+            sort="category",
+            page=1,
+            page_size=20,
+            **_all_repos(events_repo),
+        )
+
+    benchmark.pedantic(_run, rounds=5, iterations=1, warmup_rounds=1)
+    if benchmark.stats is None:
+        return  # see distance-sort variant for rationale
+    assert benchmark.stats["median"] < _NFR_DISCOVERY_BUDGET_SECONDS, (
+        f"Category-sort 10k median {benchmark.stats['median']:.3f}s exceeded NFR-01 "
+        f"budget of {_NFR_DISCOVERY_BUDGET_SECONDS}s"
+    )
