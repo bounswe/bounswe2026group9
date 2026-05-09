@@ -9,6 +9,7 @@ import {
   fetchEventDetail,
   fetchHostProfile,
   fetchNotifications,
+  fetchSimilarEvents,
   markAllNotificationsRead,
   markNotificationRead,
   postComment,
@@ -124,6 +125,15 @@ describe("events-api endpoints", () => {
     await fetchComments(EVENT_ID);
     const { url } = lastCall(fetchMock);
     expect(url).toContain(`/events/${EVENT_ID}/comments`);
+  });
+
+  it("fetchSimilarEvents GETs /events/{id}/similar with optional auth", async () => {
+    fetchMock.mockImplementationOnce(() => Promise.resolve(jsonOk([])));
+    const result = await fetchSimilarEvents(EVENT_ID);
+    const { url, init } = lastCall(fetchMock);
+    expect(url).toContain(`/events/${EVENT_ID}/similar`);
+    expect(init.method ?? "GET").toBe("GET");
+    expect(result).toEqual([]);
   });
 
   it("postComment POSTs the text and forwards parent_id when given", async () => {
