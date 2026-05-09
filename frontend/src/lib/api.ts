@@ -54,6 +54,32 @@ export interface EventLocationPayload {
   longitude: number;
   name: string;
   order_index: number;
+  /** Optional human-readable address (issue #295 — populated by mobile via Nominatim). */
+  location_address?: string | null;
+}
+
+/**
+ * Itinerary segment (issue #149 / #157).
+ *
+ * `location_index` references a position in the request's `locations[]` array
+ * because at create-time the client doesn't yet know the server-assigned UUID.
+ * The backend resolves it positionally inside the atomic create RPC.
+ */
+export interface SegmentPayload {
+  location_index: number;
+  order_index: number;
+  start_datetime: string;
+  end_datetime: string;
+  description?: string | null;
+}
+
+export interface SegmentResponse {
+  id: string;
+  location_id: string;
+  order_index: number;
+  start_datetime: string;
+  end_datetime: string;
+  description: string | null;
 }
 
 export interface VenueMetadataPayload {
@@ -152,6 +178,7 @@ export interface EventCreatePayload {
   attendee_limit?: number | null;
   is_age_restricted?: boolean;
   locations: EventLocationPayload[];
+  segments?: SegmentPayload[] | null;
   start_datetime: string;
   status: "draft" | "published";
   title: string;
@@ -168,6 +195,7 @@ export interface EventUpdatePayload {
   equipment_requirements?: EquipmentRequirementPayload[] | null;
   is_age_restricted?: boolean;
   locations?: EventLocationPayload[];
+  segments?: SegmentPayload[] | null;
   start_datetime?: string;
   title?: string;
   venue_metadata?: VenueMetadataPayload | null;
@@ -204,6 +232,7 @@ export interface EventDetailResponse {
       id: string;
     }
   >;
+  segments?: SegmentResponse[];
   start_datetime: string;
   status: "cancelled" | "draft" | "ended" | "published" | "updated";
   title: string;
