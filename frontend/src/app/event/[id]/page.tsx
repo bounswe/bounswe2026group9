@@ -35,6 +35,7 @@ import { Navbar } from "@/components/layout/navbar";
 import { StatusBadge, eventStatusVariant } from "@/components/event/status-badge";
 import { ImageCarousel } from "@/components/event/image-carousel";
 import { CommentSection } from "@/components/event/comment-section";
+import { SimilarEventsSection } from "@/components/event/similar-events";
 import { ConfirmDialog } from "@/components/event/confirm-dialog";
 import { AttendeeAvatarStack } from "@/components/event/attendee-avatar-stack";
 import { LocationMapModal } from "@/components/event/location-map-modal";
@@ -897,6 +898,9 @@ function FullView({
                 Comments are closed for cancelled events.
               </div>
             )}
+
+            {/* Similar events — backend filters out source event, cancelled, ended, and inaccessible private events. */}
+            <SimilarEventsSection eventId={event.id} />
           </div>
         </div>
         {/* close relative wrapper for left column */}

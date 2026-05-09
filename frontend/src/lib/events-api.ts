@@ -392,6 +392,10 @@ export async function fetchComments(eventId: string): Promise<CommentListRespons
   return apiRequest<CommentListResponse>(`/events/${eventId}/comments`);
 }
 
+export async function fetchSimilarEvents(eventId: string): Promise<EventListItem[]> {
+  return apiRequest<EventListItem[]>(`/events/${eventId}/similar`, { auth: "optional" });
+}
+
 export async function postComment(
   eventId: string,
   content: string,
