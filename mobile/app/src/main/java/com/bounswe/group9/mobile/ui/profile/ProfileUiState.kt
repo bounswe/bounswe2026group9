@@ -16,6 +16,9 @@ data class ProfileUiState(
     // Hosted events
     val hostedEvents: List<EventListItemDto> = emptyList(),
     val isLoadingHostedEvents: Boolean = false,
+    // Going events
+    val goingEvents: List<EventListItemDto> = emptyList(),
+    val isLoadingGoingEvents: Boolean = false,
     // Bookmarks
     val bookmarks: List<BookmarkedEventDto> = emptyList(),
     val bookmarkPage: Int = 1,

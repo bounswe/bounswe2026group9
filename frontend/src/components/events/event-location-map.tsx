@@ -72,14 +72,16 @@ export function EventLocationMap({
           return [];
         }
 
-        return [{
-          id: location.id,
-          isActive: location.id === activeLocation?.id,
-          isPrimary: location.isPrimary,
-          label: getLocationLabel(location, index),
-          latitude: Number(location.latitude),
-          longitude: Number(location.longitude),
-        }];
+        return [
+          {
+            id: location.id,
+            isActive: location.id === activeLocation?.id,
+            isPrimary: location.isPrimary,
+            label: getLocationLabel(location, index),
+            latitude: Number(location.latitude),
+            longitude: Number(location.longitude),
+          },
+        ];
       }),
     [activeLocation?.id, locations],
   );
@@ -218,9 +220,9 @@ export function EventLocationMap({
                 >
                   <div
                     className={cn(
-                      "relative flex size-9 items-center justify-center rounded-full text-xs font-bold text-white shadow-brand-card",
+                      "shadow-brand-card relative flex size-9 items-center justify-center rounded-full text-xs font-bold text-white",
                       location.isActive
-                        ? "bg-brand-dark ring-4 ring-brand-dark/20"
+                        ? "bg-brand-dark ring-brand-dark/20 ring-4"
                         : location.isPrimary
                           ? "bg-brand-mid"
                           : "bg-brand-mid/75",
@@ -244,16 +246,16 @@ export function EventLocationMap({
           </Map>
         </div>
 
-        <div className="absolute right-3 top-3 z-10 flex flex-col gap-1 sm:right-4 sm:top-4">
+        <div className="absolute top-3 right-3 z-10 flex flex-col gap-1 sm:top-4 sm:right-4">
           <button
-            className="flex size-8 items-center justify-center rounded-lg border border-brand-mid-alpha bg-white/90 text-brand-dark shadow-brand-card backdrop-blur-sm transition-colors hover:bg-white sm:size-9"
+            className="border-brand-mid-alpha text-brand-dark shadow-brand-card flex size-8 items-center justify-center rounded-lg border bg-white/90 backdrop-blur-sm transition-colors hover:bg-white sm:size-9"
             onClick={() => mapRef.current?.zoomIn()}
             type="button"
           >
             <Plus className="size-4" />
           </button>
           <button
-            className="flex size-8 items-center justify-center rounded-lg border border-brand-mid-alpha bg-white/90 text-brand-dark shadow-brand-card backdrop-blur-sm transition-colors hover:bg-white sm:size-9"
+            className="border-brand-mid-alpha text-brand-dark shadow-brand-card flex size-8 items-center justify-center rounded-lg border bg-white/90 backdrop-blur-sm transition-colors hover:bg-white sm:size-9"
             onClick={() => mapRef.current?.zoomOut()}
             type="button"
           >
@@ -261,9 +263,15 @@ export function EventLocationMap({
           </button>
         </div>
 
-        <div className="absolute bottom-3 left-3 rounded bg-white/80 px-2 py-0.5 text-[9px] text-gray-500 sm:bottom-2 sm:left-auto sm:right-2 sm:text-[10px]">
-          © <a href="https://openfreemap.org" rel="noreferrer" target="_blank">OpenFreeMap</a> · ©{" "}
-          <a href="https://www.openstreetmap.org/copyright" rel="noreferrer" target="_blank">OpenStreetMap</a>
+        <div className="absolute bottom-3 left-3 rounded bg-white/80 px-2 py-0.5 text-[9px] text-gray-500 sm:right-2 sm:bottom-2 sm:left-auto sm:text-[10px]">
+          ©{" "}
+          <a href="https://openfreemap.org" rel="noreferrer" target="_blank">
+            OpenFreeMap
+          </a>{" "}
+          · ©{" "}
+          <a href="https://www.openstreetmap.org/copyright" rel="noreferrer" target="_blank">
+            OpenStreetMap
+          </a>
         </div>
       </div>
 

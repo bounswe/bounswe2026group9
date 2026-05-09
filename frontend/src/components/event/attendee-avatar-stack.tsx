@@ -1,5 +1,8 @@
 "use client";
 
+import Link from "next/link";
+
+import { getProfileHref } from "@/lib/profile-route";
 import { cn } from "@/lib/utils";
 
 interface Attendee {
@@ -11,6 +14,7 @@ interface AttendeeAvatarStackProps {
   attendees?: Attendee[];
   maxShow?: number;
   className?: string;
+  currentUserId?: string | null;
 }
 
 function getAvatarColor(userId: string): string {
@@ -28,6 +32,7 @@ export function AttendeeAvatarStack({
   attendees = [],
   maxShow = 5,
   className,
+  currentUserId = null,
 }: AttendeeAvatarStackProps) {
   if (attendees.length === 0) {
     return null;
@@ -39,22 +44,22 @@ export function AttendeeAvatarStack({
   return (
     <div className={cn("flex items-center", className)}>
       {shown.map((attendee, index) => (
-        <div
+        <Link
           key={attendee.id}
-          className={cn(
-            "flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white border-2 border-white",
-            getAvatarColor(attendee.id),
-            index > 0 && "-ml-2"
-          )}
+          href={getProfileHref(attendee.id, currentUserId)}
+          aria-label={`View ${attendee.username}'s profile`}
           title={attendee.username}
+          className={cn(
+            "focus-visible:ring-brand-dark flex size-9 shrink-0 items-center justify-center rounded-full border-2 border-white text-xs font-bold text-white transition-transform hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1",
+            getAvatarColor(attendee.id),
+            index > 0 && "-ml-2",
+          )}
         >
           {initials(attendee.username)}
-        </div>
+        </Link>
       ))}
       {remaining > 0 && (
-        <div className="ml-2 text-sm font-bold text-brand-mid">
-          +{remaining} more
-        </div>
+        <div className="text-brand-mid ml-2 text-sm font-bold">+{remaining} more</div>
       )}
     </div>
   );

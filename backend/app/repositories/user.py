@@ -39,3 +39,17 @@ def get_users_by_ids(db: Client, user_ids: list[str]) -> list[dict]:
 
     result = db.table("users").select("id,username").in_("id", user_ids).execute()
     return result.data or []
+
+
+def get_user_default_area(
+    db: Client, user_id: str,
+) -> tuple[float | None, float | None]:
+    """Return (lat, lng) of the user's saved default area, or (None, None) if unset."""
+    result = (
+        db.table("users")
+        .select("default_location_lat,default_location_lng")
+        .eq("id", user_id)
+        .execute()
+    )
+    row = result.data[0] if result.data else {}
+    return (row.get("default_location_lat"), row.get("default_location_lng"))

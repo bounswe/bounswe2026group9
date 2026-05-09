@@ -224,7 +224,7 @@ function StepRail({
   const currentStepLabel = EVENT_EDITOR_STEPS[currentStep];
 
   return (
-    <aside className="h-fit lg:min-w-[240px] lg:px-6 lg:py-8 lg:sticky lg:top-6">
+    <aside className="h-fit lg:sticky lg:top-6 lg:min-w-[240px] lg:px-6 lg:py-8">
       <div className="lg:hidden">
         <button
           className="border-border/80 bg-background/80 flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left shadow-sm"
@@ -235,7 +235,7 @@ function StepRail({
             <Menu className="size-4" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-muted-foreground text-[11px] font-semibold uppercase tracking-[0.12em]">
+            <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.12em] uppercase">
               Steps
             </p>
             <p className="truncate text-sm font-semibold">
@@ -259,7 +259,7 @@ function StepRail({
           />
           <div
             className={cn(
-              "bg-card absolute left-0 top-0 flex h-full w-[min(22rem,88vw)] flex-col border-r border-border/80 shadow-brand-panel transition-transform duration-200",
+              "bg-card border-border/80 shadow-brand-panel absolute top-0 left-0 flex h-full w-[min(22rem,88vw)] flex-col border-r transition-transform duration-200",
               mobileOpen ? "translate-x-0" : "-translate-x-full",
             )}
           >
@@ -290,7 +290,10 @@ function StepRail({
                 const canSelect = stepStates[index]?.canSelect ?? false;
 
                 return (
-                  <div className={cn("relative", index < EVENT_EDITOR_STEPS.length - 1 && "pb-8")} key={step}>
+                  <div
+                    className={cn("relative", index < EVENT_EDITOR_STEPS.length - 1 && "pb-8")}
+                    key={step}
+                  >
                     {index < EVENT_EDITOR_STEPS.length - 1 ? (
                       <div
                         className={cn(
@@ -353,7 +356,10 @@ function StepRail({
           const canSelect = stepStates[index]?.canSelect ?? false;
 
           return (
-            <div className={cn("relative", index < EVENT_EDITOR_STEPS.length - 1 && "pb-8")} key={step}>
+            <div
+              className={cn("relative", index < EVENT_EDITOR_STEPS.length - 1 && "pb-8")}
+              key={step}
+            >
               {index < EVENT_EDITOR_STEPS.length - 1 ? (
                 <div
                   className={cn(
@@ -572,12 +578,12 @@ export function EventEditor({ eventId, mode }: EventEditorProps) {
     () =>
       Boolean(
         formValues.healthRequirements.trim() ||
-          formValues.wheelchairAccess ||
-          formValues.accessibleRestroom ||
-          formValues.elevatorAvailable ||
-          formValues.seatingAvailable ||
-          formValues.captionsSupport ||
-          formValues.quietFriendly,
+        formValues.wheelchairAccess ||
+        formValues.accessibleRestroom ||
+        formValues.elevatorAvailable ||
+        formValues.seatingAvailable ||
+        formValues.captionsSupport ||
+        formValues.quietFriendly,
       ),
     [formValues],
   );
@@ -593,13 +599,13 @@ export function EventEditor({ eventId, mode }: EventEditorProps) {
             : Object.keys(validateStep(index, formValues, images.length)).length === 0
           : index === 3
             ? images.length > 0
-          : index === 4
-              ? hasVenueDetails && Object.keys(validateStep(4, formValues, images.length)).length === 0
-            : index === 5
+            : index === 4
+              ? hasVenueDetails &&
+                Object.keys(validateStep(4, formValues, images.length)).length === 0
+              : index === 5
                 ? isSettingsConfirmed &&
                   Object.keys(validateStep(5, formValues, images.length)).length === 0
-                :
-                  getFirstInvalidStep(formValues, images.length) == null &&
+                : getFirstInvalidStep(formValues, images.length) == null &&
                   isScheduleConfirmed &&
                   isSettingsConfirmed,
       ),
@@ -609,9 +615,7 @@ export function EventEditor({ eventId, mode }: EventEditorProps) {
     () =>
       EVENT_EDITOR_STEPS.map((_, index) => ({
         canSelect:
-          mode === "edit" ||
-          index <= currentStep ||
-          stepCompletion.slice(0, index).every(Boolean),
+          mode === "edit" || index <= currentStep || stepCompletion.slice(0, index).every(Boolean),
         complete: stepCompletion[index] ?? false,
       })),
     [currentStep, mode, stepCompletion],
@@ -652,10 +656,7 @@ export function EventEditor({ eventId, mode }: EventEditorProps) {
 
       // Re-validate date/time inline whenever a datetime field changes
       const isDateTimePatch =
-        "startDate" in patch ||
-        "startTime" in patch ||
-        "endDate" in patch ||
-        "endTime" in patch;
+        "startDate" in patch || "startTime" in patch || "endDate" in patch || "endTime" in patch;
 
       if (isDateTimePatch) {
         const dateErrors = validateStep(1, next, 0);
@@ -1057,8 +1058,8 @@ export function EventEditor({ eventId, mode }: EventEditorProps) {
             <div className="border-border/80 bg-card/90 shadow-brand-panel w-full max-w-xl rounded-[12px] border p-6 text-center sm:p-10">
               <h1 className="text-2xl sm:text-3xl">Edit access is limited to the host</h1>
               <p className="text-muted-foreground mt-4 text-base leading-7">
-                This route is reserved for the event owner. You can still view the event normally, but
-                editing needs the original host account.
+                This route is reserved for the event owner. You can still view the event normally,
+                but editing needs the original host account.
               </p>
               <div className="mt-6 flex justify-center">
                 <Button asChild size="lg">
@@ -1077,295 +1078,308 @@ export function EventEditor({ eventId, mode }: EventEditorProps) {
       <div className="bg-brand-bg flex min-h-dvh flex-col">
         <Navbar showSearch={false} />
         <main className="flex flex-1 flex-col pb-16">
-        <div className="border-brand-mid-alpha bg-brand-surface border-b">
-          <div className="mx-auto flex max-w-[1280px] items-center overflow-x-auto px-4 sm:px-6 lg:px-8">
-            <Link
-              className={cn(
-                "border-b-[3px] whitespace-nowrap px-4 py-3 text-xs font-bold tracking-[0.08em] uppercase transition sm:px-5 sm:text-sm",
-                mode === "create"
-                  ? "border-brand-dark text-foreground"
-                  : "text-foreground/60 hover:text-foreground/90 border-transparent",
-              )}
-              href={CREATE_EVENT_PAGE_PATH}
-            >
-              Create Event
-            </Link>
-            <div className="bg-brand-mid-alpha mx-2 h-6 w-px" />
-            {editHref ? (
+          <div className="border-brand-mid-alpha bg-brand-surface border-b">
+            <div className="mx-auto flex max-w-[1280px] items-center overflow-x-auto px-4 sm:px-6 lg:px-8">
               <Link
                 className={cn(
-                  "border-b-[3px] whitespace-nowrap px-4 py-3 text-xs font-bold tracking-[0.08em] uppercase transition sm:px-5 sm:text-sm",
-                  mode === "edit"
+                  "border-b-[3px] px-4 py-3 text-xs font-bold tracking-[0.08em] whitespace-nowrap uppercase transition sm:px-5 sm:text-sm",
+                  mode === "create"
                     ? "border-brand-dark text-foreground"
                     : "text-foreground/60 hover:text-foreground/90 border-transparent",
                 )}
-                href={editHref}
+                href={CREATE_EVENT_PAGE_PATH}
               >
-                Edit &amp; Advanced
+                Create Event
               </Link>
-            ) : (
-              <span className="text-foreground/40 border-b-[3px] border-transparent whitespace-nowrap px-4 py-3 text-xs font-bold tracking-[0.08em] uppercase sm:px-5 sm:text-sm">
-                Edit &amp; Advanced
-              </span>
-            )}
-          </div>
-        </div>
-
-        <section className="mx-auto w-full max-w-[1280px] px-4 pt-4 sm:px-6 lg:px-8">
-          <div>
-            <Link
-              className="text-brand-mid hover:text-brand-dark inline-flex items-center gap-2 text-sm font-semibold transition"
-              href="/"
-            >
-              <ArrowLeft className="size-4" />
-              Back to Discovery
-            </Link>
-          </div>
-
-          <div className="mt-5 space-y-4">
-            {feedback ? <FeedbackBanner feedback={feedback} /> : null}
-
-            {mode === "edit" && eventStatus !== "draft" ? (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-6 text-amber-900">
-                Published changes may notify attendees who bookmarked or plan to attend.
-              </div>
-            ) : null}
-
-            {(currentStep === 1 || currentStep === 2) && startedAtLoad ? (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-6 text-amber-900">
-                This event has already started, so update the schedule and route carefully.
-              </div>
-            ) : null}
+              <div className="bg-brand-mid-alpha mx-2 h-6 w-px" />
+              {editHref ? (
+                <Link
+                  className={cn(
+                    "border-b-[3px] px-4 py-3 text-xs font-bold tracking-[0.08em] whitespace-nowrap uppercase transition sm:px-5 sm:text-sm",
+                    mode === "edit"
+                      ? "border-brand-dark text-foreground"
+                      : "text-foreground/60 hover:text-foreground/90 border-transparent",
+                  )}
+                  href={editHref}
+                >
+                  Edit &amp; Advanced
+                </Link>
+              ) : (
+                <span className="text-foreground/40 border-b-[3px] border-transparent px-4 py-3 text-xs font-bold tracking-[0.08em] whitespace-nowrap uppercase sm:px-5 sm:text-sm">
+                  Edit &amp; Advanced
+                </span>
+              )}
+            </div>
           </div>
 
-          <div className="mt-6 grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-8">
-            <StepRail
-              currentStep={currentStep}
-              mobileOpen={mobileStepsOpen}
-              onMobileClose={() => setMobileStepsOpen(false)}
-              onMobileOpen={() => setMobileStepsOpen(true)}
-              onStepSelect={handleStepSelect}
-              stepStates={stepStates}
-            />
+          <section className="mx-auto w-full max-w-[1280px] px-4 pt-4 sm:px-6 lg:px-8">
+            <div>
+              <Link
+                className="text-brand-mid hover:text-brand-dark inline-flex items-center gap-2 text-sm font-semibold transition"
+                href="/"
+              >
+                <ArrowLeft className="size-4" />
+                Back to Discovery
+              </Link>
+            </div>
 
-            <div className="max-w-[800px] space-y-6 min-w-0">
-              <div className="space-y-2">
-                <p className="text-muted-foreground text-xs font-semibold tracking-[0.24em] uppercase">
-                  Step {currentStep + 1} of {EVENT_EDITOR_STEPS.length}
-                </p>
-                <h1 className="text-[1.75rem] leading-tight sm:text-[2rem]">{currentCopy.title}</h1>
-                {mode === "edit" ? (
-                  <div className="flex flex-wrap items-center gap-3 pt-1">
-                    <Badge variant={eventStatus === "published" ? "success" : "secondary"}>
-                      {eventStatus}
-                    </Badge>
-                    {persistedEventId ? (
-                      <Badge variant="outline">Event ID {persistedEventId.slice(0, 8)}</Badge>
-                    ) : null}
-                  </div>
-                ) : null}
-              </div>
+            <div className="mt-5 space-y-4">
+              {feedback ? <FeedbackBanner feedback={feedback} /> : null}
 
-              <Card className="border-border/80 bg-card rounded-[12px] shadow-none">
-                <CardContent className="space-y-8 px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
-                  {currentStep === 0 ? (
-                    <div className="space-y-8">
-                      <div className="space-y-3">
-                        <SectionLabel helper="Keep it short, clear, and easy to scan in discovery cards.">
-                          Event title
-                        </SectionLabel>
-                        <Input
-                          maxLength={200}
-                          onChange={(event) => patchFormValues({ title: event.target.value })}
-                          placeholder="Give your event a memorable name"
-                          value={formValues.title}
-                        />
-                        <div className="flex items-center justify-between gap-3">
-                          <FieldError message={fieldErrors.title} />
-                          <p className="text-muted-foreground ml-auto text-xs">
-                            {formValues.title.length}/200
-                          </p>
-                        </div>
-                      </div>
+              {mode === "edit" && eventStatus !== "draft" ? (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-6 text-amber-900">
+                  Published changes may notify attendees who bookmarked or plan to attend.
+                </div>
+              ) : null}
 
-                      <div className="space-y-3">
-                        <SectionLabel helper="A few concrete details go a long way for attendance.">
-                          Description
-                        </SectionLabel>
-                        <Textarea
-                          maxLength={2000}
-                          onChange={(event) => patchFormValues({ description: event.target.value })}
-                          placeholder="Tell people what the event is, who it is for, and what to expect."
-                          rows={6}
-                          value={formValues.description}
-                        />
-                        <div className="flex items-center justify-between gap-3">
-                          <FieldError message={fieldErrors.description} />
-                          <p className="text-muted-foreground ml-auto text-xs">
-                            {formValues.description.length}/2000
-                          </p>
-                        </div>
-                      </div>
+              {(currentStep === 1 || currentStep === 2) && startedAtLoad ? (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-6 text-amber-900">
+                  This event has already started, so update the schedule and route carefully.
+                </div>
+              ) : null}
+            </div>
 
-                      <div className="space-y-4">
-                        <SectionLabel helper="Choose the categories that best describe the event.">
-                          Categories
-                        </SectionLabel>
-                        <div className="flex flex-wrap gap-3">
-                          {categories.map((category) => {
-                            const isSelected = formValues.categoryIds.includes(category.id);
+            <div className="mt-6 grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-8">
+              <StepRail
+                currentStep={currentStep}
+                mobileOpen={mobileStepsOpen}
+                onMobileClose={() => setMobileStepsOpen(false)}
+                onMobileOpen={() => setMobileStepsOpen(true)}
+                onStepSelect={handleStepSelect}
+                stepStates={stepStates}
+              />
 
-                            return (
-                              <button
-                                className={cn(
-                                  "rounded-full border px-4 py-2 text-sm font-semibold transition",
-                                  isSelected
-                                    ? "border-brand-dark bg-brand-dark text-white"
-                                    : "border-border bg-background/80 hover:border-brand-mid hover:bg-background",
-                                )}
-                                key={category.id}
-                                onClick={() =>
-                                  patchFormValues({
-                                    categoryIds: isSelected
-                                      ? formValues.categoryIds.filter((id) => id !== category.id)
-                                      : [...formValues.categoryIds, category.id],
-                                  })
-                                }
-                                type="button"
-                              >
-                                {category.name}
-                              </button>
-                            );
-                          })}
-                        </div>
-                        <FieldError message={fieldErrors.categoryIds} />
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {currentStep === 1 ? (
-                    <div className="space-y-8">
-                      {mode === "create" && !hasConfirmedSchedule ? (
-                        <div className="border-border/80 bg-brand-surface/40 rounded-lg border px-5 py-4 text-sm leading-6">
-                          Suggested times are prefilled for convenience. Review them and press Next
-                          to confirm this step.
-                        </div>
+              <div className="max-w-[800px] min-w-0 space-y-6">
+                <div className="space-y-2">
+                  <p className="text-muted-foreground text-xs font-semibold tracking-[0.24em] uppercase">
+                    Step {currentStep + 1} of {EVENT_EDITOR_STEPS.length}
+                  </p>
+                  <h1 className="text-[1.75rem] leading-tight sm:text-[2rem]">
+                    {currentCopy.title}
+                  </h1>
+                  {mode === "edit" ? (
+                    <div className="flex flex-wrap items-center gap-3 pt-1">
+                      <Badge variant={eventStatus === "published" ? "success" : "secondary"}>
+                        {eventStatus}
+                      </Badge>
+                      {persistedEventId ? (
+                        <Badge variant="outline">Event ID {persistedEventId.slice(0, 8)}</Badge>
                       ) : null}
-
-                      <div className="grid gap-6 md:grid-cols-2">
-                        <div className="space-y-3">
-                          <SectionLabel>Start date</SectionLabel>
-                          <Input
-                            min={new Date().toISOString().split('T')[0]}
-                            onChange={(event) => patchFormValues({ startDate: event.target.value })}
-                            type="date"
-                            value={formValues.startDate}
-                          />
-                        </div>
-                        <div className="space-y-3">
-                          <SectionLabel>Start time</SectionLabel>
-                          <Input
-                            onChange={(event) => patchFormValues({ startTime: event.target.value })}
-                            type="time"
-                            value={formValues.startTime}
-                          />
-                        </div>
-                      </div>
-
-                      <FieldError message={fieldErrors.startDateTime} />
-
-                      <div className="grid gap-6 md:grid-cols-2">
-                        <div className="space-y-3">
-                          <SectionLabel>End date</SectionLabel>
-                          <Input
-                            onChange={(event) => patchFormValues({ endDate: event.target.value })}
-                            type="date"
-                            min={formValues.startDate || undefined}
-                            value={formValues.endDate}
-                          />
-                        </div>
-                        <div className="space-y-3">
-                          <SectionLabel>End time</SectionLabel>
-                          <Input
-                            onChange={(event) => patchFormValues({ endTime: event.target.value })}
-                            type="time"
-                            min={formValues.endDate === formValues.startDate ? formValues.startTime || undefined : undefined}
-                            value={formValues.endTime}
-                          />
-                        </div>
-                      </div>
-
-                      <FieldError message={fieldErrors.endDateTime} />
-
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <div className="border-border/80 bg-background/80 rounded-lg border px-5 py-4">
-                          <div className="flex items-center gap-3">
-                            <CalendarDays className="text-accent size-5" />
-                            <p className="text-sm font-semibold">Date range</p>
-                          </div>
-                          <p className="text-muted-foreground mt-3 text-sm leading-6">
-                            {formatEventDateRange(formValues)}
-                          </p>
-                        </div>
-
-                        <div className="border-border/80 bg-background/80 rounded-lg border px-5 py-4">
-                          <div className="flex items-center gap-3">
-                            <Clock3 className="text-accent size-5" />
-                            <p className="text-sm font-semibold">Duration</p>
-                          </div>
-                          <p className="text-muted-foreground mt-3 text-sm leading-6">
-                            {durationLabel ?? "Set a valid range to see the duration."}
-                          </p>
-                        </div>
-                      </div>
                     </div>
                   ) : null}
+                </div>
 
-                  {currentStep === 2 ? (
-                    <div className="space-y-6">
-                      <div className="border-border/80 bg-background/70 rounded-[12px] border p-5">
-                        <div className="flex flex-wrap items-start justify-between gap-4">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <MapPin className="text-accent size-4" />
-                              <p className="text-base font-semibold">Map picker</p>
-                            </div>
-                            <p className="text-muted-foreground text-sm leading-6">
-                              {activeLocation
-                                ? `Click anywhere on the map to place ${activeLocation.name.trim() || `Location ${Math.max(activeLocationIndex + 1, 1)}`}.`
-                                : "Add a location to start placing pins."}
+                <Card className="border-border/80 bg-card rounded-[12px] shadow-none">
+                  <CardContent className="space-y-8 px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+                    {currentStep === 0 ? (
+                      <div className="space-y-8">
+                        <div className="space-y-3">
+                          <SectionLabel helper="Keep it short, clear, and easy to scan in discovery cards.">
+                            Event title
+                          </SectionLabel>
+                          <Input
+                            maxLength={200}
+                            onChange={(event) => patchFormValues({ title: event.target.value })}
+                            placeholder="Give your event a memorable name"
+                            value={formValues.title}
+                          />
+                          <div className="flex items-center justify-between gap-3">
+                            <FieldError message={fieldErrors.title} />
+                            <p className="text-muted-foreground ml-auto text-xs">
+                              {formValues.title.length}/200
                             </p>
                           </div>
-                          {activeLocation ? (
-                            <Badge variant="secondary">
-                              Editing{" "}
-                              {activeLocation.name.trim() ||
-                                `Location ${Math.max(activeLocationIndex + 1, 1)}`}
-                            </Badge>
-                          ) : null}
                         </div>
 
-                        <EventLocationMap
-                          activeLocationId={
-                            activeLocation?.id ?? formValues.locations[0]?.id ?? ""
-                          }
-                          className="mt-5"
-                          locations={formValues.locations}
-                          onActiveLocationChange={setActiveLocationId}
-                          onSelectCoordinates={(locationId, latitude, longitude) => {
-                            patchLocation(locationId, {
-                              latitude: latitude.toFixed(6),
-                              longitude: longitude.toFixed(6),
-                            });
-                          }}
-                        />
-                      </div>
+                        <div className="space-y-3">
+                          <SectionLabel helper="A few concrete details go a long way for attendance.">
+                            Description
+                          </SectionLabel>
+                          <Textarea
+                            maxLength={2000}
+                            onChange={(event) =>
+                              patchFormValues({ description: event.target.value })
+                            }
+                            placeholder="Tell people what the event is, who it is for, and what to expect."
+                            rows={6}
+                            value={formValues.description}
+                          />
+                          <div className="flex items-center justify-between gap-3">
+                            <FieldError message={fieldErrors.description} />
+                            <p className="text-muted-foreground ml-auto text-xs">
+                              {formValues.description.length}/2000
+                            </p>
+                          </div>
+                        </div>
 
-                      <div className="space-y-5">
+                        <div className="space-y-4">
+                          <SectionLabel helper="Choose the categories that best describe the event.">
+                            Categories
+                          </SectionLabel>
+                          <div className="flex flex-wrap gap-3">
+                            {categories.map((category) => {
+                              const isSelected = formValues.categoryIds.includes(category.id);
+
+                              return (
+                                <button
+                                  className={cn(
+                                    "rounded-full border px-4 py-2 text-sm font-semibold transition",
+                                    isSelected
+                                      ? "border-brand-dark bg-brand-dark text-white"
+                                      : "border-border bg-background/80 hover:border-brand-mid hover:bg-background",
+                                  )}
+                                  key={category.id}
+                                  onClick={() =>
+                                    patchFormValues({
+                                      categoryIds: isSelected
+                                        ? formValues.categoryIds.filter((id) => id !== category.id)
+                                        : [...formValues.categoryIds, category.id],
+                                    })
+                                  }
+                                  type="button"
+                                >
+                                  {category.name}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <FieldError message={fieldErrors.categoryIds} />
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {currentStep === 1 ? (
+                      <div className="space-y-8">
+                        {mode === "create" && !hasConfirmedSchedule ? (
+                          <div className="border-border/80 bg-brand-surface/40 rounded-lg border px-5 py-4 text-sm leading-6">
+                            Suggested times are prefilled for convenience. Review them and press
+                            Next to confirm this step.
+                          </div>
+                        ) : null}
+
+                        <div className="grid gap-6 md:grid-cols-2">
+                          <div className="space-y-3">
+                            <SectionLabel>Start date</SectionLabel>
+                            <Input
+                              min={new Date().toISOString().split("T")[0]}
+                              onChange={(event) =>
+                                patchFormValues({ startDate: event.target.value })
+                              }
+                              type="date"
+                              value={formValues.startDate}
+                            />
+                          </div>
+                          <div className="space-y-3">
+                            <SectionLabel>Start time</SectionLabel>
+                            <Input
+                              onChange={(event) =>
+                                patchFormValues({ startTime: event.target.value })
+                              }
+                              type="time"
+                              value={formValues.startTime}
+                            />
+                          </div>
+                        </div>
+
+                        <FieldError message={fieldErrors.startDateTime} />
+
+                        <div className="grid gap-6 md:grid-cols-2">
+                          <div className="space-y-3">
+                            <SectionLabel>End date</SectionLabel>
+                            <Input
+                              onChange={(event) => patchFormValues({ endDate: event.target.value })}
+                              type="date"
+                              min={formValues.startDate || undefined}
+                              value={formValues.endDate}
+                            />
+                          </div>
+                          <div className="space-y-3">
+                            <SectionLabel>End time</SectionLabel>
+                            <Input
+                              onChange={(event) => patchFormValues({ endTime: event.target.value })}
+                              type="time"
+                              min={
+                                formValues.endDate === formValues.startDate
+                                  ? formValues.startTime || undefined
+                                  : undefined
+                              }
+                              value={formValues.endTime}
+                            />
+                          </div>
+                        </div>
+
+                        <FieldError message={fieldErrors.endDateTime} />
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="border-border/80 bg-background/80 rounded-lg border px-5 py-4">
+                            <div className="flex items-center gap-3">
+                              <CalendarDays className="text-accent size-5" />
+                              <p className="text-sm font-semibold">Date range</p>
+                            </div>
+                            <p className="text-muted-foreground mt-3 text-sm leading-6">
+                              {formatEventDateRange(formValues)}
+                            </p>
+                          </div>
+
+                          <div className="border-border/80 bg-background/80 rounded-lg border px-5 py-4">
+                            <div className="flex items-center gap-3">
+                              <Clock3 className="text-accent size-5" />
+                              <p className="text-sm font-semibold">Duration</p>
+                            </div>
+                            <p className="text-muted-foreground mt-3 text-sm leading-6">
+                              {durationLabel ?? "Set a valid range to see the duration."}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {currentStep === 2 ? (
+                      <div className="space-y-6">
+                        <div className="border-border/80 bg-background/70 rounded-[12px] border p-5">
+                          <div className="flex flex-wrap items-start justify-between gap-4">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <MapPin className="text-accent size-4" />
+                                <p className="text-base font-semibold">Map picker</p>
+                              </div>
+                              <p className="text-muted-foreground text-sm leading-6">
+                                {activeLocation
+                                  ? `Click anywhere on the map to place ${activeLocation.name.trim() || `Location ${Math.max(activeLocationIndex + 1, 1)}`}.`
+                                  : "Add a location to start placing pins."}
+                              </p>
+                            </div>
+                            {activeLocation ? (
+                              <Badge variant="secondary">
+                                Editing{" "}
+                                {activeLocation.name.trim() ||
+                                  `Location ${Math.max(activeLocationIndex + 1, 1)}`}
+                              </Badge>
+                            ) : null}
+                          </div>
+
+                          <EventLocationMap
+                            activeLocationId={
+                              activeLocation?.id ?? formValues.locations[0]?.id ?? ""
+                            }
+                            className="mt-5"
+                            locations={formValues.locations}
+                            onActiveLocationChange={setActiveLocationId}
+                            onSelectCoordinates={(locationId, latitude, longitude) => {
+                              patchLocation(locationId, {
+                                latitude: latitude.toFixed(6),
+                                longitude: longitude.toFixed(6),
+                              });
+                            }}
+                          />
+                        </div>
+
+                        <div className="space-y-5">
                           <div className="space-y-1">
                             <p className="text-xl font-semibold">Event route</p>
                             <p className="text-muted-foreground text-sm leading-6">
-                              Select a stop, rename it if needed, and use the map above to place its pin.
+                              Select a stop, rename it if needed, and use the map above to place its
+                              pin.
                             </p>
                           </div>
 
@@ -1385,7 +1399,7 @@ export function EventEditor({ eventId, mode }: EventEditorProps) {
                                       dragLocationId === location.id && "opacity-60",
                                       dragOverLocationId === location.id &&
                                         dragLocationId !== location.id &&
-                                        "border-brand-mid ring-2 ring-brand-mid/20",
+                                        "border-brand-mid ring-brand-mid/20 ring-2",
                                       location.id === activeLocation?.id
                                         ? "border-brand-dark shadow-brand-card"
                                         : hasLocationErrors
@@ -1418,10 +1432,10 @@ export function EventEditor({ eventId, mode }: EventEditorProps) {
                                       onClick={() => {
                                         setActiveLocationId(location.id);
                                       }}
-                                  >
+                                    >
                                       <button
                                         aria-label={`Reorder ${location.name.trim() || `Location ${index + 1}`}`}
-                                        className="text-brand-dark/35 mt-1.5 flex size-7 shrink-0 cursor-grab items-center justify-center rounded-md transition hover:bg-brand-mid-alpha active:cursor-grabbing"
+                                        className="text-brand-dark/35 hover:bg-brand-mid-alpha mt-1.5 flex size-7 shrink-0 cursor-grab items-center justify-center rounded-md transition active:cursor-grabbing"
                                         draggable
                                         onClick={(event) => {
                                           event.stopPropagation();
@@ -1449,7 +1463,9 @@ export function EventEditor({ eventId, mode }: EventEditorProps) {
                                           <Input
                                             className="h-9 min-w-0 flex-1"
                                             onChange={(event) =>
-                                              patchLocation(location.id, { name: event.target.value })
+                                              patchLocation(location.id, {
+                                                name: event.target.value,
+                                              })
                                             }
                                             onClick={(event) => {
                                               event.stopPropagation();
@@ -1481,7 +1497,7 @@ export function EventEditor({ eventId, mode }: EventEditorProps) {
                                           className={cn(
                                             "h-9 min-w-[5.75rem]",
                                             location.isPrimary &&
-                                              "border-brand-mid bg-brand-mid text-white hover:bg-brand-mid/85 hover:text-white",
+                                              "border-brand-mid bg-brand-mid hover:bg-brand-mid/85 text-white hover:text-white",
                                           )}
                                           onClick={() => {
                                             setActiveLocationId(location.id);
@@ -1652,423 +1668,438 @@ export function EventEditor({ eventId, mode }: EventEditorProps) {
                           <div className="border-border/80 bg-background/60 rounded-lg border px-5 py-4 text-sm leading-6">
                             The primary location is used as the main venue in the event summary.
                           </div>
+                        </div>
                       </div>
-                    </div>
-                  ) : null}
+                    ) : null}
 
-                  {currentStep === 3 ? (
-                    <div className="space-y-6">
-                      <label
-                        className={cn(
-                          "border-border/90 bg-background/60 hover:border-brand-mid flex cursor-pointer flex-col items-center justify-center rounded-[12px] border border-dashed px-6 py-12 text-center transition",
-                          isUploadingImages && "cursor-wait opacity-70",
-                        )}
-                      >
-                        <input
-                          accept="image/jpeg,image/png,image/webp"
-                          className="hidden"
-                          disabled={isUploadingImages}
-                          multiple
-                          onChange={(event) => {
-                            void handleImageUpload(event);
-                          }}
-                          type="file"
-                        />
-                        <div className="bg-background/90 mb-4 rounded-full p-4">
-                          {isUploadingImages ? (
-                            <LoaderCircle className="text-accent size-8 animate-spin" />
-                          ) : (
-                            <Upload className="text-accent size-8" />
+                    {currentStep === 3 ? (
+                      <div className="space-y-6">
+                        <label
+                          className={cn(
+                            "border-border/90 bg-background/60 hover:border-brand-mid flex cursor-pointer flex-col items-center justify-center rounded-[12px] border border-dashed px-6 py-12 text-center transition",
+                            isUploadingImages && "cursor-wait opacity-70",
                           )}
-                        </div>
-                        <p className="text-lg font-semibold">
-                          {isUploadingImages ? "Uploading images..." : "Drag images here or browse"}
-                        </p>
-                        <p className="text-muted-foreground mt-2 max-w-lg text-sm leading-6">
-                          JPEG, PNG, and WebP are supported.
-                        </p>
-                      </label>
-
-                      <FieldError message={fieldErrors.images} />
-
-                      {images.length > 0 ? (
-                        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                          {images.map((image, index) => (
-                            <div
-                              className="border-border/80 bg-background/70 overflow-hidden rounded-[12px] border"
-                              key={image.id}
-                            >
-                              <div className="bg-brand-surface/45 relative aspect-[4/3]">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  alt={`Uploaded event image ${index + 1}`}
-                                  className="size-full object-cover"
-                                  src={image.image_url}
-                                />
-                                <div className="absolute top-3 left-3 flex items-center gap-2">
-                                  {index === 0 ? <Badge variant="success">Cover</Badge> : null}
-                                </div>
-                                <Button
-                                  className="absolute top-3 right-3"
-                                  disabled={isDeletingImageId === image.id}
-                                  onClick={() => {
-                                    void handleDeleteImage(image.id);
-                                  }}
-                                  size="icon-sm"
-                                  type="button"
-                                  variant="secondary"
-                                >
-                                  {isDeletingImageId === image.id ? (
-                                    <LoaderCircle className="animate-spin" />
-                                  ) : (
-                                    <Trash2 />
-                                  )}
-                                </Button>
-                              </div>
-                              <div className="px-4 py-4">
-                                <p className="text-sm font-semibold">Image {index + 1}</p>
-                                <p className="text-muted-foreground mt-1 text-sm">
-                                  Uploaded {new Date(image.upload_date).toLocaleString()}
-                                </p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="border-border/80 bg-background/60 rounded-[12px] border px-5 py-4 text-sm leading-6">
-                          The first uploaded image becomes the cover.
-                        </div>
-                      )}
-                    </div>
-                  ) : null}
-
-                  {currentStep === 4 ? (
-                    <div className="space-y-8">
-                      <div className="space-y-3">
-                        <SectionLabel helper="Share any health, safety, or attendee notes people should know in advance.">
-                          Special requirements
-                        </SectionLabel>
-                        <Textarea
-                          onChange={(event) =>
-                            patchFormValues({ healthRequirements: event.target.value })
-                          }
-                          placeholder="Mask policy, allergens, dress code, or other important notes."
-                          rows={4}
-                          value={formValues.healthRequirements}
-                        />
-                      </div>
-
-                      <div className="space-y-4">
-                        <SectionLabel helper="Help attendees understand accessibility and comfort at the venue.">
-                          Accessibility
-                        </SectionLabel>
-
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          {[
-                            {
-                              checked: formValues.wheelchairAccess,
-                              key: "wheelchairAccess",
-                              label: "Wheelchair accessible",
-                            },
-                            {
-                              checked: formValues.accessibleRestroom,
-                              key: "accessibleRestroom",
-                              label: "Accessible restroom",
-                            },
-                            {
-                              checked: formValues.elevatorAvailable,
-                              key: "elevatorAvailable",
-                              label: "Elevator available",
-                            },
-                            {
-                              checked: formValues.seatingAvailable,
-                              key: "seatingAvailable",
-                              label: "Seating available",
-                            },
-                            {
-                              checked: formValues.captionsSupport,
-                              key: "captionsSupport",
-                              label: "Captions or sign support",
-                            },
-                            {
-                              checked: formValues.quietFriendly,
-                              key: "quietFriendly",
-                              label: "Quiet-friendly environment",
-                            },
-                          ].map((item) => (
-                            <label
-                              className="border-border/80 bg-background/70 flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-4"
-                              key={item.key}
-                            >
-                              <Checkbox
-                                checked={item.checked}
-                                onCheckedChange={(checked) =>
-                                  patchFormValues({
-                                    [item.key]: toBoolean(checked),
-                                  } as Partial<EventFormValues>)
-                                }
-                              />
-                              <span className="text-sm font-medium">{item.label}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {currentStep === 5 ? (
-                    <div className="space-y-6">
-                      {mode === "create" && !hasConfirmedSettings ? (
-                        <div className="border-border/80 bg-brand-surface/40 rounded-lg border px-5 py-4 text-sm leading-6">
-                          Review the visibility and demo capacity settings, then press Next to
-                          confirm this step.
-                        </div>
-                      ) : null}
-
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <ToggleCard
-                          active={formValues.visibility === "public"}
-                          description="Anyone can discover the event and open the full detail page."
-                          icon={<Globe className="size-6" />}
-                          onClick={() => patchFormValues({ visibility: "public" })}
-                          title="Public"
-                        />
-                        <ToggleCard
-                          active={formValues.visibility === "private"}
-                          description="It can still appear in discovery, but only approved users can open the full details."
-                          icon={<Lock className="size-6" />}
-                          onClick={() => patchFormValues({ visibility: "private" })}
-                          title="Private"
-                        />
-                      </div>
-
-                      <div className="border-border/80 bg-background/70 rounded-lg border p-5">
-                        <div className="space-y-4">
-                          <div className="flex items-center gap-3">
-                            <Checkbox
-                              checked={formValues.hasAttendeeLimit}
-                              onCheckedChange={(checked) =>
-                                patchFormValues({ hasAttendeeLimit: toBoolean(checked) })
-                              }
-                            />
-                            <div>
-                              <p className="text-base font-semibold">Set attendee limit</p>
-                              <p className="text-muted-foreground text-sm leading-6">
-                                Enable this for the demo if you want to show limited capacity.
-                              </p>
-                            </div>
+                        >
+                          <input
+                            accept="image/jpeg,image/png,image/webp"
+                            className="hidden"
+                            disabled={isUploadingImages}
+                            multiple
+                            onChange={(event) => {
+                              void handleImageUpload(event);
+                            }}
+                            type="file"
+                          />
+                          <div className="bg-background/90 mb-4 rounded-full p-4">
+                            {isUploadingImages ? (
+                              <LoaderCircle className="text-accent size-8 animate-spin" />
+                            ) : (
+                              <Upload className="text-accent size-8" />
+                            )}
                           </div>
+                          <p className="text-lg font-semibold">
+                            {isUploadingImages
+                              ? "Uploading images..."
+                              : "Drag images here or browse"}
+                          </p>
+                          <p className="text-muted-foreground mt-2 max-w-lg text-sm leading-6">
+                            JPEG, PNG, and WebP are supported.
+                          </p>
+                        </label>
 
-                          {formValues.hasAttendeeLimit ? (
-                            <div className="max-w-xs space-y-3">
-                              <SectionLabel>Maximum attendees</SectionLabel>
-                              <Input
-                                min={1}
-                                onChange={(event) =>
-                                  patchFormValues({ attendeeLimit: event.target.value })
-                                }
-                                type="number"
-                                value={formValues.attendeeLimit}
-                              />
-                              <FieldError message={fieldErrors.attendeeLimit} />
-                            </div>
-                          ) : null}
-                        </div>
-                      </div>
+                        <FieldError message={fieldErrors.images} />
 
-                      {(() => {
-                        const hasDob = Boolean(user?.date_of_birth);
-                        const canCreate18Plus = hasDob && isAtLeast18(user!.date_of_birth!);
-                        const ageGuardMsg = !hasDob
-                          ? "Set your date of birth in profile settings to enable this option."
-                          : "You must be 18 or older to create an age-restricted event.";
-                        return (
-                          <div className="border-border/80 bg-background/70 rounded-lg border p-5">
-                            <div className="flex items-center gap-3">
-                              <Checkbox
-                                checked={formValues.isAgeRestricted}
-                                disabled={!canCreate18Plus}
-                                onCheckedChange={(checked) =>
-                                  patchFormValues({ isAgeRestricted: toBoolean(checked) })
-                                }
-                              />
-                              <div>
-                                <p className="text-base font-semibold">18+ event</p>
-                                {canCreate18Plus ? (
-                                  <p className="text-muted-foreground text-sm leading-6">
-                                    Only adults aged 18 and over can view and attend this event.
-                                  </p>
-                                ) : (
-                                  <p className="text-sm leading-6 text-amber-600">{ageGuardMsg}</p>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })()}
-
-                      <div className="border-border/80 bg-background/70 rounded-lg border p-5">
-                        <p className="text-muted-foreground text-sm leading-6">
-                          Private events can still appear in discovery previews, but only the host
-                          and accepted users can access the full event page.
-                        </p>
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {currentStep === 6 ? (
-                    <div className="space-y-5">
-                      <SummaryCard onEdit={() => setCurrentStep(0)} title="Basics">
-                        <p className="text-lg font-semibold">
-                          {formValues.title || "Untitled event"}
-                        </p>
-                        <div className="mt-4 flex flex-wrap gap-2">
-                          {selectedCategories.length > 0 ? (
-                            selectedCategories.map((category) => (
-                              <Badge key={category.id} variant="secondary">
-                                {category.name}
-                              </Badge>
-                            ))
-                          ) : (
-                            <Badge variant="outline">No categories selected</Badge>
-                          )}
-                        </div>
-                        <p className="text-muted-foreground mt-4 text-sm leading-6">
-                          {formValues.description || "No description added yet."}
-                        </p>
-                      </SummaryCard>
-
-                      <SummaryCard onEdit={() => setCurrentStep(1)} title="Schedule">
-                        <p className="text-base font-semibold">
-                          {formatEventDateRange(formValues)}
-                        </p>
-                        <p className="text-muted-foreground mt-2 text-sm">
-                          Duration: {durationLabel ?? "Not available"}
-                        </p>
-                      </SummaryCard>
-
-                      <SummaryCard onEdit={() => setCurrentStep(2)} title="Location">
-                        <p className="text-base font-semibold">
-                          {reviewLocationSummary || "No locations added"}
-                        </p>
-                      </SummaryCard>
-
-                      <SummaryCard onEdit={() => setCurrentStep(3)} title="Media">
-                        <p className="text-base font-semibold">
-                          {images.length > 0
-                            ? `${images.length} image${images.length === 1 ? "" : "s"} uploaded`
-                            : "No images uploaded"}
-                        </p>
                         {images.length > 0 ? (
-                          <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                            {images.slice(0, 3).map((image) => (
+                          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                            {images.map((image, index) => (
                               <div
-                                className="border-border/80 bg-background/60 overflow-hidden rounded-lg border"
+                                className="border-border/80 bg-background/70 overflow-hidden rounded-[12px] border"
                                 key={image.id}
                               >
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  alt="Review event upload"
-                                  className="aspect-[4/3] w-full object-cover"
-                                  src={image.image_url}
-                                />
+                                <div className="bg-brand-surface/45 relative aspect-[4/3]">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    alt={`Uploaded event image ${index + 1}`}
+                                    className="size-full object-cover"
+                                    src={image.image_url}
+                                  />
+                                  <div className="absolute top-3 left-3 flex items-center gap-2">
+                                    {index === 0 ? <Badge variant="success">Cover</Badge> : null}
+                                  </div>
+                                  <Button
+                                    className="absolute top-3 right-3"
+                                    disabled={isDeletingImageId === image.id}
+                                    onClick={() => {
+                                      void handleDeleteImage(image.id);
+                                    }}
+                                    size="icon-sm"
+                                    type="button"
+                                    variant="secondary"
+                                  >
+                                    {isDeletingImageId === image.id ? (
+                                      <LoaderCircle className="animate-spin" />
+                                    ) : (
+                                      <Trash2 />
+                                    )}
+                                  </Button>
+                                </div>
+                                <div className="px-4 py-4">
+                                  <p className="text-sm font-semibold">Image {index + 1}</p>
+                                  <p className="text-muted-foreground mt-1 text-sm">
+                                    Uploaded {new Date(image.upload_date).toLocaleString()}
+                                  </p>
+                                </div>
                               </div>
                             ))}
                           </div>
+                        ) : (
+                          <div className="border-border/80 bg-background/60 rounded-[12px] border px-5 py-4 text-sm leading-6">
+                            The first uploaded image becomes the cover.
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
+
+                    {currentStep === 4 ? (
+                      <div className="space-y-8">
+                        <div className="space-y-3">
+                          <SectionLabel helper="Share any health, safety, or attendee notes people should know in advance.">
+                            Special requirements
+                          </SectionLabel>
+                          <Textarea
+                            onChange={(event) =>
+                              patchFormValues({ healthRequirements: event.target.value })
+                            }
+                            placeholder="Mask policy, allergens, dress code, or other important notes."
+                            rows={4}
+                            value={formValues.healthRequirements}
+                          />
+                        </div>
+
+                        <div className="space-y-4">
+                          <SectionLabel helper="Help attendees understand accessibility and comfort at the venue.">
+                            Accessibility
+                          </SectionLabel>
+
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            {[
+                              {
+                                checked: formValues.wheelchairAccess,
+                                key: "wheelchairAccess",
+                                label: "Wheelchair accessible",
+                              },
+                              {
+                                checked: formValues.accessibleRestroom,
+                                key: "accessibleRestroom",
+                                label: "Accessible restroom",
+                              },
+                              {
+                                checked: formValues.elevatorAvailable,
+                                key: "elevatorAvailable",
+                                label: "Elevator available",
+                              },
+                              {
+                                checked: formValues.seatingAvailable,
+                                key: "seatingAvailable",
+                                label: "Seating available",
+                              },
+                              {
+                                checked: formValues.captionsSupport,
+                                key: "captionsSupport",
+                                label: "Captions or sign support",
+                              },
+                              {
+                                checked: formValues.quietFriendly,
+                                key: "quietFriendly",
+                                label: "Quiet-friendly environment",
+                              },
+                            ].map((item) => (
+                              <label
+                                className="border-border/80 bg-background/70 flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-4"
+                                key={item.key}
+                              >
+                                <Checkbox
+                                  checked={item.checked}
+                                  onCheckedChange={(checked) =>
+                                    patchFormValues({
+                                      [item.key]: toBoolean(checked),
+                                    } as Partial<EventFormValues>)
+                                  }
+                                />
+                                <span className="text-sm font-medium">{item.label}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {currentStep === 5 ? (
+                      <div className="space-y-6">
+                        {mode === "create" && !hasConfirmedSettings ? (
+                          <div className="border-border/80 bg-brand-surface/40 rounded-lg border px-5 py-4 text-sm leading-6">
+                            Review the visibility and demo capacity settings, then press Next to
+                            confirm this step.
+                          </div>
                         ) : null}
-                      </SummaryCard>
 
-                      <SummaryCard onEdit={() => setCurrentStep(4)} title="Venue metadata">
-                        <p className="text-base font-semibold">
-                          {selectedAccessibilityCount > 0
-                            ? `${selectedAccessibilityCount} accessibility feature${selectedAccessibilityCount === 1 ? "" : "s"} selected`
-                            : "No accessibility features selected"}
-                        </p>
-                        <p className="text-muted-foreground mt-2 text-sm leading-6">
-                          {formValues.healthRequirements || "No additional venue notes"}
-                        </p>
-                      </SummaryCard>
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <ToggleCard
+                            active={formValues.visibility === "public"}
+                            description="Anyone can discover the event and open the full detail page."
+                            icon={<Globe className="size-6" />}
+                            onClick={() => patchFormValues({ visibility: "public" })}
+                            title="Public"
+                          />
+                          <ToggleCard
+                            active={formValues.visibility === "private"}
+                            description="It can still appear in discovery, but only approved users can open the full details."
+                            icon={<Lock className="size-6" />}
+                            onClick={() => patchFormValues({ visibility: "private" })}
+                            title="Private"
+                          />
+                        </div>
 
-                      <SummaryCard onEdit={() => setCurrentStep(5)} title="Settings">
-                        <p className="text-base font-semibold">
-                          {formValues.visibility === "public" ? "Public" : "Private"} ·{" "}
-                          {formValues.hasAttendeeLimit
-                            ? `Capacity ${formValues.attendeeLimit || "unset"}`
-                            : "Unlimited capacity"}
-                        </p>
-                      </SummaryCard>
-                    </div>
-                  ) : null}
-                </CardContent>
-              </Card>
+                        <div className="border-border/80 bg-background/70 rounded-lg border p-5">
+                          <div className="space-y-4">
+                            <div className="flex items-center gap-3">
+                              <Checkbox
+                                checked={formValues.hasAttendeeLimit}
+                                onCheckedChange={(checked) =>
+                                  patchFormValues({ hasAttendeeLimit: toBoolean(checked) })
+                                }
+                              />
+                              <div>
+                                <p className="text-base font-semibold">Set attendee limit</p>
+                                <p className="text-muted-foreground text-sm leading-6">
+                                  Enable this for the demo if you want to show limited capacity.
+                                </p>
+                              </div>
+                            </div>
 
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex w-full sm:w-auto">
-                  {currentStep > 0 ? (
-                    <Button className="w-full sm:w-auto" onClick={handleBack} size="lg" type="button" variant="outline">
-                      <ArrowLeft />
-                      Back
-                    </Button>
-                  ) : null}
-                </div>
+                            {formValues.hasAttendeeLimit ? (
+                              <div className="max-w-xs space-y-3">
+                                <SectionLabel>Maximum attendees</SectionLabel>
+                                <Input
+                                  min={1}
+                                  onChange={(event) =>
+                                    patchFormValues({ attendeeLimit: event.target.value })
+                                  }
+                                  type="number"
+                                  value={formValues.attendeeLimit}
+                                />
+                                <FieldError message={fieldErrors.attendeeLimit} />
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
 
-                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
-                  <Button
-                    className="rounded-lg px-6 w-full sm:w-auto"
-                    onClick={() => {
-                      void handleSaveProgress();
-                    }}
-                    size="lg"
-                    type="button"
-                    variant="outline"
-                  >
-                    {isSaving ? (
-                      <>
-                        <LoaderCircle className="animate-spin" />
-                        Saving...
-                      </>
-                    ) : mode === "create" ? (
-                      "Save draft"
-                    ) : (
-                      "Save changes"
-                    )}
-                  </Button>
+                        {(() => {
+                          const hasDob = Boolean(user?.date_of_birth);
+                          const canCreate18Plus = hasDob && isAtLeast18(user!.date_of_birth!);
+                          const ageGuardMsg = !hasDob
+                            ? "Set your date of birth in profile settings to enable this option."
+                            : "You must be 18 or older to create an age-restricted event.";
+                          return (
+                            <div className="border-border/80 bg-background/70 rounded-lg border p-5">
+                              <div className="flex items-center gap-3">
+                                <Checkbox
+                                  checked={formValues.isAgeRestricted}
+                                  disabled={!canCreate18Plus}
+                                  onCheckedChange={(checked) =>
+                                    patchFormValues({ isAgeRestricted: toBoolean(checked) })
+                                  }
+                                />
+                                <div>
+                                  <p className="text-base font-semibold">18+ event</p>
+                                  {canCreate18Plus ? (
+                                    <p className="text-muted-foreground text-sm leading-6">
+                                      Only adults aged 18 and over can view and attend this event.
+                                    </p>
+                                  ) : (
+                                    <p className="text-sm leading-6 text-amber-600">
+                                      {ageGuardMsg}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
 
-                  {currentStep < EVENT_EDITOR_STEPS.length - 1 ? (
-                    <Button className="w-full sm:w-auto" onClick={() => void handleNext()} size="lg" type="button">
-                      Next
-                      <ArrowRight />
-                    </Button>
-                  ) : null}
+                        <div className="border-border/80 bg-background/70 rounded-lg border p-5">
+                          <p className="text-muted-foreground text-sm leading-6">
+                            Private events can still appear in discovery previews, but only the host
+                            and accepted users can access the full event page.
+                          </p>
+                        </div>
+                      </div>
+                    ) : null}
 
-                  {currentStep === EVENT_EDITOR_STEPS.length - 1 && eventStatus === "draft" ? (
+                    {currentStep === 6 ? (
+                      <div className="space-y-5">
+                        <SummaryCard onEdit={() => setCurrentStep(0)} title="Basics">
+                          <p className="text-lg font-semibold">
+                            {formValues.title || "Untitled event"}
+                          </p>
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            {selectedCategories.length > 0 ? (
+                              selectedCategories.map((category) => (
+                                <Badge key={category.id} variant="secondary">
+                                  {category.name}
+                                </Badge>
+                              ))
+                            ) : (
+                              <Badge variant="outline">No categories selected</Badge>
+                            )}
+                          </div>
+                          <p className="text-muted-foreground mt-4 text-sm leading-6">
+                            {formValues.description || "No description added yet."}
+                          </p>
+                        </SummaryCard>
+
+                        <SummaryCard onEdit={() => setCurrentStep(1)} title="Schedule">
+                          <p className="text-base font-semibold">
+                            {formatEventDateRange(formValues)}
+                          </p>
+                          <p className="text-muted-foreground mt-2 text-sm">
+                            Duration: {durationLabel ?? "Not available"}
+                          </p>
+                        </SummaryCard>
+
+                        <SummaryCard onEdit={() => setCurrentStep(2)} title="Location">
+                          <p className="text-base font-semibold">
+                            {reviewLocationSummary || "No locations added"}
+                          </p>
+                        </SummaryCard>
+
+                        <SummaryCard onEdit={() => setCurrentStep(3)} title="Media">
+                          <p className="text-base font-semibold">
+                            {images.length > 0
+                              ? `${images.length} image${images.length === 1 ? "" : "s"} uploaded`
+                              : "No images uploaded"}
+                          </p>
+                          {images.length > 0 ? (
+                            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                              {images.slice(0, 3).map((image) => (
+                                <div
+                                  className="border-border/80 bg-background/60 overflow-hidden rounded-lg border"
+                                  key={image.id}
+                                >
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    alt="Review event upload"
+                                    className="aspect-[4/3] w-full object-cover"
+                                    src={image.image_url}
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          ) : null}
+                        </SummaryCard>
+
+                        <SummaryCard onEdit={() => setCurrentStep(4)} title="Venue metadata">
+                          <p className="text-base font-semibold">
+                            {selectedAccessibilityCount > 0
+                              ? `${selectedAccessibilityCount} accessibility feature${selectedAccessibilityCount === 1 ? "" : "s"} selected`
+                              : "No accessibility features selected"}
+                          </p>
+                          <p className="text-muted-foreground mt-2 text-sm leading-6">
+                            {formValues.healthRequirements || "No additional venue notes"}
+                          </p>
+                        </SummaryCard>
+
+                        <SummaryCard onEdit={() => setCurrentStep(5)} title="Settings">
+                          <p className="text-base font-semibold">
+                            {formValues.visibility === "public" ? "Public" : "Private"} ·{" "}
+                            {formValues.hasAttendeeLimit
+                              ? `Capacity ${formValues.attendeeLimit || "unset"}`
+                              : "Unlimited capacity"}
+                          </p>
+                        </SummaryCard>
+                      </div>
+                    ) : null}
+                  </CardContent>
+                </Card>
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex w-full sm:w-auto">
+                    {currentStep > 0 ? (
+                      <Button
+                        className="w-full sm:w-auto"
+                        onClick={handleBack}
+                        size="lg"
+                        type="button"
+                        variant="outline"
+                      >
+                        <ArrowLeft />
+                        Back
+                      </Button>
+                    ) : null}
+                  </div>
+
+                  <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
                     <Button
-                      disabled={isPublishing}
+                      className="w-full rounded-lg px-6 sm:w-auto"
                       onClick={() => {
-                        void handlePublish();
+                        void handleSaveProgress();
                       }}
-                      className="w-full sm:w-auto"
                       size="lg"
                       type="button"
+                      variant="outline"
                     >
-                      {isPublishing ? (
+                      {isSaving ? (
                         <>
                           <LoaderCircle className="animate-spin" />
-                          Publishing...
+                          Saving...
                         </>
+                      ) : mode === "create" ? (
+                        "Save draft"
                       ) : (
-                        <>
-                          Publish event
-                          <Sparkles />
-                        </>
+                        "Save changes"
                       )}
                     </Button>
-                  ) : null}
+
+                    {currentStep < EVENT_EDITOR_STEPS.length - 1 ? (
+                      <Button
+                        className="w-full sm:w-auto"
+                        onClick={() => void handleNext()}
+                        size="lg"
+                        type="button"
+                      >
+                        Next
+                        <ArrowRight />
+                      </Button>
+                    ) : null}
+
+                    {currentStep === EVENT_EDITOR_STEPS.length - 1 && eventStatus === "draft" ? (
+                      <Button
+                        disabled={isPublishing}
+                        onClick={() => {
+                          void handlePublish();
+                        }}
+                        className="w-full sm:w-auto"
+                        size="lg"
+                        type="button"
+                      >
+                        {isPublishing ? (
+                          <>
+                            <LoaderCircle className="animate-spin" />
+                            Publishing...
+                          </>
+                        ) : (
+                          <>
+                            Publish event
+                            <Sparkles />
+                          </>
+                        )}
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
         </main>
       </div>
     </ProtectedRoute>

@@ -5,6 +5,15 @@ import uuid
 
 def _normalized_run_id() -> str:
     raw = os.getenv("TEST_RUN_ID", "")
+    # Under pytest-xdist each worker is a separate process that shares the
+    # parent's TEST_RUN_ID. The autouse `cleanup_test_users` fixture deletes
+    # rows by an email pattern keyed off this id — without per-worker
+    # namespacing, worker A's teardown wipes worker B/C/D's users mid-test
+    # and they hit "User not found" on the next request. Fold the worker id
+    # into the run id so each worker has its own delete pattern.
+    worker = os.getenv("PYTEST_XDIST_WORKER", "")
+    if worker:
+        raw = f"{raw}_{worker}"
     normalized = re.sub(r"[^0-9A-Za-z]", "", raw)
     return normalized or uuid.uuid4().hex[:8]
 

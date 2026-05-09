@@ -76,23 +76,27 @@ export function LocationMapModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative w-full max-w-2xl mx-4 rounded-xl overflow-hidden bg-white shadow-2xl focus:outline-none"
+        className="relative mx-4 w-full max-w-2xl overflow-hidden rounded-xl bg-white shadow-2xl focus:outline-none"
       >
-        <div className="flex items-center justify-between px-5 py-3 border-b border-brand-mid-alpha">
-          <h3 id={titleId} className="font-heading text-brand-dark font-bold text-[16px]">{locationName}</h3>
+        <div className="border-brand-mid-alpha flex items-center justify-between border-b px-5 py-3">
+          <h3 id={titleId} className="font-heading text-brand-dark text-[16px] font-bold">
+            {locationName}
+          </h3>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close map"
-            className="flex size-8 items-center justify-center rounded-full hover:bg-brand-mid-alpha transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-mid/60"
+            className="hover:bg-brand-mid-alpha focus-visible:ring-brand-mid/60 flex size-8 items-center justify-center rounded-full transition-colors focus-visible:ring-2 focus-visible:outline-none"
           >
-            <X className="size-4 text-brand-dark" aria-hidden="true" />
+            <X className="text-brand-dark size-4" aria-hidden="true" />
           </button>
         </div>
         <div

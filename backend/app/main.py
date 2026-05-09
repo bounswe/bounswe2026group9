@@ -1,11 +1,23 @@
-from fastapi import FastAPI
+import logging
+
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
+from app import logging_config
 from app.config import settings
 from app.rate_limit import limiter
-from app.routers import (
+
+# Install the JSON formatter as soon as the app module loads so any
+# import-time logging (FastAPI, uvicorn) already routes through it.
+# Routers are imported _after_ this so their module-level
+# ``logging.getLogger(...)`` calls inherit the configured root.
+logging_config.configure()
+_logger = logging.getLogger("app.main")
+
+from app.routers import (  # noqa: E402 — must follow logging_config.configure()
     attendances,
     auth,
     bookmarks,
@@ -16,6 +28,7 @@ from app.routers import (
     notifications,
     users,
 )
+from app.routers.attendances import _qr_router  # noqa: E402
 
 API_DESCRIPTION = """
 Backend API for **Social Event Mapper** — a platform for discovering, hosting,
@@ -149,6 +162,28 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
+# --- Structured 5xx logging (NFR-07) ---
+# Catch-all handler so any uncaught exception in a router/service ends up
+# as a single JSON log line with the request's method/path and the
+# exception class. The 500 response shape stays identical to FastAPI's
+# default — clients see no behavioural change, only the operator does.
+@app.exception_handler(Exception)
+async def _log_unhandled_exception(request: Request, exc: Exception) -> JSONResponse:
+    _logger.error(
+        "unhandled_exception",
+        extra={
+            "action": "http.unhandled_exception",
+            "request_method": request.method,
+            "request_path": request.url.path,
+        },
+        exc_info=exc,
+    )
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal Server Error"},
+    )
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in settings.CORS_ORIGINS.split(",")],
@@ -166,6 +201,7 @@ app.include_router(invites.router)
 app.include_router(notifications.router)
 app.include_router(bookmarks.router)
 app.include_router(attendances.router)
+app.include_router(_qr_router)
 app.include_router(users.router)
 
 

@@ -1,0 +1,362 @@
+"""Microbenchmarks for the in-memory ranking paths.
+
+`list_events` (sort=distance/category) and `get_similar_events` both
+materialise the full filtered set and rank in Python — the database
+can't order by the joined-aggregate column in a single round-trip.
+The 10k-event NFR target sets the budget, so a regression that
+slows the in-memory sort by an order of magnitude needs to fail CI
+loudly. pytest-benchmark stores per-test timing so a regression
+shows up in the diff against ``.benchmarks/Linux-CPython-3.12/``.
+
+To regenerate the baseline after a deliberate algorithm change:
+
+    pytest tests/test_ranking_benchmarks.py --benchmark-save=baseline
+
+To compare a new run against it:
+
+    pytest tests/test_ranking_benchmarks.py --benchmark-compare=baseline
+"""
+from __future__ import annotations
+
+import math
+import random
+from typing import Any
+from unittest.mock import MagicMock
+
+import pytest
+
+from app.services import event as event_service
+
+# Synthetic dataset size — generous enough that O(N log N) is visible
+# but small enough that the test stays under the per-shard budget.
+_N = 5_000
+
+# Issue #152 / NFR-01 + NFR-06: discovery search must return within 2 s
+# against a 10 k-event dataset. The hard-cap test below asserts that
+# explicitly — anything that pushes the in-memory ranking path past
+# this budget fails CI loudly rather than going unnoticed.
+_N_NFR = 10_000
+_NFR_DISCOVERY_BUDGET_SECONDS = 2.0
+
+
+@pytest.fixture
+def db() -> MagicMock:
+    return MagicMock(name="supabase_client")
+
+
+def _uuid_from_int(seed: int) -> str:
+    """Deterministic UUID from a seed int — formed as 32 hex chars in groups."""
+    h = f"{seed:032x}"
+    return f"{h[0:8]}-{h[8:12]}-{h[12:16]}-{h[16:20]}-{h[20:32]}"
+
+
+@pytest.fixture(scope="session")
+def synthetic_events() -> list[dict[str, Any]]:
+    """A deterministic set of synthetic events with valid UUIDs.
+
+    Seeded RNG so runs are reproducible across CI hosts; the dataset
+    only needs to be _representative_, not realistic.
+    """
+    rng = random.Random(0xC0FFEE)
+    rows: list[dict[str, Any]] = []
+    for i in range(_N):
+        rows.append(
+            {
+                "id": _uuid_from_int(i),
+                "host_id": _uuid_from_int(rng.randint(0, 0xFFFFFFFF)),
+                "title": f"Event {i}",
+                "description": "synthetic",
+                "start_datetime": "2030-06-01T10:00:00+00:00",
+                "end_datetime": "2030-06-01T12:00:00+00:00",
+                "visibility": "public",
+                "is_age_restricted": False,
+                "attendee_limit": None,
+                "attendee_count": rng.randint(0, 200),
+                "status": "published",
+                "created_at": "2030-05-01T00:00:00+00:00",
+                "updated_at": "2030-05-15T00:00:00+00:00",
+            },
+        )
+    return rows
+
+
+@pytest.fixture(scope="session")
+def synthetic_locations(synthetic_events: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """A primary-location entry per event, points scattered around (41, 29)."""
+    rng = random.Random(0xBADCAFE)
+    out: dict[str, dict[str, Any]] = {}
+    for i, event in enumerate(synthetic_events):
+        out[event["id"]] = {
+            "id": _uuid_from_int(0x10_00_00_00 + i),
+            "name": "loc",
+            "latitude": 41.0 + rng.uniform(-0.5, 0.5),
+            "longitude": 29.0 + rng.uniform(-0.5, 0.5),
+            "is_primary": True,
+            "order_index": 0,
+        }
+    return out
+
+
+@pytest.fixture
+def synthetic_categories(
+    synthetic_events: list[dict[str, Any]],
+) -> dict[str, list[dict[str, Any]]]:
+    """A single random category per event drawn from a small pool."""
+    rng = random.Random(0xFEEDFACE)
+    pool = [
+        {
+            "id": _uuid_from_int(0x20_00_00_00 + i),
+            "name": f"Cat {i}",
+            "is_predefined": True,
+            "is_approved": True,
+        }
+        for i in range(8)
+    ]
+    return {e["id"]: [rng.choice(pool)] for e in synthetic_events}
+
+
+def _all_repos(events_repo: MagicMock) -> dict[str, MagicMock]:
+    users = MagicMock(name="user_repo")
+    users.get_user_default_area.return_value = (None, None)
+    bookmarks = MagicMock(name="bookmark_repo")
+    bookmarks.get_bookmark_status_for_events.return_value = set()
+    bookmarks.get_bookmark_counts_for_events.return_value = {}
+    attendances = MagicMock(name="attendance_repo")
+    attendances.get_attendance_status_for_events.return_value = {}
+    attendances.get_attended_ended_event_categories.return_value = set()
+    invites = MagicMock(name="invite_repo")
+    invites.get_access_request_status_for_events.return_value = {}
+    invites.get_access_granted_event_ids.return_value = set()
+    return {
+        "events": events_repo,
+        "users": users,
+        "bookmarks": bookmarks,
+        "attendances": attendances,
+        "invites": invites,
+    }
+
+
+def test_list_events_distance_sort_5k(
+    benchmark,
+    db: MagicMock,
+    synthetic_events: list[dict[str, Any]],
+    synthetic_locations: dict[str, dict[str, Any]],
+    synthetic_categories: dict[str, list[dict[str, Any]]],
+) -> None:
+    """Distance-sort path on 5k events — covers the in-memory haversine rank."""
+    events_repo = MagicMock(name="event_repo")
+    events_repo.list_events.return_value = (synthetic_events, _N)
+    events_repo.get_primary_locations_for_events.return_value = synthetic_locations
+    events_repo.get_categories_for_events.return_value = synthetic_categories
+    events_repo.get_primary_images_for_events.return_value = {}
+
+    def _run() -> None:
+        event_service.list_events(
+            db,
+            near_lat=41.0,
+            near_lng=29.0,
+            sort="distance",
+            page=1,
+            page_size=20,
+            **_all_repos(events_repo),
+        )
+
+    benchmark(_run)
+
+
+def test_get_similar_events_30_candidates(
+    benchmark,
+    db: MagicMock,
+    synthetic_events: list[dict[str, Any]],
+    synthetic_locations: dict[str, dict[str, Any]],
+    synthetic_categories: dict[str, list[dict[str, Any]]],
+) -> None:
+    """Score path on the standard 30-candidate window."""
+    events_repo = MagicMock(name="event_repo")
+    source = synthetic_events[0]
+    candidates = synthetic_events[:30]
+
+    events_repo.get_event_by_id.return_value = source
+    events_repo.get_event_categories.return_value = synthetic_categories[source["id"]]
+    events_repo.get_primary_locations_for_events.return_value = {
+        cid: synthetic_locations[cid] for cid in [source["id"]] + [c["id"] for c in candidates]
+    }
+    events_repo.get_similar_candidates.return_value = candidates
+    events_repo.get_categories_for_events.return_value = {
+        c["id"]: synthetic_categories[c["id"]] for c in candidates
+    }
+    events_repo.get_primary_images_for_events.return_value = {}
+
+    bookmarks = MagicMock(name="bookmark_repo")
+    bookmarks.get_bookmark_counts_for_events.return_value = {}
+    bookmarks.get_bookmark_status_for_events.return_value = set()
+    invites = MagicMock(name="invite_repo")
+    invites.get_access_request_status_for_events.return_value = {}
+    invites.get_access_granted_event_ids.return_value = set()
+
+    def _run() -> None:
+        event_service.get_similar_events(
+            db, source["id"],
+            user_id=None, limit=5,
+            events=events_repo, bookmarks=bookmarks, invites=invites,
+        )
+
+    benchmark(_run)
+
+
+def test_haversine_pure_function() -> None:
+    """The pure haversine helper itself — sub-microsecond per call.
+
+    Anchors the unit so the benchmarks above can be diffed against a
+    fixed reference point. Not parameterised by `benchmark` because
+    benchmarking a single-arithmetic function is noisy below CPU
+    counter resolution; this just pins the math is correct.
+    """
+    # Istanbul → Tokyo, ~8945 km (great-circle, mean Earth radius 6371 km).
+    distance = event_service._haversine_km(41.0, 29.0, 35.68, 139.69)
+    assert math.isclose(distance, 8944.7, abs_tol=5)
+
+
+# ── NFR-01 / NFR-06: discovery on 10 k events under 2 s ───────────────────
+
+
+@pytest.fixture(scope="session")
+def synthetic_events_nfr() -> list[dict[str, Any]]:
+    """10 k synthetic events — separate seed from the 5 k fixture so the
+    existing baseline benchmarks don't drift."""
+    rng = random.Random(0xDEC0DE)
+    rows: list[dict[str, Any]] = []
+    for i in range(_N_NFR):
+        rows.append(
+            {
+                "id": _uuid_from_int(0x40_00_00_00 + i),
+                "host_id": _uuid_from_int(rng.randint(0, 0xFFFFFFFF)),
+                "title": f"NFR Event {i}",
+                "description": "synthetic-nfr",
+                "start_datetime": "2030-06-01T10:00:00+00:00",
+                "end_datetime": "2030-06-01T12:00:00+00:00",
+                "visibility": "public",
+                "is_age_restricted": False,
+                "attendee_limit": None,
+                "attendee_count": rng.randint(0, 200),
+                "status": "published",
+                "created_at": "2030-05-01T00:00:00+00:00",
+                "updated_at": "2030-05-15T00:00:00+00:00",
+            },
+        )
+    return rows
+
+
+@pytest.fixture(scope="session")
+def synthetic_locations_nfr(
+    synthetic_events_nfr: list[dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    rng = random.Random(0xC0DE)
+    return {
+        e["id"]: {
+            "id": _uuid_from_int(0x50_00_00_00 + i),
+            "name": "loc",
+            "latitude": 41.0 + rng.uniform(-0.5, 0.5),
+            "longitude": 29.0 + rng.uniform(-0.5, 0.5),
+            "is_primary": True,
+            "order_index": 0,
+        }
+        for i, e in enumerate(synthetic_events_nfr)
+    }
+
+
+@pytest.fixture(scope="session")
+def synthetic_categories_nfr(
+    synthetic_events_nfr: list[dict[str, Any]],
+) -> dict[str, list[dict[str, Any]]]:
+    rng = random.Random(0xCAFEBABE)
+    pool = [
+        {
+            "id": _uuid_from_int(0x60_00_00_00 + i),
+            "name": f"NFR Cat {i}",
+            "is_predefined": True,
+            "is_approved": True,
+        }
+        for i in range(8)
+    ]
+    return {e["id"]: [rng.choice(pool)] for e in synthetic_events_nfr}
+
+
+def test_list_events_distance_sort_10k_meets_nfr_budget(
+    benchmark,
+    db: MagicMock,
+    synthetic_events_nfr: list[dict[str, Any]],
+    synthetic_locations_nfr: dict[str, dict[str, Any]],
+    synthetic_categories_nfr: dict[str, list[dict[str, Any]]],
+) -> None:
+    """NFR-01 / NFR-06: discovery search returns within 2 s on 10 k events.
+
+    The integration path (PostgREST + network) adds latency on top of
+    this in-memory rank, but the dominant cost in the 10 k regime is
+    the Python sort — the SQL filter is paginated by the DB and the
+    Python step is the only one whose budget grows with N. If this
+    in-memory step alone exceeds the 2 s NFR cap on a CI runner, the
+    end-to-end path can't possibly meet it, so failing here is the
+    right gate.
+    """
+    events_repo = MagicMock(name="event_repo")
+    events_repo.list_events.return_value = (synthetic_events_nfr, _N_NFR)
+    events_repo.get_primary_locations_for_events.return_value = synthetic_locations_nfr
+    events_repo.get_categories_for_events.return_value = synthetic_categories_nfr
+    events_repo.get_primary_images_for_events.return_value = {}
+
+    def _run() -> None:
+        event_service.list_events(
+            db,
+            near_lat=41.0,
+            near_lng=29.0,
+            sort="distance",
+            page=1,
+            page_size=20,
+            **_all_repos(events_repo),
+        )
+
+    benchmark.pedantic(_run, rounds=5, iterations=1, warmup_rounds=1)
+    if benchmark.stats is None:
+        # Running with --benchmark-disable (the unit-fast lane does this).
+        # The body still ran once, so the code path is covered; the NFR
+        # budget assertion only matters when timing is collected.
+        return
+    assert benchmark.stats["median"] < _NFR_DISCOVERY_BUDGET_SECONDS, (
+        f"Discovery 10k median {benchmark.stats['median']:.3f}s exceeded NFR-01 "
+        f"budget of {_NFR_DISCOVERY_BUDGET_SECONDS}s"
+    )
+
+
+def test_list_events_category_sort_10k_meets_nfr_budget(
+    benchmark,
+    db: MagicMock,
+    synthetic_events_nfr: list[dict[str, Any]],
+    synthetic_locations_nfr: dict[str, dict[str, Any]],
+    synthetic_categories_nfr: dict[str, list[dict[str, Any]]],
+) -> None:
+    """Same 2 s budget for the category-sort path — that path also
+    materialises the full filtered set and ranks in Python."""
+    events_repo = MagicMock(name="event_repo")
+    events_repo.list_events.return_value = (synthetic_events_nfr, _N_NFR)
+    events_repo.get_primary_locations_for_events.return_value = synthetic_locations_nfr
+    events_repo.get_categories_for_events.return_value = synthetic_categories_nfr
+    events_repo.get_primary_images_for_events.return_value = {}
+
+    def _run() -> None:
+        event_service.list_events(
+            db,
+            search="NFR Event",  # narrowing filter required by sort=category
+            sort="category",
+            page=1,
+            page_size=20,
+            **_all_repos(events_repo),
+        )
+
+    benchmark.pedantic(_run, rounds=5, iterations=1, warmup_rounds=1)
+    if benchmark.stats is None:
+        return  # see distance-sort variant for rationale
+    assert benchmark.stats["median"] < _NFR_DISCOVERY_BUDGET_SECONDS, (
+        f"Category-sort 10k median {benchmark.stats['median']:.3f}s exceeded NFR-01 "
+        f"budget of {_NFR_DISCOVERY_BUDGET_SECONDS}s"
+    )

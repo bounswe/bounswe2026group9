@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -107,11 +108,16 @@ fun ProfileScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        LazyColumn(
-            state = listState,
+        PullToRefreshBox(
+            isRefreshing = uiState.isLoadingHostedEvents,
+            onRefresh = { viewModel.refresh() },
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding),
+                .padding(padding)
+        ) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 32.dp)
         ) {
             // ── Avatar + Username ─────────────────────────────────────────
@@ -323,6 +329,41 @@ fun ProfileScreen(
                 }
             }
 
+            // ── Going Events ──────────────────────────────────────────────
+            item {
+                Spacer(Modifier.height(24.dp))
+                SectionLabel("GOING TO")
+            }
+
+            if (uiState.isLoadingGoingEvents) {
+                item {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) { CircularProgressIndicator(color = MaterialTheme.colorScheme.tertiary) }
+                }
+            } else if (uiState.goingEvents.isEmpty()) {
+                item {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            "No upcoming events marked as going",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+            } else {
+                items(uiState.goingEvents, key = { "going_${it.id}" }) { event ->
+                    HostedEventCard(
+                        event = event,
+                        onClick = { onEventClick(event.id) }
+                    )
+                }
+            }
+
             // ── Bookmarks Section Header ──────────────────────────────────
             item {
                 Spacer(Modifier.height(24.dp))
@@ -392,6 +433,7 @@ fun ProfileScreen(
                 }
             }
         }
+        } // end PullToRefreshBox
     }
 }
 

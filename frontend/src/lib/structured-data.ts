@@ -16,12 +16,7 @@
 //   - Cancelled / ended status is reflected via eventStatus so search engines
 //     don't show stale events as bookable.
 
-import type {
-  AnyEventDetail,
-  EventDetail,
-  EventLocation,
-  HostProfile,
-} from "@/lib/events-api";
+import type { AnyEventDetail, EventDetail, EventLocation, HostProfile } from "@/lib/events-api";
 
 const EVENT_STATUS_MAP: Record<EventDetail["status"], string> = {
   draft: "https://schema.org/EventScheduled",

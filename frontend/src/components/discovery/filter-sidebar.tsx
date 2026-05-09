@@ -1,21 +1,38 @@
 "use client";
 
-import { Check, SlidersHorizontal, X } from "lucide-react";
+import { Accessibility, Check, Clock, Sparkles, SlidersHorizontal, X } from "lucide-react";
 
-import type { Category, PersonalFilter, TemporalFilter } from "@/lib/events-api";
+import type {
+  AccessibilityFilters,
+  Category,
+  PersonalFilter,
+  QuickFilter,
+  SortOption,
+  TemporalFilter,
+} from "@/lib/events-api";
 import { cn } from "@/lib/utils";
 
 export interface FilterState {
+  /** Backend `quick_filter` (now/today/this_week/weekend/upcoming). "past" is reached via the `showPast` toggle, never via this list. */
   temporal: TemporalFilter | null;
+  /** Client-side personal filter (bookmarked / going). */
   personal: PersonalFilter | null;
-  /** Multiple categories = union (OR) logic */
+  /** Backend-personalized event suggestions, shown only to authenticated users. */
+  suggested: boolean;
+  /** Multi-select category IDs (OR/union). */
   categoryIds: string[];
+  /** Toggle: include past events in the result set. Maps to `quick_filter=past` when no other temporal is set. */
+  showPast: boolean;
+  /** Sort selection. "distance" is location-aware and prompts the browser for geolocation when chosen. */
+  sort: SortOption;
+  /** Accessibility venue filters. */
+  accessibility: AccessibilityFilters;
 }
 
 interface FilterSidebarProps {
   filters: FilterState;
   categories: Category[];
-  /** Counts computed WITHOUT the category filter so they stay stable */
+  /** Counts computed WITHOUT the category filter so they stay stable. */
   categoryCounts: Record<string, number>;
   onFiltersChange: (filters: FilterState) => void;
   onApply: () => void;
@@ -26,16 +43,59 @@ interface FilterSidebarProps {
   onMobileClose: () => void;
 }
 
-const TEMPORAL_OPTIONS: { value: TemporalFilter; label: string }[] = [
+const QUICK_FILTERS: { value: QuickFilter; label: string }[] = [
+  { value: "now", label: "Now" },
   { value: "today", label: "Today" },
-  { value: "this_week", label: "This Week" },
   { value: "weekend", label: "Weekend" },
+  { value: "this_week", label: "This Week" },
+  { value: "upcoming", label: "Upcoming" },
 ];
 
 const PERSONAL_OPTIONS: { value: PersonalFilter; label: string }[] = [
   { value: "bookmarked", label: "Bookmarked" },
   { value: "going", label: "Going" },
 ];
+
+const SORT_OPTIONS: { value: SortOption; label: string; helper: string }[] = [
+  { value: "start_time", label: "Start time", helper: "Nearest in time first" },
+  { value: "distance", label: "Distance (uses your location)", helper: "Closest to you first" },
+  { value: "category", label: "Category", helper: "Group by category, A → Z" },
+];
+
+const ACCESSIBILITY_OPTIONS: { key: keyof AccessibilityFilters; label: string }[] = [
+  { key: "wheelchair", label: "Wheelchair access" },
+  { key: "accessible_restroom", label: "Accessible restroom" },
+  { key: "elevator", label: "Elevator available" },
+  { key: "seating", label: "Seating available" },
+  { key: "captions", label: "Captions / interpreter support" },
+  { key: "quiet_friendly", label: "Quiet-friendly" },
+];
+
+export function countActiveFilters(state: FilterState): number {
+  const accessibility = ACCESSIBILITY_OPTIONS.reduce(
+    (acc, opt) => acc + (state.accessibility[opt.key] ? 1 : 0),
+    0,
+  );
+  return (
+    (state.temporal ? 1 : 0) +
+    (state.personal ? 1 : 0) +
+    (state.suggested ? 1 : 0) +
+    state.categoryIds.length +
+    (state.showPast ? 1 : 0) +
+    (state.sort !== "start_time" ? 1 : 0) +
+    accessibility
+  );
+}
+
+export const DEFAULT_FILTER_STATE: FilterState = {
+  temporal: null,
+  personal: null,
+  suggested: false,
+  categoryIds: [],
+  showPast: false,
+  sort: "start_time",
+  accessibility: {},
+};
 
 export function FilterSidebar({
   filters,
@@ -49,7 +109,6 @@ export function FilterSidebar({
   mobileOpen,
   onMobileClose,
 }: FilterSidebarProps) {
-  // Sort: higher count first, then alphabetical within same count
   const sortedCategories = [...categories].sort((a, b) => {
     const ca = categoryCounts[a.id] ?? 0;
     const cb = categoryCounts[b.id] ?? 0;
@@ -57,20 +116,22 @@ export function FilterSidebar({
     return a.name.localeCompare(b.name);
   });
 
-  function toggleTemporal(value: TemporalFilter) {
+  function toggleTemporal(value: QuickFilter) {
     onFiltersChange({
       ...filters,
       temporal: filters.temporal === value ? null : value,
-      personal: null,
     });
   }
 
   function togglePersonal(value: PersonalFilter) {
     onFiltersChange({
       ...filters,
-      temporal: null,
       personal: filters.personal === value ? null : value,
     });
+  }
+
+  function toggleSuggested() {
+    onFiltersChange({ ...filters, suggested: !filters.suggested });
   }
 
   function toggleCategory(id: string) {
@@ -80,11 +141,34 @@ export function FilterSidebar({
     onFiltersChange({ ...filters, categoryIds: next });
   }
 
+  function setSort(value: SortOption) {
+    onFiltersChange({ ...filters, sort: value });
+  }
+
+  function toggleShowPast() {
+    onFiltersChange({ ...filters, showPast: !filters.showPast });
+  }
+
+  function toggleAccessibility(key: keyof AccessibilityFilters) {
+    onFiltersChange({
+      ...filters,
+      accessibility: {
+        ...filters.accessibility,
+        [key]: !filters.accessibility[key],
+      },
+    });
+  }
+
   function renderSidebarContent(isMobile: boolean) {
     return (
       <>
-        <div className={cn("border-brand-mid-alpha flex items-center gap-2 border-b", isMobile ? "px-4 py-4" : "px-5 py-4")}>
-          <SlidersHorizontal className="text-brand-mid size-5" />
+        <div
+          className={cn(
+            "border-brand-mid-alpha flex items-center gap-2 border-b",
+            isMobile ? "px-4 py-4" : "px-5 py-4",
+          )}
+        >
+          <SlidersHorizontal className="text-brand-mid size-5" aria-hidden />
           <h2 className="font-heading text-brand-dark text-lg font-bold">Filters</h2>
           <div className="ml-auto flex items-center gap-2">
             {activeCount > 0 && (
@@ -104,49 +188,190 @@ export function FilterSidebar({
           </div>
         </div>
 
-        <div className={cn("flex-1 overflow-y-auto space-y-6", isMobile ? "px-4 py-4" : "px-5 py-4")}>
-          <section>
-            <p className="text-brand-mid mb-3 text-xs font-bold uppercase tracking-widest">
+        <div
+          className={cn("flex-1 space-y-6 overflow-y-auto", isMobile ? "px-4 py-4" : "px-5 py-4")}
+        >
+          <section aria-labelledby="filter-quick-heading">
+            <p
+              id="filter-quick-heading"
+              className="text-brand-mid mb-3 text-xs font-bold tracking-widest uppercase"
+            >
               Quick Filters
             </p>
-            <div className="flex flex-wrap gap-2">
-              {TEMPORAL_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => toggleTemporal(opt.value)}
-                  aria-pressed={filters.temporal === opt.value}
-                  className={cn(
-                    "rounded-full border px-4 py-1.5 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-mid/60 focus-visible:ring-offset-2",
-                    filters.temporal === opt.value
-                      ? "bg-brand-dark border-brand-dark text-white"
-                      : "border-brand-mid-alpha text-brand-dark hover:bg-brand-mid-alpha",
-                  )}
-                >
-                  {opt.label}
-                </button>
-              ))}
-              {isAuthenticated && PERSONAL_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => togglePersonal(opt.value)}
-                  aria-pressed={filters.personal === opt.value}
-                  className={cn(
-                    "rounded-full border px-4 py-1.5 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-mid/60 focus-visible:ring-offset-2",
-                    filters.personal === opt.value
-                      ? "bg-brand-dark border-brand-dark text-white"
-                      : "border-brand-mid-alpha text-brand-dark hover:bg-brand-mid-alpha",
-                  )}
-                >
-                  {opt.label}
-                </button>
-              ))}
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Time window">
+              {QUICK_FILTERS.map((opt) => {
+                const active = filters.temporal === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => toggleTemporal(opt.value)}
+                    aria-pressed={active}
+                    className={cn(
+                      "focus-visible:ring-brand-dark rounded-full border px-4 py-1.5 text-xs font-bold transition-colors focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:outline-none",
+                      active
+                        ? "bg-brand-dark border-brand-dark text-white"
+                        : "border-brand-mid-alpha text-brand-dark hover:bg-brand-mid-alpha",
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
             </div>
           </section>
 
-          <section>
-            <p className="text-brand-mid mb-3 text-xs font-bold uppercase tracking-widest">
+          {isAuthenticated && (
+            <section aria-labelledby="filter-personal-heading">
+              <p
+                id="filter-personal-heading"
+                className="text-brand-mid mb-3 text-xs font-bold tracking-widest uppercase"
+              >
+                My Events
+              </p>
+              <div className="flex flex-wrap gap-2" role="group" aria-label="My events">
+                {PERSONAL_OPTIONS.map((opt) => {
+                  const active = filters.personal === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => togglePersonal(opt.value)}
+                      aria-pressed={active}
+                      className={cn(
+                        "focus-visible:ring-brand-dark rounded-full border px-4 py-1.5 text-xs font-bold transition-colors focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:outline-none",
+                        active
+                          ? "bg-brand-dark border-brand-dark text-white"
+                          : "border-brand-mid-alpha text-brand-dark hover:bg-brand-mid-alpha",
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {isAuthenticated && (
+            <section aria-labelledby="filter-suggested-heading">
+              <p
+                id="filter-suggested-heading"
+                className="text-brand-mid mb-3 text-xs font-bold tracking-widest uppercase"
+              >
+                Personalised
+              </p>
+              <button
+                type="button"
+                onClick={toggleSuggested}
+                aria-pressed={filters.suggested}
+                className={cn(
+                  "focus-visible:ring-brand-dark flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm font-bold transition-colors focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:outline-none",
+                  filters.suggested
+                    ? "bg-brand-dark border-brand-dark text-white"
+                    : "border-brand-mid-alpha text-brand-dark hover:bg-brand-mid-alpha",
+                )}
+              >
+                <Sparkles className="size-4" aria-hidden />
+                Suggested for you
+              </button>
+            </section>
+          )}
+
+          <section aria-labelledby="filter-toggles-heading">
+            <p
+              id="filter-toggles-heading"
+              className="text-brand-mid mb-3 text-xs font-bold tracking-widest uppercase"
+            >
+              Display
+            </p>
+            <ToggleRow
+              icon={<Clock className="text-brand-mid size-4" aria-hidden />}
+              label="Show past events"
+              helper="Include events whose end time has already passed."
+              checked={filters.showPast}
+              onChange={toggleShowPast}
+            />
+          </section>
+
+          <section aria-labelledby="filter-sort-heading">
+            <p
+              id="filter-sort-heading"
+              className="text-brand-mid mb-3 text-xs font-bold tracking-widest uppercase"
+            >
+              Sort by
+            </p>
+            <div role="radiogroup" aria-labelledby="filter-sort-heading" className="space-y-1">
+              {SORT_OPTIONS.map((opt) => {
+                const active = filters.sort === opt.value;
+                const id = `sort-${opt.value}`;
+                return (
+                  <label
+                    key={opt.value}
+                    htmlFor={id}
+                    className={cn(
+                      "hover:bg-brand-mid-alpha flex cursor-pointer items-start gap-3 rounded-lg px-2 py-1.5 transition-colors",
+                      active && "bg-brand-mid-alpha/60",
+                    )}
+                  >
+                    <input
+                      id={id}
+                      type="radio"
+                      name="discovery-sort"
+                      value={opt.value}
+                      checked={active}
+                      onChange={() => setSort(opt.value)}
+                      className="accent-brand-dark mt-1 size-4 cursor-pointer"
+                    />
+                    <span className="flex-1">
+                      <span className="text-brand-dark block text-sm font-semibold">
+                        {opt.label}
+                      </span>
+                      <span className="text-brand-mid block text-[11px]">{opt.helper}</span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </section>
+
+          <section aria-labelledby="filter-accessibility-heading">
+            <p
+              id="filter-accessibility-heading"
+              className="text-brand-mid mb-3 flex items-center gap-1.5 text-xs font-bold tracking-widest uppercase"
+            >
+              <Accessibility className="size-3.5" aria-hidden />
+              Accessibility
+            </p>
+            <div className="space-y-1">
+              {ACCESSIBILITY_OPTIONS.map((opt) => {
+                const id = `a11y-${opt.key}`;
+                const checked = filters.accessibility[opt.key] === true;
+                return (
+                  <label
+                    key={opt.key}
+                    htmlFor={id}
+                    className="hover:bg-brand-mid-alpha flex cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 transition-colors"
+                  >
+                    <input
+                      id={id}
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleAccessibility(opt.key)}
+                      className="accent-brand-dark size-[18px] cursor-pointer"
+                    />
+                    <span className="text-brand-dark flex-1 text-sm">{opt.label}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </section>
+
+          <section aria-labelledby="filter-category-heading">
+            <p
+              id="filter-category-heading"
+              className="text-brand-mid mb-3 text-xs font-bold tracking-widest uppercase"
+            >
               Category
             </p>
             <div className="space-y-1">
@@ -161,17 +386,17 @@ export function FilterSidebar({
                       type="button"
                       onClick={() => toggleCategory(cat.id)}
                       aria-pressed={isSelected}
-                      className="flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left text-sm transition-colors hover:bg-brand-mid-alpha focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-mid/60 focus-visible:ring-offset-2"
+                      className="hover:bg-brand-mid-alpha focus-visible:ring-brand-dark flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:outline-none"
                     >
                       <span
                         className={cn(
                           "flex size-[18px] shrink-0 items-center justify-center rounded border-2 transition-colors",
-                          isSelected
-                            ? "bg-brand-dark border-brand-dark"
-                            : "border-brand-mid-alpha",
+                          isSelected ? "bg-brand-dark border-brand-dark" : "border-brand-mid-alpha",
                         )}
                       >
-                        {isSelected && <Check className="size-3 text-white" strokeWidth={3} />}
+                        {isSelected && (
+                          <Check className="size-3 text-white" strokeWidth={3} aria-hidden />
+                        )}
                       </span>
                       <span className="text-brand-dark flex-1">{cat.name}</span>
                       <span className="bg-brand-mid-alpha text-brand-mid rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums">
@@ -185,16 +410,24 @@ export function FilterSidebar({
           </section>
         </div>
 
-        <div className={cn("border-brand-mid-alpha space-y-2 border-t", isMobile ? "px-4 py-4 pb-5" : "px-5 py-4")}>
+        <div
+          className={cn(
+            "border-brand-mid-alpha space-y-2 border-t",
+            isMobile ? "px-4 py-4 pb-5" : "px-5 py-4",
+          )}
+        >
           <button
+            type="button"
             onClick={onApply}
-            className="bg-brand-dark w-full rounded-lg py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-dark/80"
+            className="bg-brand-dark hover:bg-brand-dark/80 focus-visible:ring-brand-dark w-full rounded-lg py-2.5 text-sm font-bold text-white transition-colors focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:outline-none"
           >
+            <Sparkles className="mr-1 inline size-4 -translate-y-px" aria-hidden />
             Apply Filters
           </button>
           <button
+            type="button"
             onClick={onClear}
-            className="text-brand-mid w-full rounded-lg py-2 text-sm font-semibold transition-colors hover:text-brand-dark"
+            className="text-brand-mid hover:text-brand-dark focus-visible:ring-brand-dark w-full rounded-lg py-2 text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:outline-none"
           >
             Clear All
           </button>
@@ -205,7 +438,10 @@ export function FilterSidebar({
 
   return (
     <>
-      <aside aria-label="Event filters" className="bg-card border-brand-mid-alpha hidden h-full w-72 shrink-0 flex-col border-r lg:flex">
+      <aside
+        aria-label="Event filters"
+        className="bg-card border-brand-mid-alpha hidden h-full w-72 shrink-0 flex-col border-r lg:flex"
+      >
         {renderSidebarContent(false)}
       </aside>
 
@@ -218,7 +454,7 @@ export function FilterSidebar({
           onClick={onMobileClose}
           tabIndex={mobileOpen ? 0 : -1}
           className={cn(
-            "absolute inset-0 bg-brand-dark/35 transition-opacity",
+            "bg-brand-dark/35 absolute inset-0 transition-opacity",
             mobileOpen ? "opacity-100" : "opacity-0",
           )}
           aria-label="Close filters"
@@ -228,7 +464,7 @@ export function FilterSidebar({
           aria-modal="true"
           aria-label="Event filters"
           className={cn(
-            "bg-card border-brand-mid-alpha absolute left-0 top-0 flex h-full w-[min(22rem,88vw)] flex-col border-r shadow-brand-panel transition-transform duration-200",
+            "bg-card border-brand-mid-alpha shadow-brand-panel absolute top-0 left-0 flex h-full w-[min(22rem,88vw)] flex-col border-r transition-transform duration-200",
             mobileOpen ? "translate-x-0" : "-translate-x-full",
           )}
         >
@@ -236,5 +472,46 @@ export function FilterSidebar({
         </aside>
       </div>
     </>
+  );
+}
+
+interface ToggleRowProps {
+  icon: React.ReactNode;
+  label: string;
+  helper: string;
+  checked: boolean;
+  onChange: () => void;
+}
+
+function ToggleRow({ icon, label, helper, checked, onChange }: ToggleRowProps) {
+  const labelId = `toggle-${label.replace(/\s+/g, "-").toLowerCase()}`;
+  return (
+    <div className="flex items-start gap-3 rounded-lg px-1 py-1">
+      <span className="mt-1">{icon}</span>
+      <div className="min-w-0 flex-1">
+        <span id={labelId} className="text-brand-dark block text-sm font-semibold">
+          {label}
+        </span>
+        <span className="text-brand-mid block text-[11px]">{helper}</span>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-labelledby={labelId}
+        onClick={onChange}
+        className={cn(
+          "focus-visible:ring-brand-dark relative mt-1 inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:outline-none",
+          checked ? "bg-brand-dark" : "bg-brand-mid-alpha",
+        )}
+      >
+        <span
+          className={cn(
+            "inline-block size-4 transform rounded-full bg-white shadow transition-transform",
+            checked ? "translate-x-[18px]" : "translate-x-[2px]",
+          )}
+        />
+      </button>
+    </div>
   );
 }

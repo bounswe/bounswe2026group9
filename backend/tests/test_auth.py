@@ -1,9 +1,20 @@
-from tests_support import build_test_email, build_test_identity
+"""Contract tests for /auth endpoints.
 
-# ==================== Register ====================
+Phase 2 retains one happy-path integration test per HTTP endpoint —
+service-level branching (validation, lockout, deactivation, token rotation,
+verification edge cases) lives in tests/test_auth_unit.py.
+"""
+
+from unittest.mock import patch
+
+from tests_support import build_test_email
+
+# ==================== Register / Login / Me / Refresh / Logout ====================
 
 
 class TestRegister:
+    """POST /auth/register"""
+
     def test_register_success(self, client, test_user_data):
         response = client.post("/auth/register", json=test_user_data)
         assert response.status_code == 201
@@ -14,42 +25,10 @@ class TestRegister:
         assert data["user"]["role"] == "registered"
         assert "access_token" in data
 
-    def test_duplicate_email(self, client, test_user_data):
-        client.post("/auth/register", json=test_user_data)
-        # Same email, different username
-        test_user_data["username"] = build_test_identity("differentuser")[0]
-        response = client.post("/auth/register", json=test_user_data)
-        assert response.status_code == 409
-        assert "Email already registered" in response.json()["detail"]
-
-    def test_duplicate_username(self, client, test_user_data):
-        client.post("/auth/register", json=test_user_data)
-        # Same username, different email
-        test_user_data["email"] = build_test_email("different")
-        response = client.post("/auth/register", json=test_user_data)
-        assert response.status_code == 409
-        assert "Username already taken" in response.json()["detail"]
-
-    def test_short_password(self, client, test_user_data):
-        test_user_data["password"] = "123"
-        response = client.post("/auth/register", json=test_user_data)
-        assert response.status_code == 422
-
-    def test_invalid_email(self, client, test_user_data):
-        test_user_data["email"] = "notanemail"
-        response = client.post("/auth/register", json=test_user_data)
-        assert response.status_code == 422
-
-    def test_short_username(self, client, test_user_data):
-        test_user_data["username"] = "ab"
-        response = client.post("/auth/register", json=test_user_data)
-        assert response.status_code == 422
-
-
-# ==================== Login ====================
-
 
 class TestLogin:
+    """POST /auth/login"""
+
     def test_login_success(self, client, registered_user):
         response = client.post("/auth/login", json={
             "email": registered_user["email"],
@@ -60,68 +39,22 @@ class TestLogin:
         assert data["user"]["email"] == registered_user["email"]
         assert "access_token" in data
 
-    def test_wrong_password(self, client, registered_user):
-        response = client.post("/auth/login", json={
-            "email": registered_user["email"],
-            "password": "wrongpassword",
-        })
-        assert response.status_code == 401
 
-    def test_nonexistent_email(self, client):
-        response = client.post("/auth/login", json={
-            "email": "nobody@example.com",
-            "password": "whatever",
-        })
-        assert response.status_code == 401
+class TestMe:
+    """GET /auth/me"""
 
-    def test_account_lockout(self, client, registered_user):
-        for _ in range(5):
-            client.post("/auth/login", json={
-                "email": registered_user["email"],
-                "password": "wrongpassword",
-            })
-        # 6th attempt should be locked
-        response = client.post("/auth/login", json={
-            "email": registered_user["email"],
-            "password": registered_user["password"],
-        })
-        assert response.status_code == 429
-        assert "locked" in response.json()["detail"].lower()
-
-    def test_deactivated_account(self, client, registered_user, db):
-        db.table("users").update({"is_active": False}).eq(
-            "id", registered_user["user"]["id"]
-        ).execute()
-        response = client.post("/auth/login", json={
-            "email": registered_user["email"],
-            "password": registered_user["password"],
-        })
-        assert response.status_code == 403
-
-
-# ==================== Me / Refresh / Logout ====================
-
-
-class TestTokenFlow:
     def test_me_with_valid_token(self, client, registered_user):
         response = client.get("/auth/me", headers={
-            "Authorization": f"Bearer {registered_user['access_token']}"
+            "Authorization": f"Bearer {registered_user['access_token']}",
         })
         assert response.status_code == 200
         assert response.json()["email"] == registered_user["email"]
 
-    def test_me_with_invalid_token(self, client):
-        response = client.get("/auth/me", headers={
-            "Authorization": "Bearer invalidtoken"
-        })
-        assert response.status_code == 401
 
-    def test_me_without_token(self, client):
-        response = client.get("/auth/me")
-        assert response.status_code == 401
+class TestRefresh:
+    """POST /auth/refresh"""
 
     def test_refresh_with_cookie(self, client, registered_user):
-        # Login sets cookie, then refresh
         client.post("/auth/login", json={
             "email": registered_user["email"],
             "password": registered_user["password"],
@@ -130,26 +63,11 @@ class TestTokenFlow:
         assert response.status_code == 200
         assert "access_token" in response.json()
 
-    def test_refresh_old_token_revoked(self, client, registered_user):
-        # Login to get a refresh token (stored in cookie)
-        login_resp = client.post("/auth/login", json={
-            "email": registered_user["email"],
-            "password": registered_user["password"],
-        })
-        assert login_resp.status_code == 200
-        old_cookie_token = login_resp.cookies.get("sem_refresh_token")
-        assert old_cookie_token, "Login should set refresh token cookie"
 
-        # Refresh — this rotates the token (old revoked, new issued)
-        refresh_resp = client.post("/auth/refresh", json={"refresh_token": old_cookie_token})
-        assert refresh_resp.status_code == 200
-
-        # Try old token again — should be revoked
-        retry_resp = client.post("/auth/refresh", json={"refresh_token": old_cookie_token})
-        assert retry_resp.status_code == 401
+class TestLogout:
+    """POST /auth/logout"""
 
     def test_logout(self, client, registered_user):
-        # Login to set cookie
         client.post("/auth/login", json={
             "email": registered_user["email"],
             "password": registered_user["password"],
@@ -158,22 +76,16 @@ class TestTokenFlow:
         assert response.status_code == 200
         assert response.json()["message"] == "Logged out successfully"
 
-    def test_refresh_after_logout_fails(self, client, registered_user):
-        client.post("/auth/login", json={
-            "email": registered_user["email"],
-            "password": registered_user["password"],
-        })
-        client.post("/auth/logout", json={})
-        response = client.post("/auth/refresh", json={})
-        assert response.status_code == 401
-
 
 # ==================== Email Verification ====================
 
 
 class TestEmailVerification:
-    def test_verify_with_valid_token(self, client, registered_user, db, captured_verification_tokens):
-        # Get raw verification token captured before hashing
+    """GET /auth/verify-email + POST /auth/resend-verification"""
+
+    def test_verify_with_valid_token(
+        self, client, registered_user, db, captured_verification_tokens,
+    ):
         user_id = registered_user["user"]["id"]
         token = captured_verification_tokens.get(user_id)
         assert token, "Verification token should have been captured during register"
@@ -182,28 +94,57 @@ class TestEmailVerification:
         assert response.status_code == 200
         assert response.json()["message"] == "Email verified successfully"
 
-        # Confirm user is now verified
         user = db.table("users").select("email_verified").eq(
-            "id", user_id
+            "id", user_id,
         ).execute().data[0]
         assert user["email_verified"] is True
 
-    def test_verify_with_invalid_token(self, client):
-        response = client.get("/auth/verify-email?token=invalidtoken123")
-        assert response.status_code == 400
-
     def test_resend_verification(self, client, registered_user):
         response = client.post("/auth/resend-verification", headers={
-            "Authorization": f"Bearer {registered_user['access_token']}"
+            "Authorization": f"Bearer {registered_user['access_token']}",
         })
         assert response.status_code == 200
 
-    def test_resend_when_already_verified(self, client, registered_user, db):
-        db.table("users").update({"email_verified": True}).eq(
-            "id", registered_user["user"]["id"]
+
+# ==================== Google OAuth ====================
+
+
+class TestGoogleOAuth:
+    """GET /auth/google/callback — Google OAuth flow."""
+
+    MOCK_GOOGLE_USER = {
+        "id": "google_123456",
+        "email": "",
+        "verified_email": True,
+    }
+    MOCK_GOOGLE_TOKENS = {
+        "access_token": "mock_google_access",
+        "token_type": "Bearer",
+    }
+
+    def test_new_user_created_via_google(self, client, db):
+        google_user = {**self.MOCK_GOOGLE_USER, "email": build_test_email("googleuser")}
+        db.table("users").delete().eq("email", google_user["email"]).execute()
+
+        state = "test_state_123"
+        client.cookies.set("oauth_state", state)
+
+        with patch("app.routers.auth.exchange_code_for_tokens", return_value=self.MOCK_GOOGLE_TOKENS), \
+             patch("app.routers.auth.get_google_user_info", return_value=google_user):
+            response = client.get(
+                f"/auth/google/callback?code=mock_code&state={state}",
+                follow_redirects=False,
+            )
+
+        assert response.status_code == 307  # redirect to frontend
+
+        result = db.table("users").select("auth_provider,google_id,email_verified").eq(
+            "email", google_user["email"],
         ).execute()
-        response = client.post("/auth/resend-verification", headers={
-            "Authorization": f"Bearer {registered_user['access_token']}"
-        })
-        assert response.status_code == 400
-        assert "already verified" in response.json()["detail"].lower()
+        assert len(result.data) == 1
+        user = result.data[0]
+        assert user["auth_provider"] == "google"
+        assert user["google_id"] == "google_123456"
+        assert user["email_verified"] is True
+
+        db.table("users").delete().eq("email", google_user["email"]).execute()

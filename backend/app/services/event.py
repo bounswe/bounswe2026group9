@@ -1,11 +1,13 @@
 """Event service — business logic, validation, orchestration."""
 
+import logging
 import math
 from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException, status
 from supabase import Client
 
+from app.logging_config import log_action
 from app.models.event import (
     EventCreateRequest,
     EventDetailResponse,
@@ -22,13 +24,35 @@ from app.models.geojson import (
     GeoJSONFeatureCollection,
     GeoJSONPoint,
 )
-from app.repositories import attendance as attendance_repo
-from app.repositories import bookmark as bookmark_repo
-from app.repositories import event as event_repo
-from app.repositories import image as image_repo
-from app.repositories import invite as invite_repo
-from app.repositories import user as user_repo
+from app.repositories import attendance as _attendance_repo
+from app.repositories import bookmark as _bookmark_repo
+from app.repositories import event as _event_repo
+from app.repositories import image as _image_repo
+from app.repositories import invite as _invite_repo
+from app.repositories import user as _user_repo
+from app.repositories.protocols import (
+    AttendanceRepoProtocol,
+    BookmarkRepoProtocol,
+    EventRepoProtocol,
+    ImageRepoProtocol,
+    InviteRepoProtocol,
+    UserRepoProtocol,
+)
+from app.services.category_clusters import expand_category_ids as _expand_suggested_category_ids
 from app.services.rate_limit import is_rate_limit_exempt_email
+
+# Aliases kept for legacy patch-based unit tests that reach into the
+# repository modules through these names (test_similar_events_unit,
+# test_event_unit, test_segments_unit). Production code uses the
+# keyword-default DI seam at each function signature.
+attendance_repo = _attendance_repo
+bookmark_repo = _bookmark_repo
+event_repo = _event_repo
+image_repo = _image_repo
+invite_repo = _invite_repo
+user_repo = _user_repo
+
+_logger = logging.getLogger(__name__)
 
 
 def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
@@ -39,6 +63,7 @@ def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     dlam = math.radians(lng2 - lng1)
     a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlam / 2) ** 2
     return 2 * r * math.asin(math.sqrt(a))
+
 
 
 # --- Validators ---
@@ -75,8 +100,13 @@ def validate_event_datetime(
         )
 
 
-def validate_categories_exist(db: Client, category_ids: list[str]) -> None:
-    found_ids = event_repo.get_valid_category_ids(db, category_ids)
+def validate_categories_exist(
+    db: Client,
+    category_ids: list[str],
+    *,
+    events: EventRepoProtocol = _event_repo,
+) -> None:
+    found_ids = events.get_valid_category_ids(db, category_ids)
     missing = set(category_ids) - found_ids
     if missing:
         raise HTTPException(
@@ -167,7 +197,13 @@ def _build_segment_rows(segments: list[SegmentRequest] | None) -> list[dict] | N
 
 
 def check_duplicate_event(
-    db: Client, host_id: str, title: str, start_datetime: str, location_name: str
+    db: Client,
+    host_id: str,
+    title: str,
+    start_datetime: str,
+    location_name: str,
+    *,
+    events: EventRepoProtocol = _event_repo,
 ) -> None:
     """Reject creation when title + start_datetime + *primary* location collide for the same host.
 
@@ -175,9 +211,9 @@ def check_duplicate_event(
     event whose primary differs but happens to include `location_name` as a
     non-primary stop is allowed.
     """
-    events = event_repo.find_duplicate_events(db, host_id, title, start_datetime)
-    for event in events:
-        locations = event_repo.find_location_by_event_and_name(db, event["id"], location_name)
+    duplicates = events.find_duplicate_events(db, host_id, title, start_datetime)
+    for event in duplicates:
+        locations = events.find_location_by_event_and_name(db, event["id"], location_name)
         if locations:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -185,12 +221,18 @@ def check_duplicate_event(
             )
 
 
-def check_rate_limit(db: Client, host_id: str) -> None:
-    host_email = user_repo.get_user_email_by_id(db, host_id)
+def check_rate_limit(
+    db: Client,
+    host_id: str,
+    *,
+    events: EventRepoProtocol = _event_repo,
+    users: UserRepoProtocol = _user_repo,
+) -> None:
+    host_email = users.get_user_email_by_id(db, host_id)
     if is_rate_limit_exempt_email(host_email):
         return
 
-    config = event_repo.get_rate_limit_config(db)
+    config = events.get_rate_limit_config(db)
     if not config:
         return
 
@@ -198,7 +240,7 @@ def check_rate_limit(db: Client, host_id: str) -> None:
     window_hours = config["time_window_hours"]
     cutoff = (datetime.now(UTC) - timedelta(hours=window_hours)).isoformat()
 
-    count = event_repo.count_events_by_host_since(db, host_id, cutoff)
+    count = events.count_events_by_host_since(db, host_id, cutoff)
     if count >= max_events:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -206,29 +248,42 @@ def check_rate_limit(db: Client, host_id: str) -> None:
         )
 
 
-def auto_end_event_if_past(db: Client, event: dict) -> dict:
+def auto_end_event_if_past(
+    db: Client,
+    event: dict,
+    *,
+    events: EventRepoProtocol = _event_repo,
+) -> dict:
     if event["status"] in ("published", "updated"):
         end_dt = _parse_stored_datetime(event["end_datetime"])
         if end_dt < datetime.now(UTC):
-            event_repo.update_event_status(db, event["id"], "ended")
+            events.update_event_status(db, event["id"], "ended")
             event["status"] = "ended"
     return event
 
 
 # --- Main operations ---
 
-def create_event(db: Client, user_id: str, body: EventCreateRequest) -> EventDetailResponse:
+def create_event(
+    db: Client,
+    user_id: str,
+    body: EventCreateRequest,
+    *,
+    events: EventRepoProtocol = _event_repo,
+    users: UserRepoProtocol = _user_repo,
+) -> EventDetailResponse:
     # Validations
     validate_event_datetime(body.start_datetime, body.end_datetime)
 
     category_id_strs = [str(cid) for cid in body.category_ids]
-    validate_categories_exist(db, category_id_strs)
+    validate_categories_exist(db, category_id_strs, events=events)
 
     primary_location = next((loc for loc in body.locations if loc.is_primary), body.locations[0])
     check_duplicate_event(
         db, user_id, body.title, body.start_datetime.isoformat(), primary_location.name,
+        events=events,
     )
-    check_rate_limit(db, user_id)
+    check_rate_limit(db, user_id, events=events, users=users)
 
     # Cannot publish directly on create — images must be uploaded first
     if body.status == "published":
@@ -281,7 +336,7 @@ def create_event(db: Client, user_id: str, body: EventCreateRequest) -> EventDet
         equip_data = [eq.model_dump() for eq in body.equipment_requirements]
 
     # Single-transaction insert via RPC
-    event = event_repo.create_event_atomic(
+    event = events.create_event_atomic(
         db,
         event_data=event_data,
         locations=location_rows,
@@ -295,12 +350,18 @@ def create_event(db: Client, user_id: str, body: EventCreateRequest) -> EventDet
 
     event_id = event["id"]
 
+    log_action(
+        _logger, "event.create",
+        event_id=event_id, user_id=user_id,
+        title=body.title, status=body.status, visibility=body.visibility,
+    )
+
     # Fetch related data for response
-    locations = event_repo.get_event_locations(db, event_id)
-    categories = event_repo.get_event_categories(db, event_id)
-    venue_meta = event_repo.get_venue_metadata(db, event_id)
-    equipment = event_repo.get_equipment(db, event_id)
-    segments = event_repo.get_event_segments(db, event_id)
+    locations = events.get_event_locations(db, event_id)
+    categories = events.get_event_categories(db, event_id)
+    venue_meta = events.get_venue_metadata(db, event_id)
+    equipment = events.get_equipment(db, event_id)
+    segments = events.get_event_segments(db, event_id)
 
     return _build_detail_response(
         event, locations, categories, [], venue_meta, equipment, segments=segments,
@@ -397,14 +458,22 @@ def _build_limited_response(
 # --- Read ---
 
 def get_event_detail(
-    db: Client, event_id: str, user_id: str | None = None,
+    db: Client,
+    event_id: str,
+    user_id: str | None = None,
+    *,
+    events: EventRepoProtocol = _event_repo,
+    users: UserRepoProtocol = _user_repo,
+    bookmarks: BookmarkRepoProtocol = _bookmark_repo,
+    attendances: AttendanceRepoProtocol = _attendance_repo,
+    invites: InviteRepoProtocol = _invite_repo,
 ) -> EventDetailResponse | EventLimitedResponse:
-    event = event_repo.get_event_by_id(db, event_id)
+    event = events.get_event_by_id(db, event_id)
     if not event:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
 
     # Lazy auto-end
-    event = auto_end_event_if_past(db, event)
+    event = auto_end_event_if_past(db, event, events=events)
 
     # Draft events are only visible to the host
     if event["status"] == "draft" and (not user_id or event["host_id"] != user_id):
@@ -415,27 +484,27 @@ def get_event_detail(
     access_request_status = None
     has_access_grant = False
     if user_id:
-        bookmark = bookmark_repo.get_bookmark(db, user_id, event_id)
+        bookmark = bookmarks.get_bookmark(db, user_id, event_id)
         if bookmark:
             is_bookmarked = True
         else:
             is_bookmarked = False
 
-        attendance = attendance_repo.get_attendance(db, user_id, event_id)
+        attendance = attendances.get_attendance(db, user_id, event_id)
         if attendance:
             attendance_status = attendance["status"]
 
-        access_request = invite_repo.get_access_request(db, event_id, user_id)
+        access_request = invites.get_access_request(db, event_id, user_id)
         if access_request:
             access_request_status = access_request["status"]
         if event["visibility"] == "private" and event["host_id"] != user_id:
-            has_access_grant = invite_repo.get_access_grant(db, event_id, user_id) is not None
+            has_access_grant = invites.get_access_grant(db, event_id, user_id) is not None
 
-    bookmark_count = bookmark_repo.get_bookmark_count_for_event(db, event_id)
+    bookmark_count = bookmarks.get_bookmark_count_for_event(db, event_id)
 
     # Cancelled events show limited info with cancellation label
     if event["status"] == "cancelled" and (not user_id or event["host_id"] != user_id):
-        categories = event_repo.get_event_categories(db, event_id)
+        categories = events.get_event_categories(db, event_id)
         return _build_limited_response(
             event,
             categories,
@@ -443,7 +512,7 @@ def get_event_detail(
             access_request_status=access_request_status,
         )
 
-    categories = event_repo.get_event_categories(db, event_id)
+    categories = events.get_event_categories(db, event_id)
 
     # Guest (no user_id) → limited preview
     if not user_id:
@@ -461,7 +530,7 @@ def get_event_detail(
 
     # Age restriction check (host is always exempt)
     if event["is_age_restricted"] and user_id and event["host_id"] != user_id:
-        dob_str = user_repo.get_user_date_of_birth(db, user_id)
+        dob_str = users.get_user_date_of_birth(db, user_id)
         if not dob_str:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -477,13 +546,13 @@ def get_event_detail(
             )
 
     # Full detail
-    locations = event_repo.get_event_locations(db, event_id)
-    images = event_repo.get_event_images(db, event_id)
-    venue_metadata = event_repo.get_venue_metadata(db, event_id)
-    equipment = event_repo.get_equipment(db, event_id)
-    segments = event_repo.get_event_segments(db, event_id)
-    attendee_ids = attendance_repo.get_going_user_ids_for_event(db, event_id)
-    attendee_users = user_repo.get_users_by_ids(db, attendee_ids)
+    locations = events.get_event_locations(db, event_id)
+    images = events.get_event_images(db, event_id)
+    venue_metadata = events.get_venue_metadata(db, event_id)
+    equipment = events.get_equipment(db, event_id)
+    segments = events.get_event_segments(db, event_id)
+    attendee_ids = attendances.get_going_user_ids_for_event(db, event_id)
+    attendee_users = users.get_users_by_ids(db, attendee_ids)
     attendee_usernames = {
         attendee["id"]: attendee.get("username", "unknown")
         for attendee in attendee_users
@@ -493,7 +562,7 @@ def get_event_detail(
         for attendee_id in attendee_ids
     ]
 
-    host = user_repo.get_user_by_id(db, str(event["host_id"]))
+    host = users.get_user_by_id(db, str(event["host_id"]))
     host_username = host["username"] if host else ""
 
     return _build_detail_response(
@@ -512,9 +581,14 @@ def get_event_detail(
 # --- Update ---
 
 def update_event(
-    db: Client, event_id: str, user_id: str, body: EventUpdateRequest,
+    db: Client,
+    event_id: str,
+    user_id: str,
+    body: EventUpdateRequest,
+    *,
+    events: EventRepoProtocol = _event_repo,
 ) -> EventDetailResponse:
-    event = event_repo.get_event_by_id(db, event_id)
+    event = events.get_event_by_id(db, event_id)
     if not event:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
 
@@ -574,7 +648,7 @@ def update_event(
         if body.locations is not None:
             effective_location_count = len(body.locations)
         else:
-            effective_location_count = len(event_repo.get_event_locations(db, event_id))
+            effective_location_count = len(events.get_event_locations(db, event_id))
 
         effective_start = body.start_datetime or _parse_stored_datetime(event["start_datetime"])
         effective_end = body.end_datetime or _parse_stored_datetime(event["end_datetime"])
@@ -584,7 +658,7 @@ def update_event(
 
     if body.category_ids is not None:
         category_id_strs = [str(cid) for cid in body.category_ids]
-        validate_categories_exist(db, category_id_strs)
+        validate_categories_exist(db, category_id_strs, events=events)
 
     # Set status to "updated" if currently published
     has_real_changes = (
@@ -631,7 +705,7 @@ def update_event(
     # require the caller to re-send segments alongside locations (or send []
     # to explicitly clear them) — silent loss is worse than a clear error.
     if body.locations is not None and body.segments is None:
-        existing_segments = event_repo.get_event_segments(db, event_id)
+        existing_segments = events.get_event_segments(db, event_id)
         if existing_segments:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -641,7 +715,7 @@ def update_event(
 
     # Single-transaction update via RPC
     if has_real_changes or update_data:
-        event_repo.update_event_atomic(
+        events.update_event_atomic(
             db,
             event_id=event_id,
             event_data=update_data if update_data else None,
@@ -652,10 +726,17 @@ def update_event(
             segments=segment_rows,
         )
 
+    log_action(
+        _logger, "event.update",
+        event_id=event_id, user_id=user_id,
+        previous_status=event["status"],
+        has_real_changes=has_real_changes,
+    )
+
     # Emit notification only if there were real changes
     if has_real_changes and event["status"] in ("published", "updated"):
         from app.services.notification_emitter import emit_event_notification
-        updated_event = event_repo.get_event_by_id(db, event_id)
+        updated_event = events.get_event_by_id(db, event_id)
         emit_event_notification(
             db, event_id, user_id, "event_updated",
             f"Event '{updated_event['title']}' has been updated",
@@ -675,9 +756,14 @@ VALID_STATUS_TRANSITIONS = {
 
 
 def change_event_status(
-    db: Client, event_id: str, user_id: str, new_status: str,
+    db: Client,
+    event_id: str,
+    user_id: str,
+    new_status: str,
+    *,
+    events: EventRepoProtocol = _event_repo,
 ) -> EventDetailResponse:
-    event = event_repo.get_event_by_id(db, event_id)
+    event = events.get_event_by_id(db, event_id)
     if not event:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
 
@@ -700,27 +786,48 @@ def change_event_status(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Cannot publish an event with a start time in the past",
             )
-        locations = event_repo.get_event_locations(db, event_id)
+        locations = events.get_event_locations(db, event_id)
         if not locations:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Event must have at least one location to publish")
-        categories = event_repo.get_event_categories(db, event_id)
+        categories = events.get_event_categories(db, event_id)
         if not categories:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Event must have at least one category to publish")
-        images = event_repo.get_event_images(db, event_id)
+        images = events.get_event_images(db, event_id)
         if not images:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Event must have at least one image to publish")
 
-    event_repo.update_event_status(db, event_id, new_status)
+    events.update_event_status(db, event_id, new_status)
+
+    # Map the status transition onto a stable action verb so log filters can
+    # query e.g. action=event.publish without parsing the previous status.
+    _STATUS_ACTION = {
+        ("draft", "published"): "event.publish",
+        ("published", "cancelled"): "event.cancel",
+        ("updated", "cancelled"): "event.cancel",
+        ("published", "ended"): "event.end",
+        ("updated", "ended"): "event.end",
+    }
+    log_action(
+        _logger,
+        _STATUS_ACTION.get((current, new_status), "event.status_change"),
+        event_id=event_id, user_id=user_id,
+        previous_status=current, new_status=new_status,
+    )
 
     # Emit recommendation notifications when an event becomes published
     if current == "draft" and new_status == "published":
         try:
             from app.services.recommendation_emitter import emit_event_recommendations
             emit_event_recommendations(db, event_id, user_id)
-        except Exception:
-            # Recommendations are best-effort: never fail the publish on emitter error
-            import logging
-            logging.getLogger(__name__).exception("emit_event_recommendations failed")
+        except Exception:  # noqa: BLE001 — best-effort emitter, must not fail publish
+            _logger.exception(
+                "emit_event_recommendations_failed",
+                extra={
+                    "action": "event.recommendation_emit_failed",
+                    "event_id": event_id,
+                    "user_id": user_id,
+                },
+            )
 
     # Emit notification on cancellation
     if new_status == "cancelled":
@@ -735,8 +842,15 @@ def change_event_status(
 
 # --- Delete ---
 
-def delete_event(db: Client, event_id: str, user_id: str) -> None:
-    event = event_repo.get_event_by_id(db, event_id)
+def delete_event(
+    db: Client,
+    event_id: str,
+    user_id: str,
+    *,
+    events: EventRepoProtocol = _event_repo,
+    images: ImageRepoProtocol = _image_repo,
+) -> None:
+    event = events.get_event_by_id(db, event_id)
     if not event:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
 
@@ -761,15 +875,31 @@ def delete_event(db: Client, event_id: str, user_id: str) -> None:
     )
 
     # Clean up storage images before DB delete (CASCADE will remove DB records)
-    images = image_repo.get_all_event_images(db, event_id)
-    for img in images:
+    event_images = images.get_all_event_images(db, event_id)
+    for img in event_images:
         try:
-            path = img["image_url"].split(f"/{image_repo.BUCKET_NAME}/")[-1]
-            image_repo.delete_from_storage(db, path)
-        except Exception:
-            pass  # Best-effort storage cleanup
+            path = img["image_url"].split(f"/{images.BUCKET_NAME}/")[-1]
+            images.delete_from_storage(db, path)
+        except Exception:  # nosec B110 — storage cleanup is best-effort
+            # Structured warning so the operator can see which image failed
+            # without having to grep stdout. The DB delete still cascades.
+            _logger.warning(
+                "storage_cleanup_failed",
+                extra={
+                    "action": "event.storage_cleanup_failed",
+                    "event_id": event_id,
+                    "user_id": user_id,
+                    "image_id": img.get("id"),
+                },
+            )
 
-    event_repo.delete_event(db, event_id)
+    events.delete_event(db, event_id)
+
+    log_action(
+        _logger, "event.delete",
+        event_id=event_id, user_id=user_id,
+        previous_status=event["status"],
+    )
 
 
 # --- Discovery ---
@@ -792,23 +922,22 @@ def list_events(
     suggested: bool = False,
     page: int = 1,
     page_size: int = 20,
+    events: EventRepoProtocol = _event_repo,
+    users: UserRepoProtocol = _user_repo,
+    bookmarks: BookmarkRepoProtocol = _bookmark_repo,
+    attendances: AttendanceRepoProtocol = _attendance_repo,
+    invites: InviteRepoProtocol = _invite_repo,
 ) -> EventListResponse:
     # Resolve default-area fallback when client opts in and didn't pass coords.
     if use_default_area and near_lat is None and near_lng is None and user_id:
-        result = (
-            db.table("users")
-            .select("default_location_lat,default_location_lng")
-            .eq("id", user_id)
-            .execute()
-        )
-        row = result.data[0] if result.data else {}
-        if row.get("default_location_lat") is None or row.get("default_location_lng") is None:
+        default_lat, default_lng = users.get_user_default_area(db, user_id)
+        if default_lat is None or default_lng is None:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="No default area set on profile",
             )
-        near_lat = row["default_location_lat"]
-        near_lng = row["default_location_lng"]
+        near_lat = default_lat
+        near_lng = default_lng
 
     has_location = near_lat is not None and near_lng is not None
     if sort == "distance" and not has_location:
@@ -818,34 +947,10 @@ def list_events(
         )
     # sort=category fetches the full filtered candidate set into memory and
     # ranks in Python (PostgREST cannot order by an aggregated joined column
-    # in a single round-trip). To keep memory bounded on large datasets, we
-    # require the request to narrow the candidate set first — same shape of
-    # constraint as sort=distance requiring a location.
-    if sort == "category":
-        accessibility_active = any(
-            v is True for v in (accessibility or {}).values()
-        )
-        has_search = bool(search and search.strip())
-        has_window = (
-            quick_filter is not None
-            or start_after is not None
-            or end_before is not None
-        )
-        if not (
-            has_search
-            or category_id is not None
-            or has_window
-            or accessibility_active
-            or has_location
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=(
-                    "sort=category requires a narrowing filter: search, "
-                    "category_id, quick_filter, custom window, accessibility, "
-                    "or a location."
-                ),
-            )
+    # in a single round-trip). The 10k-event NFR target finishes well under
+    # the 2-second budget for an O(N log N) in-memory sort, so we accept the
+    # call even without an explicit narrowing filter — same approach as
+    # sort=distance, which also materialises the full filtered set.
     if sort is None:
         sort = "distance" if has_location else "start_time"
 
@@ -854,17 +959,18 @@ def list_events(
     # Resolve "Suggested for you" — only meaningful for authenticated users.
     suggested_category_ids: set[str] | None = None
     suggested_fallback = False
+    suggested_fallback_reason: str | None = None
     if suggested and user_id:
-        suggested_category_ids = attendance_repo.get_attended_ended_event_categories(
-            db, user_id,
-        )
-        if not suggested_category_ids:
-            # User has no attendance history yet — fall back to default listing
-            # but signal the empty-history hint to the UI.
-            suggested_category_ids = None
+        exact_ids = attendances.get_attended_ended_event_categories(db, user_id)
+        if not exact_ids:
+            # User has no attendance history — fall back to default listing.
             suggested_fallback = True
+            suggested_fallback_reason = "no_history"
+        else:
+            # Expand to include similar categories from the same cluster(s).
+            suggested_category_ids = _expand_suggested_category_ids(db, exact_ids)
 
-    events, total = event_repo.list_events(
+    event_rows, total = events.list_events(
         db,
         search=search,
         category_id=category_id,
@@ -882,18 +988,23 @@ def list_events(
     )
 
     total_pages = (total + page_size - 1) // page_size if total > 0 else 0
-    if not events:
+    if not event_rows:
+        # User had history but no current events match their (expanded) categories.
+        if suggested and suggested_category_ids and not suggested_fallback:
+            suggested_fallback = True
+            suggested_fallback_reason = "no_match"
         return EventListResponse(
             items=[], total=total, page=page, page_size=page_size,
             total_pages=total_pages, suggested_fallback=suggested_fallback,
+            suggested_fallback_reason=suggested_fallback_reason,
         )
 
     # For sort in {distance, category} the repo returned the full filtered set;
     # rank in Python and slice to the requested page.
     if sort in ("distance", "category"):
         if sort == "distance":
-            full_event_ids = [e["id"] for e in events]
-            locations_by_event = event_repo.get_primary_locations_for_events(db, full_event_ids)
+            full_event_ids = [e["id"] for e in event_rows]
+            locations_by_event = events.get_primary_locations_for_events(db, full_event_ids)
 
             def _distance_key(ev: dict) -> tuple[float, str]:
                 loc = locations_by_event.get(ev["id"])
@@ -901,53 +1012,53 @@ def list_events(
                     return (float("inf"), ev["id"])
                 return (_haversine_km(near_lat, near_lng, loc["latitude"], loc["longitude"]), ev["id"])
 
-            events.sort(key=_distance_key)
+            event_rows.sort(key=_distance_key)
         else:  # category
-            full_event_ids = [e["id"] for e in events]
-            categories_by_event_full = event_repo.get_categories_for_events(db, full_event_ids)
+            full_event_ids = [e["id"] for e in event_rows]
+            categories_by_event_full = events.get_categories_for_events(db, full_event_ids)
 
             def _category_key(ev: dict) -> tuple[str, str, str]:
                 cats = categories_by_event_full.get(ev["id"]) or []
                 primary = min((c.get("name", "") for c in cats), default="￿")
                 return (primary, ev["start_datetime"], ev["id"])
 
-            events.sort(key=_category_key)
+            event_rows.sort(key=_category_key)
 
         offset = (page - 1) * page_size
-        events = events[offset:offset + page_size]
-        if not events:
+        event_rows = event_rows[offset:offset + page_size]
+        if not event_rows:
             return EventListResponse(
                 items=[], total=total, page=page, page_size=page_size,
                 total_pages=total_pages, suggested_fallback=suggested_fallback,
             )
 
-    event_ids = [e["id"] for e in events]
-    locations_by_event = event_repo.get_primary_locations_for_events(db, event_ids)
-    categories_by_event = event_repo.get_categories_for_events(db, event_ids)
-    images_by_event = event_repo.get_primary_images_for_events(db, event_ids)
+    event_ids = [e["id"] for e in event_rows]
+    locations_by_event = events.get_primary_locations_for_events(db, event_ids)
+    categories_by_event = events.get_categories_for_events(db, event_ids)
+    images_by_event = events.get_primary_images_for_events(db, event_ids)
 
     is_bookmarked_map: set[str] = set()
     attendance_status_map: dict[str, str] = {}
     access_request_status_map: dict[str, str] = {}
     access_granted_event_ids: set[str] = set()
     if user_id:
-        is_bookmarked_map = bookmark_repo.get_bookmark_status_for_events(db, user_id, event_ids)
-        attendance_status_map = attendance_repo.get_attendance_status_for_events(db, user_id, event_ids)
-        access_request_status_map = invite_repo.get_access_request_status_for_events(
+        is_bookmarked_map = bookmarks.get_bookmark_status_for_events(db, user_id, event_ids)
+        attendance_status_map = attendances.get_attendance_status_for_events(db, user_id, event_ids)
+        access_request_status_map = invites.get_access_request_status_for_events(
             db,
             user_id,
             event_ids,
         )
-        access_granted_event_ids = invite_repo.get_access_granted_event_ids(
+        access_granted_event_ids = invites.get_access_granted_event_ids(
             db,
             user_id,
             event_ids,
         )
 
-    bookmark_counts = bookmark_repo.get_bookmark_counts_for_events(db, event_ids)
+    bookmark_counts = bookmarks.get_bookmark_counts_for_events(db, event_ids)
 
     items = []
-    for event in events:
+    for event in event_rows:
         is_private = event["visibility"] == "private"
         # Discovery previews stay limited for private events and guests.
         show_preview_details = user_id is not None and not is_private
@@ -983,6 +1094,7 @@ def list_events(
     return EventListResponse(
         items=items, total=total, page=page, page_size=page_size,
         total_pages=total_pages, suggested_fallback=suggested_fallback,
+        suggested_fallback_reason=suggested_fallback_reason,
     )
 
 
@@ -1039,34 +1151,51 @@ def get_similar_events(
     event_id: str,
     user_id: str | None = None,
     limit: int = 5,
+    *,
+    events: EventRepoProtocol = _event_repo,
+    bookmarks: BookmarkRepoProtocol = _bookmark_repo,
+    invites: InviteRepoProtocol = _invite_repo,
 ) -> list[EventListItemResponse]:
     """Return up to `limit` scored similar public published/updated future events."""
-    source = event_repo.get_event_by_id(db, event_id)
+    source = events.get_event_by_id(db, event_id)
     if not source:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
 
-    source_categories = event_repo.get_event_categories(db, event_id)
+    source_categories = events.get_event_categories(db, event_id)
     source_cat_ids = {c["id"] for c in source_categories}
 
-    source_locs = db.table("event_locations").select("latitude,longitude").eq("event_id", event_id).eq("is_primary", True).execute()
-    source_lat = source_lng = None
-    if source_locs.data:
-        source_lat = source_locs.data[0].get("latitude")
-        source_lng = source_locs.data[0].get("longitude")
+    # Expand source categories to include cluster-similar ones for a broader
+    # candidate pool and scoring (e.g. a Sports event also surfaces Outdoor).
+    expanded_cat_ids = _expand_suggested_category_ids(db, source_cat_ids)
+    cluster_only_ids = expanded_cat_ids - source_cat_ids  # similar but not exact
 
-    candidates = event_repo.get_similar_candidates(db, event_id, limit=30)
+    # Source primary location — reuse the batch lookup so we go through the
+    # repo seam instead of poking db.table directly.
+    source_locs = events.get_primary_locations_for_events(db, [event_id])
+    source_loc = source_locs.get(event_id) or {}
+    source_lat = source_loc.get("latitude")
+    source_lng = source_loc.get("longitude")
+
+    # Pass the expanded category IDs so the repo pre-filters at DB level
+    # instead of returning an arbitrary date-ordered pool.
+    candidates = events.get_similar_candidates(
+        db, event_id, category_ids=list(expanded_cat_ids)
+    )
     if not candidates:
         return []
 
     candidate_ids = [c["id"] for c in candidates]
-    cats_by_event = event_repo.get_categories_for_events(db, candidate_ids)
-    locs_by_event = event_repo.get_primary_locations_for_events(db, candidate_ids)
+    cats_by_event = events.get_categories_for_events(db, candidate_ids)
+    locs_by_event = events.get_primary_locations_for_events(db, candidate_ids)
 
     scored = []
     for cand in candidates:
         cid = cand["id"]
         cand_cat_ids = {c["id"] for c in cats_by_event.get(cid, [])}
-        overlap = len(source_cat_ids & cand_cat_ids)
+
+        # Exact category overlap scores higher than cluster-similar overlap.
+        exact_overlap = len(source_cat_ids & cand_cat_ids)
+        cluster_overlap = len(cluster_only_ids & cand_cat_ids)
         host_match = 1 if cand["host_id"] == source["host_id"] else 0
 
         proximity_bonus = 0
@@ -1077,27 +1206,27 @@ def get_similar_events(
                 if dist <= 50:
                     proximity_bonus = 1
 
-        score = overlap * 3 + host_match * 2 + proximity_bonus
+        score = exact_overlap * 3 + cluster_overlap * 1 + host_match * 2 + proximity_bonus
         scored.append((score, cand))
 
     scored.sort(key=lambda x: (-x[0], x[1]["start_datetime"], x[1]["id"]))
     top = [c for _, c in scored[:limit]]
     top_ids = [c["id"] for c in top]
 
-    locations_by_event = event_repo.get_primary_locations_for_events(db, top_ids)
-    images_by_event = event_repo.get_primary_images_for_events(db, top_ids)
-    bookmark_counts = bookmark_repo.get_bookmark_counts_for_events(db, top_ids)
+    locations_by_event = events.get_primary_locations_for_events(db, top_ids)
+    images_by_event = events.get_primary_images_for_events(db, top_ids)
+    bookmark_counts = bookmarks.get_bookmark_counts_for_events(db, top_ids)
 
     # Mirror list_events: private-aware redaction + access state batch lookups.
     is_bookmarked_map: set[str] = set()
     access_request_status_map: dict[str, str] = {}
     access_granted_event_ids: set[str] = set()
     if user_id:
-        is_bookmarked_map = bookmark_repo.get_bookmark_status_for_events(db, user_id, top_ids)
-        access_request_status_map = invite_repo.get_access_request_status_for_events(
+        is_bookmarked_map = bookmarks.get_bookmark_status_for_events(db, user_id, top_ids)
+        access_request_status_map = invites.get_access_request_status_for_events(
             db, user_id, top_ids,
         )
-        access_granted_event_ids = invite_repo.get_access_granted_event_ids(
+        access_granted_event_ids = invites.get_access_granted_event_ids(
             db, user_id, top_ids,
         )
 

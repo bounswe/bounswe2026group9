@@ -1,6 +1,13 @@
 # Social Event Mapper — Backend
 
+[![Backend CI](https://github.com/bounswe/bounswe2026group9/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/bounswe/bounswe2026group9/actions/workflows/backend-ci.yml)
+
 FastAPI + Supabase backend with JWT authentication, event management, and image upload.
+
+> **Adding tests?** Read [TESTING.md](./TESTING.md) — it lays out the
+> four CI lanes (unit / property / snapshot / benchmark) plus the
+> shared-Supabase integration + E2E lanes, and tells you exactly which
+> one a new test belongs in.
 
 ## Setup
 
@@ -37,11 +44,53 @@ Swagger docs: `http://localhost:8888/docs`
 
 ### 3. Run tests
 
+Three lanes are available; pick one based on what you need.
+
+**Fast unit lane** (no network, sub-second):
+
+```bash
+SUPABASE_URL=fake SUPABASE_KEY=fake JWT_SECRET=fake JWT_REFRESH_SECRET=fake \
+  python -m pytest tests/test_*_unit.py --no-cov
+```
+
+**Hermetic integration lane** (testcontainers — local-only, needs a running Docker daemon, no Supabase secrets):
+
+```bash
+PG_CONTAINER=1 \
+  JWT_SECRET=hermetic JWT_REFRESH_SECRET=hermetic \
+  SUPABASE_URL=http://localhost:0 SUPABASE_KEY=bootstrap-only \
+  python -m pytest tests/ -v
+```
+
+The conftest spots `PG_CONTAINER=1`, boots a `postgres:16-alpine` +
+`postgrest/postgrest:v12.2.0` stack on a shared Docker network,
+applies every non-`pg_cron` migration through `tests/db/migrate.py`,
+and repoints `app.database._client` at the local stack. Per-test
+isolation is `TRUNCATE public.* RESTART IDENTITY CASCADE` instead of
+`cleanup_test_users`. **No CI workflow drives this today** — it's
+useful for one-off local checks of migrations against a fresh DB.
+
+**Default integration lane** (shared TEST_SUPABASE_*, what default CI gates on):
+
 ```bash
 docker exec sem-backend python -m pytest tests/ -v
 ```
 
-### 4. Run linter
+### 4. Run static analysis
+
+Type-check (strict mypy, fails only on **new** errors past the baseline):
+
+```bash
+mypy app | mypy-baseline filter
+```
+
+Security scan:
+
+```bash
+bandit -c pyproject.toml -r app/
+```
+
+### 5. Run linter
 
 ```bash
 docker exec sem-backend ruff check .

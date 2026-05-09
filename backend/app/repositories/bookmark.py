@@ -80,3 +80,14 @@ def get_bookmark_status_for_events(
         .execute()
     )
     return {row["event_id"] for row in (result.data or [])}
+
+
+def get_bookmarker_user_ids(db: Client, event_id: str) -> set[str]:
+    """Return user_ids that have bookmarked the given event."""
+    result = (
+        db.table("bookmarks")
+        .select("user_id")
+        .eq("event_id", event_id)
+        .execute()
+    )
+    return {row["user_id"] for row in (result.data or [])}
