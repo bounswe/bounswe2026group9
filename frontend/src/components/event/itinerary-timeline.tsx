@@ -92,9 +92,7 @@ export function ItineraryTimeline({
 
   return (
     <section className={cn("space-y-4", className)} aria-label="Event itinerary">
-      {!hideMap && sortedLocations.length >= 1 && (
-        <RouteMap stops={mapStops} className="w-full" />
-      )}
+      {!hideMap && sortedLocations.length >= 1 && <RouteMap stops={mapStops} className="w-full" />}
 
       <ol className="space-y-0">
         {rows.map(({ location, segment }, index) => {
@@ -105,7 +103,7 @@ export function ItineraryTimeline({
                 <div className="relative flex flex-col items-center">
                   <div
                     aria-label={`Stop ${index + 1}`}
-                    className="bg-brand-dark relative z-10 flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white shadow-brand-card"
+                    className="bg-brand-dark shadow-brand-card relative z-10 flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
                   >
                     {index + 1}
                   </div>
@@ -122,7 +120,7 @@ export function ItineraryTimeline({
                       {location.name || `Stop ${index + 1}`}
                     </p>
                     {location.is_primary && (
-                      <span className="border-brand-mid bg-brand-mid-alpha text-brand-dark rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
+                      <span className="border-brand-mid bg-brand-mid-alpha text-brand-dark rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase">
                         Primary
                       </span>
                     )}
@@ -140,7 +138,7 @@ export function ItineraryTimeline({
                     </p>
                   )}
                   {segment?.description && (
-                    <p className="text-brand-dark/85 mt-1 whitespace-pre-wrap break-words text-[13px] leading-6">
+                    <p className="text-brand-dark/85 mt-1 text-[13px] leading-6 break-words whitespace-pre-wrap">
                       {segment.description}
                     </p>
                   )}

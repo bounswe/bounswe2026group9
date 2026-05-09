@@ -214,7 +214,10 @@ export function mapEventToFormValues(event: EventDetailResponse): EventFormValue
   const end = new Date(event.end_datetime);
 
   // Index segments by location_id so each stop can reclaim its timing.
-  const segmentsByLocation = new Map<string, EventDetailResponse["segments"] extends (infer S)[] | undefined ? S : never>();
+  const segmentsByLocation = new Map<
+    string,
+    EventDetailResponse["segments"] extends (infer S)[] | undefined ? S : never
+  >();
   for (const segment of event.segments ?? []) {
     segmentsByLocation.set(segment.location_id, segment);
   }
@@ -394,9 +397,7 @@ export function buildBestEffortEventUpdatePayload(
   const hasLocationErrors = Object.keys(locationErrors).some(
     (key) => key === "locations" || key.startsWith("location-"),
   );
-  const hasSegmentErrors = Object.keys(locationErrors).some((key) =>
-    key.startsWith("segment-"),
-  );
+  const hasSegmentErrors = Object.keys(locationErrors).some((key) => key.startsWith("segment-"));
   if (!hasLocationErrors) {
     payload.locations = buildLocations(values);
     // Segments piggy-back on locations because they reference stops by index.
@@ -610,8 +611,7 @@ export function validateStep(
             errors[`segment-${location.id}`] =
               `Stop ${index + 1} must start after the event start.`;
           } else if (eventEnd && segEnd && segEnd > eventEnd) {
-            errors[`segment-${location.id}`] =
-              `Stop ${index + 1} must end before the event end.`;
+            errors[`segment-${location.id}`] = `Stop ${index + 1} must end before the event end.`;
           }
         }
       }
@@ -636,12 +636,7 @@ export function validateStep(
       const curr = segmentsInOrder[i];
       const prevEnd = parseDateTime(prev.loc.segmentEndDate, prev.loc.segmentEndTime);
       const currStart = parseDateTime(curr.loc.segmentStartDate, curr.loc.segmentStartTime);
-      if (
-        prevEnd &&
-        currStart &&
-        currStart < prevEnd &&
-        !errors[`segment-${curr.loc.id}`]
-      ) {
+      if (prevEnd && currStart && currStart < prevEnd && !errors[`segment-${curr.loc.id}`]) {
         errors[`segment-${curr.loc.id}`] =
           `Stop ${curr.idx + 1} must start at or after Stop ${prev.idx + 1} ends.`;
       }
@@ -731,9 +726,9 @@ function isSegmentReady(location: EventLocationFormValue) {
     location.segmentEnabled &&
     Boolean(
       location.segmentStartDate &&
-        location.segmentStartTime &&
-        location.segmentEndDate &&
-        location.segmentEndTime,
+      location.segmentStartTime &&
+      location.segmentEndDate &&
+      location.segmentEndTime,
     )
   );
 }

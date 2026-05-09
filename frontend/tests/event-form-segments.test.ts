@@ -307,9 +307,7 @@ describe("event-form step 2 validation", () => {
   });
 
   it("flags missing primary location lat/lng", () => {
-    const values = valuesWithLocations([
-      locationFixture({ latitude: "", longitude: "" }),
-    ]);
+    const values = valuesWithLocations([locationFixture({ latitude: "", longitude: "" })]);
     const errors = validateStep(2, values, 1);
     expect(errors[`location-latitude-${values.locations[0].id}`]).toBeTruthy();
     expect(errors[`location-longitude-${values.locations[0].id}`]).toBeTruthy();

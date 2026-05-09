@@ -47,7 +47,7 @@ export function StatusBadge({ variant, className }: StatusBadgeProps) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-extrabold uppercase tracking-wide",
+        "inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-extrabold tracking-wide uppercase",
         variantClass,
         className,
       )}
@@ -58,10 +58,7 @@ export function StatusBadge({ variant, className }: StatusBadgeProps) {
   );
 }
 
-export function eventStatusVariant(
-  status: string,
-  isFull: boolean | null,
-): StatusVariant {
+export function eventStatusVariant(status: string, isFull: boolean | null): StatusVariant {
   if (status === "cancelled") return "cancelled";
   if (status === "ended") return "ended";
   if (isFull) return "full";

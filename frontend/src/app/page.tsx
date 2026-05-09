@@ -123,9 +123,7 @@ function buildDiscoveryQuery(params: PageParams): DiscoveryParams {
   return {
     search: params.search || undefined,
     temporal_filter:
-      params.temporal === "today" || params.temporal === "this_week"
-        ? params.temporal
-        : undefined,
+      params.temporal === "today" || params.temporal === "this_week" ? params.temporal : undefined,
   };
 }
 
@@ -176,10 +174,7 @@ async function fetchUnionEvents(
   personal: PersonalFilter | null,
 ): Promise<EventListItem[]> {
   const applyFilters = (items: EventListItem[]) =>
-    applyPersonalFilter(
-      applyTemporalFilter(items, temporal),
-      personal,
-    );
+    applyPersonalFilter(applyTemporalFilter(items, temporal), personal);
 
   if (categoryIds.length === 0) {
     return applyFilters(await fetchAllEvents(query));
@@ -326,7 +321,9 @@ function DiscoveryPage() {
 
   // ── Fetch categories (once) ────────────────────────────────────────────────────
   useEffect(() => {
-    fetchCategories().then(setCategories).catch(() => setCategories([]));
+    fetchCategories()
+      .then(setCategories)
+      .catch(() => setCategories([]));
   }, []);
 
   useEffect(() => {
@@ -351,12 +348,7 @@ function DiscoveryPage() {
         return pendingRequest;
       }
 
-      const request = fetchUnionEvents(
-        categoryIds,
-        query,
-        temporal,
-        personal,
-      )
+      const request = fetchUnionEvents(categoryIds, query, temporal, personal)
         .then((items) => {
           fullResultsCacheRef.current.set(cacheKey, items);
           return items;
@@ -379,9 +371,7 @@ function DiscoveryPage() {
     const resultCacheKey = buildDiscoveryCacheKey(params, activePersonalFilter, discoveryUserKey);
     const pageCacheKey = `${resultCacheKey}|page:${params.page}`;
     const canUseSimpleListFetch =
-      !activePersonalFilter &&
-      params.temporal !== "weekend" &&
-      params.categoryIds.length <= 1;
+      !activePersonalFilter && params.temporal !== "weekend" && params.categoryIds.length <= 1;
 
     async function loadEvents() {
       setLoading(true);
@@ -478,8 +468,10 @@ function DiscoveryPage() {
 
     void loadEvents();
 
-    return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     discoveryUserKey,
     getFullDiscoveryEvents,
@@ -519,15 +511,14 @@ function DiscoveryPage() {
         }
         setCategoryCounts(counts);
       })
-      .catch(() => { if (!cancelled) setCategoryCounts({}); });
+      .catch(() => {
+        if (!cancelled) setCategoryCounts({});
+      });
 
-    return () => { cancelled = true; };
-  }, [
-    params.search,
-    params.temporal,
-    activePersonalFilter,
-    refreshTick,
-  ]);
+    return () => {
+      cancelled = true;
+    };
+  }, [params.search, params.temporal, activePersonalFilter, refreshTick]);
 
   useEffect(() => {
     const onVisible = () => {
@@ -543,7 +534,8 @@ function DiscoveryPage() {
   }, []);
 
   // ── Active filter count ────────────────────────────────────────────────────────
-  const activeFilterCount = ((draftFilters.temporal || draftFilters.personal) ? 1 : 0) + draftFilters.categoryIds.length;
+  const activeFilterCount =
+    (draftFilters.temporal || draftFilters.personal ? 1 : 0) + draftFilters.categoryIds.length;
 
   // ── Handlers ───────────────────────────────────────────────────────────────────
 
@@ -551,9 +543,15 @@ function DiscoveryPage() {
     setMobileFiltersOpen(false);
     pushParams({ view });
   }
-  function handleSearchSubmit(v: string) { pushParams({ search: v, resetPage: true }); }
-  function handleSearchChange(v: string) { replaceParams({ search: v, resetPage: true }); }
-  function handleFiltersChange(f: FilterState) { setDraftFilters(f); }
+  function handleSearchSubmit(v: string) {
+    pushParams({ search: v, resetPage: true });
+  }
+  function handleSearchChange(v: string) {
+    replaceParams({ search: v, resetPage: true });
+  }
+  function handleFiltersChange(f: FilterState) {
+    setDraftFilters(f);
+  }
 
   function handleApplyFilters() {
     setMobileFiltersOpen(false);
@@ -617,7 +615,7 @@ function DiscoveryPage() {
             <div
               className={cn(
                 "flex min-h-0 flex-1 flex-col transition duration-200",
-                loading && "pointer-events-none select-none blur-[3px]",
+                loading && "pointer-events-none blur-[3px] select-none",
               )}
             >
               {params.view === "map" ? (

@@ -2,7 +2,21 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Bookmark, CalendarDays, ChevronLeft, ChevronRight, Eye, Lock, Mail, PenSquare, Phone, Plus, Shield, Users, XCircle } from "lucide-react";
+import {
+  Bookmark,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  Lock,
+  Mail,
+  PenSquare,
+  Phone,
+  Plus,
+  Shield,
+  Users,
+  XCircle,
+} from "lucide-react";
 
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { Navbar } from "@/components/layout/navbar";
@@ -26,7 +40,11 @@ import {
   type ProfileUpdatePayload,
   type ProfileVisibility,
 } from "@/lib/api";
-import { CREATE_EVENT_PAGE_PATH, getEditEventPagePath, getEventDetailPagePath } from "@/lib/event-routes";
+import {
+  CREATE_EVENT_PAGE_PATH,
+  getEditEventPagePath,
+  getEventDetailPagePath,
+} from "@/lib/event-routes";
 import type { AuthUser } from "@/lib/session";
 import { cn } from "@/lib/utils";
 
@@ -55,12 +73,14 @@ function toFormState(user: AuthUser): ProfileFormState {
 }
 
 function initials(username: string) {
-  return username
-    .split(/[\s._-]+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("") || username.slice(0, 2).toUpperCase();
+  return (
+    username
+      .split(/[\s._-]+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() ?? "")
+      .join("") || username.slice(0, 2).toUpperCase()
+  );
 }
 
 function formatDateTime(value: string) {
@@ -97,11 +117,13 @@ function PrivacyToggle({
   const isEnabled = isPublicVisibility(value);
 
   return (
-    <div className="flex items-center justify-between gap-4 rounded-[20px] border border-brand-mid/12 bg-white px-4 py-4">
+    <div className="border-brand-mid/12 flex items-center justify-between gap-4 rounded-[20px] border bg-white px-4 py-4">
       <div>
-        <p className="text-sm font-semibold text-brand-dark">{label}</p>
-        <p className="mt-1 text-xs text-brand-mid">
-          {isEnabled ? "Visible on your public host profile." : "Hidden from your public host profile."}
+        <p className="text-brand-dark text-sm font-semibold">{label}</p>
+        <p className="text-brand-mid mt-1 text-xs">
+          {isEnabled
+            ? "Visible on your public host profile."
+            : "Hidden from your public host profile."}
         </p>
       </div>
 
@@ -111,13 +133,13 @@ function PrivacyToggle({
         aria-checked={isEnabled}
         onClick={() => onChange(isEnabled ? "private" : "public")}
         className={cn(
-          "relative inline-flex h-8 w-[58px] shrink-0 rounded-full border transition-colors cursor-pointer",
+          "relative inline-flex h-8 w-[58px] shrink-0 cursor-pointer rounded-full border transition-colors",
           isEnabled ? "border-brand-mid bg-brand-mid" : "border-brand-mid/20 bg-brand-bg",
         )}
       >
         <span
           className={cn(
-            "absolute top-1 flex h-6 w-6 items-center justify-center rounded-full bg-white text-[10px] font-bold text-brand-dark shadow-sm transition-transform",
+            "text-brand-dark absolute top-1 flex h-6 w-6 items-center justify-center rounded-full bg-white text-[10px] font-bold shadow-sm transition-transform",
             isEnabled ? "translate-x-[28px]" : "translate-x-1",
           )}
         >
@@ -168,9 +190,9 @@ function BookmarkedEventCard({ event }: { event: BookmarkedEventSummary }) {
   return (
     <Link
       href={`/event/${event.id}`}
-      className="group overflow-hidden rounded-[24px] border border-brand-mid/12 bg-white shadow-[0_20px_54px_-42px_rgba(73,54,40,0.55)] transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_26px_66px_-40px_rgba(73,54,40,0.6)]"
+      className="group border-brand-mid/12 overflow-hidden rounded-[24px] border bg-white shadow-[0_20px_54px_-42px_rgba(73,54,40,0.55)] transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_26px_66px_-40px_rgba(73,54,40,0.6)]"
     >
-      <div className="relative h-44 overflow-hidden bg-brand-mid/20">
+      <div className="bg-brand-mid/20 relative h-44 overflow-hidden">
         {event.primary_image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -190,13 +212,15 @@ function BookmarkedEventCard({ event }: { event: BookmarkedEventSummary }) {
 
         <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-4">
           <Badge
-            variant={event.status === "published" || event.status === "updated" ? "success" : "outline"}
-            className="border-0 bg-white/85 text-brand-dark"
+            variant={
+              event.status === "published" || event.status === "updated" ? "success" : "outline"
+            }
+            className="text-brand-dark border-0 bg-white/85"
           >
             {statusLabel(event.status)}
           </Badge>
           {event.visibility === "private" ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-brand-dark/85 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-white">
+            <span className="bg-brand-dark/85 inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold tracking-[0.14em] text-white uppercase">
               <Lock className="size-3" />
               Private
             </span>
@@ -209,7 +233,7 @@ function BookmarkedEventCard({ event }: { event: BookmarkedEventSummary }) {
           {event.categories.slice(0, 3).map((category) => (
             <span
               key={category.id}
-              className="rounded-full bg-brand-bg px-3 py-1 text-[11px] font-semibold text-brand-mid"
+              className="bg-brand-bg text-brand-mid rounded-full px-3 py-1 text-[11px] font-semibold"
             >
               {category.name}
             </span>
@@ -217,14 +241,18 @@ function BookmarkedEventCard({ event }: { event: BookmarkedEventSummary }) {
         </div>
 
         <div>
-          <h3 className="font-heading text-xl font-semibold text-brand-dark">{event.title}</h3>
-          <p className="mt-1 text-sm font-medium text-brand-mid">{formatDateTime(event.start_datetime)}</p>
+          <h3 className="font-heading text-brand-dark text-xl font-semibold">{event.title}</h3>
+          <p className="text-brand-mid mt-1 text-sm font-medium">
+            {formatDateTime(event.start_datetime)}
+          </p>
         </div>
 
-        <div className="space-y-1 text-sm text-brand-dark/80">
+        <div className="text-brand-dark/80 space-y-1 text-sm">
           <p>
             Bookmarked on{" "}
-            <span className="font-semibold text-brand-dark">{formatDateTime(event.bookmarked_at)}</span>
+            <span className="text-brand-dark font-semibold">
+              {formatDateTime(event.bookmarked_at)}
+            </span>
           </p>
           <p className="text-brand-mid">
             {event.primary_location
@@ -253,14 +281,21 @@ function HostedEventCard({
     ? Math.min(100, Math.round((event.attendee_count / event.attendee_limit) * 100))
     : null;
   const canQuickCancel =
-    event.status !== "draft" && event.status !== "cancelled" && event.status !== "ended" && !isPastHostedEvent(event);
+    event.status !== "draft" &&
+    event.status !== "cancelled" &&
+    event.status !== "ended" &&
+    !isPastHostedEvent(event);
 
   return (
-    <div className="overflow-hidden rounded-[24px] border border-brand-mid/12 bg-white shadow-[0_20px_54px_-42px_rgba(73,54,40,0.55)]">
-      <div className="relative h-44 overflow-hidden bg-brand-mid/20">
+    <div className="border-brand-mid/12 overflow-hidden rounded-[24px] border bg-white shadow-[0_20px_54px_-42px_rgba(73,54,40,0.55)]">
+      <div className="bg-brand-mid/20 relative h-44 overflow-hidden">
         {event.primary_image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={event.primary_image_url} alt={event.title} className="h-full w-full object-cover" />
+          <img
+            src={event.primary_image_url}
+            alt={event.title}
+            className="h-full w-full object-cover"
+          />
         ) : (
           <div className="flex h-full items-center justify-center bg-[linear-gradient(135deg,rgba(73,54,40,0.9),rgba(171,136,109,0.72))]">
             <CalendarDays className="size-10 text-white/45" />
@@ -268,11 +303,16 @@ function HostedEventCard({
         )}
 
         <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-4">
-          <span className={cn("rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em]", status.className)}>
+          <span
+            className={cn(
+              "rounded-full px-3 py-1 text-[11px] font-bold tracking-[0.14em] uppercase",
+              status.className,
+            )}
+          >
             {status.label}
           </span>
           {event.visibility === "private" ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-brand-dark/85 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-white">
+            <span className="bg-brand-dark/85 inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold tracking-[0.14em] text-white uppercase">
               <Lock className="size-3" />
               Private
             </span>
@@ -285,7 +325,7 @@ function HostedEventCard({
           {event.categories.slice(0, 3).map((category) => (
             <span
               key={category.id}
-              className="rounded-full bg-brand-bg px-3 py-1 text-[11px] font-semibold text-brand-mid"
+              className="bg-brand-bg text-brand-mid rounded-full px-3 py-1 text-[11px] font-semibold"
             >
               {category.name}
             </span>
@@ -293,17 +333,19 @@ function HostedEventCard({
         </div>
 
         <div>
-          <h3 className="font-heading text-xl font-semibold text-brand-dark">{event.title}</h3>
-          <p className="mt-1 text-sm font-medium text-brand-mid">{formatDateTime(event.start_datetime)}</p>
+          <h3 className="font-heading text-brand-dark text-xl font-semibold">{event.title}</h3>
+          <p className="text-brand-mid mt-1 text-sm font-medium">
+            {formatDateTime(event.start_datetime)}
+          </p>
         </div>
 
         <div className="space-y-2">
-          <div className="flex items-center justify-between text-xs font-semibold text-brand-dark">
+          <div className="text-brand-dark flex items-center justify-between text-xs font-semibold">
             <span>
               {event.attendee_count}
               {event.attendee_limit ? `/${event.attendee_limit}` : ""} going
             </span>
-            <span className="max-w-[56%] truncate text-right text-brand-mid">
+            <span className="text-brand-mid max-w-[56%] truncate text-right">
               {event.primary_location
                 ? event.primary_location.name
                 : event.visibility === "private"
@@ -313,8 +355,11 @@ function HostedEventCard({
           </div>
 
           {attendeeFill !== null ? (
-            <div className="h-2 rounded-full bg-brand-bg">
-              <div className="h-full rounded-full bg-brand-mid" style={{ width: `${attendeeFill}%` }} />
+            <div className="bg-brand-bg h-2 rounded-full">
+              <div
+                className="bg-brand-mid h-full rounded-full"
+                style={{ width: `${attendeeFill}%` }}
+              />
             </div>
           ) : null}
         </div>
@@ -323,7 +368,7 @@ function HostedEventCard({
           <Button
             asChild
             variant="outline"
-            className="flex-1 border-brand-mid/20 bg-white text-brand-dark hover:bg-brand-bg"
+            className="border-brand-mid/20 text-brand-dark hover:bg-brand-bg flex-1 bg-white"
           >
             <Link href={getEditEventPagePath(event.id)}>
               <PenSquare className="size-4" />
@@ -332,7 +377,7 @@ function HostedEventCard({
           </Button>
           <Button
             asChild
-            className="flex-1 border-0 bg-brand-dark text-white hover:bg-brand-dark/85"
+            className="bg-brand-dark hover:bg-brand-dark/85 flex-1 border-0 text-white"
           >
             <Link href={getEventDetailPagePath(event.id)}>
               <Eye className="size-4" />
@@ -479,7 +524,12 @@ export function MyProfilePage() {
   }
 
   function handleBookmarkPageChange(nextPage: number) {
-    if (!bookmarks || nextPage < 1 || nextPage > bookmarks.total_pages || nextPage === bookmarkPage) {
+    if (
+      !bookmarks ||
+      nextPage < 1 ||
+      nextPage > bookmarks.total_pages ||
+      nextPage === bookmarkPage
+    ) {
       return;
     }
 
@@ -576,7 +626,8 @@ export function MyProfilePage() {
         ? pastHostedEvents
         : draftHostedEvents;
   const liveEventCount = hostedEvents.filter(
-    (event) => event.status !== "draft" && event.status !== "cancelled" && !isPastHostedEvent(event),
+    (event) =>
+      event.status !== "draft" && event.status !== "cancelled" && !isPastHostedEvent(event),
   ).length;
   const totalHostedAttendees = hostedEvents.reduce((sum, event) => sum + event.attendee_count, 0);
 
@@ -585,7 +636,7 @@ export function MyProfilePage() {
       loadingTitle="Opening your settings..."
       loadingMessage="We’re verifying your session before showing your private profile settings."
     >
-      <div className="min-h-screen bg-brand-bg">
+      <div className="bg-brand-bg min-h-screen">
         <Navbar />
 
         <section className="relative overflow-hidden bg-[linear-gradient(135deg,#493628_0%,#5e4434_48%,#AB886D_100%)]">
@@ -597,60 +648,65 @@ export function MyProfilePage() {
           <div className="space-y-8">
             <section className="mx-auto max-w-4xl">
               <div className="flex flex-col items-center text-center">
-                <div className="flex size-28 items-center justify-center rounded-full border-4 border-white bg-brand-mid text-3xl font-bold text-white shadow-[0_12px_28px_-18px_rgba(73,54,40,0.55)]">
+                <div className="bg-brand-mid flex size-28 items-center justify-center rounded-full border-4 border-white text-3xl font-bold text-white shadow-[0_12px_28px_-18px_rgba(73,54,40,0.55)]">
                   {initials(profile?.username ?? user?.username ?? "U")}
                 </div>
 
-                <h1 className="font-heading mt-5 text-4xl font-bold text-brand-dark">
+                <h1 className="font-heading text-brand-dark mt-5 text-4xl font-bold">
                   {profile?.username ?? user?.username ?? "My Profile"}
                 </h1>
-                <p className="mt-1 text-sm text-brand-mid">@{profile?.username ?? user?.username ?? "user"}</p>
+                <p className="text-brand-mid mt-1 text-sm">
+                  @{profile?.username ?? user?.username ?? "user"}
+                </p>
 
-                <p className="mt-4 max-w-2xl text-sm leading-7 text-brand-dark/80">
-                  Manage your account settings, created events, and saved events from the same home base
-                  where other users can discover you as a host.
+                <p className="text-brand-dark/80 mt-4 max-w-2xl text-sm leading-7">
+                  Manage your account settings, created events, and saved events from the same home
+                  base where other users can discover you as a host.
                 </p>
 
                 <div className="mt-6 grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-3">
-                  <div className="rounded-[20px] border border-brand-mid/12 bg-white/85 px-5 py-4">
-                    <p className="text-2xl font-bold text-brand-dark">{hostedEvents.length}</p>
-                    <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-brand-mid">
+                  <div className="border-brand-mid/12 rounded-[20px] border bg-white/85 px-5 py-4">
+                    <p className="text-brand-dark text-2xl font-bold">{hostedEvents.length}</p>
+                    <p className="text-brand-mid mt-1 text-xs font-semibold tracking-[0.18em] uppercase">
                       Events
                     </p>
                   </div>
-                  <div className="rounded-[20px] border border-brand-mid/12 bg-white/85 px-5 py-4">
-                    <p className="text-2xl font-bold text-brand-dark">
-                      {hostProfile?.average_rating !== null && hostProfile?.average_rating !== undefined
+                  <div className="border-brand-mid/12 rounded-[20px] border bg-white/85 px-5 py-4">
+                    <p className="text-brand-dark text-2xl font-bold">
+                      {hostProfile?.average_rating !== null &&
+                      hostProfile?.average_rating !== undefined
                         ? hostProfile.average_rating.toFixed(1)
                         : "New"}
                     </p>
-                    <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-brand-mid">
+                    <p className="text-brand-mid mt-1 text-xs font-semibold tracking-[0.18em] uppercase">
                       Average Rating
                     </p>
                   </div>
-                  <div className="rounded-[20px] border border-brand-mid/12 bg-white/85 px-5 py-4">
-                    <p className="text-2xl font-bold text-brand-dark">{upcomingHostedEvents.length}</p>
-                    <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-brand-mid">
+                  <div className="border-brand-mid/12 rounded-[20px] border bg-white/85 px-5 py-4">
+                    <p className="text-brand-dark text-2xl font-bold">
+                      {upcomingHostedEvents.length}
+                    </p>
+                    <p className="text-brand-mid mt-1 text-xs font-semibold tracking-[0.18em] uppercase">
                       Upcoming
                     </p>
                   </div>
                 </div>
 
                 <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-brand-mid/18 bg-white/85 px-4 py-2 text-sm font-medium text-brand-dark">
-                    <Mail className="size-4 text-brand-mid" />
+                  <div className="border-brand-mid/18 text-brand-dark inline-flex items-center gap-2 rounded-full border bg-white/85 px-4 py-2 text-sm font-medium">
+                    <Mail className="text-brand-mid size-4" />
                     {profile?.email ?? user?.email ?? "No email available"}
                   </div>
 
                   {profile?.phone_number ? (
-                    <div className="inline-flex items-center gap-2 rounded-full border border-brand-mid/18 bg-white/85 px-4 py-2 text-sm font-medium text-brand-dark">
-                      <Phone className="size-4 text-brand-mid" />
+                    <div className="border-brand-mid/18 text-brand-dark inline-flex items-center gap-2 rounded-full border bg-white/85 px-4 py-2 text-sm font-medium">
+                      <Phone className="text-brand-mid size-4" />
                       {profile.phone_number}
                     </div>
                   ) : null}
 
-                  <div className="inline-flex items-center gap-2 rounded-full border border-brand-mid/18 bg-white/85 px-4 py-2 text-sm font-medium text-brand-dark">
-                    <Shield className="size-4 text-brand-mid" />
+                  <div className="border-brand-mid/18 text-brand-dark inline-flex items-center gap-2 rounded-full border bg-white/85 px-4 py-2 text-sm font-medium">
+                    <Shield className="text-brand-mid size-4" />
                     {profile?.email_verified ? "Email verified" : "Verification pending"}
                   </div>
                 </div>
@@ -658,27 +714,29 @@ export function MyProfilePage() {
             </section>
 
             <div className="flex overflow-x-auto sm:justify-center">
-              <div className="inline-flex min-w-max gap-2 rounded-[26px] border border-brand-mid/12 bg-white p-2 shadow-[0_18px_48px_-40px_rgba(73,54,40,0.55)]">
-                {([
-                  {
-                    description: "Account and privacy",
-                    icon: Shield,
-                    key: "settings",
-                    label: "Settings",
-                  },
-                  {
-                    description: "Created events",
-                    icon: CalendarDays,
-                    key: "my-events",
-                    label: "My Events",
-                  },
-                  {
-                    description: "Bookmarked events",
-                    icon: Bookmark,
-                    key: "saved-events",
-                    label: "Saved Events",
-                  },
-                ] as const).map((section) => {
+              <div className="border-brand-mid/12 inline-flex min-w-max gap-2 rounded-[26px] border bg-white p-2 shadow-[0_18px_48px_-40px_rgba(73,54,40,0.55)]">
+                {(
+                  [
+                    {
+                      description: "Account and privacy",
+                      icon: Shield,
+                      key: "settings",
+                      label: "Settings",
+                    },
+                    {
+                      description: "Created events",
+                      icon: CalendarDays,
+                      key: "my-events",
+                      label: "My Events",
+                    },
+                    {
+                      description: "Bookmarked events",
+                      icon: Bookmark,
+                      key: "saved-events",
+                      label: "Saved Events",
+                    },
+                  ] as const
+                ).map((section) => {
                   const Icon = section.icon;
                   const isActive = activeSection === section.key;
 
@@ -688,7 +746,7 @@ export function MyProfilePage() {
                       type="button"
                       onClick={() => setActiveSection(section.key)}
                       className={cn(
-                        "flex min-w-[190px] items-center gap-3 rounded-[20px] px-4 py-3 text-left transition-colors cursor-pointer",
+                        "flex min-w-[190px] cursor-pointer items-center gap-3 rounded-[20px] px-4 py-3 text-left transition-colors",
                         isActive
                           ? "bg-brand-dark text-white shadow-[0_14px_26px_-20px_rgba(73,54,40,0.8)]"
                           : "text-brand-dark hover:bg-brand-bg",
@@ -703,8 +761,15 @@ export function MyProfilePage() {
                         <Icon className="size-4" />
                       </span>
                       <span className="min-w-0">
-                        <span className="block whitespace-nowrap text-sm font-semibold">{section.label}</span>
-                        <span className={cn("block text-xs", isActive ? "text-white/72" : "text-brand-mid")}>
+                        <span className="block text-sm font-semibold whitespace-nowrap">
+                          {section.label}
+                        </span>
+                        <span
+                          className={cn(
+                            "block text-xs",
+                            isActive ? "text-white/72" : "text-brand-mid",
+                          )}
+                        >
                           {section.description}
                         </span>
                       </span>
@@ -717,11 +782,14 @@ export function MyProfilePage() {
             {activeSection === "settings" ? (
               <div className="mx-auto max-w-[920px]">
                 <section>
-                  <Card className="rounded-[32px] border-brand-mid/10 shadow-[0_28px_72px_-48px_rgba(73,54,40,0.55)]">
+                  <Card className="border-brand-mid/10 rounded-[32px] shadow-[0_28px_72px_-48px_rgba(73,54,40,0.55)]">
                     <CardHeader className="px-6 pt-6 sm:px-8">
-                      <CardTitle className="font-heading text-3xl text-brand-dark">Profile Settings</CardTitle>
+                      <CardTitle className="font-heading text-brand-dark text-3xl">
+                        Profile Settings
+                      </CardTitle>
                       <CardDescription className="text-brand-mid">
-                        Update the fields supported by the current profile endpoint and control what appears on your public host profile.
+                        Update the fields supported by the current profile endpoint and control what
+                        appears on your public host profile.
                       </CardDescription>
                     </CardHeader>
 
@@ -734,9 +802,9 @@ export function MyProfilePage() {
 
                       {profileLoading || !profile || !form ? (
                         <div className="space-y-4">
-                          <div className="h-12 animate-pulse rounded-xl bg-brand-mid/12" />
-                          <div className="h-12 animate-pulse rounded-xl bg-brand-mid/10" />
-                          <div className="h-24 animate-pulse rounded-[20px] bg-brand-mid/8" />
+                          <div className="bg-brand-mid/12 h-12 animate-pulse rounded-xl" />
+                          <div className="bg-brand-mid/10 h-12 animate-pulse rounded-xl" />
+                          <div className="bg-brand-mid/8 h-24 animate-pulse rounded-[20px]" />
                         </div>
                       ) : (
                         <>
@@ -817,7 +885,7 @@ export function MyProfilePage() {
                                 void handleSave();
                               }}
                               disabled={isSaving}
-                              className="border-0 bg-brand-dark px-6 text-white hover:bg-brand-dark/85"
+                              className="bg-brand-dark hover:bg-brand-dark/85 border-0 px-6 text-white"
                             >
                               {isSaving ? "Saving..." : "Save Changes"}
                             </Button>
@@ -832,9 +900,11 @@ export function MyProfilePage() {
 
             {activeSection === "saved-events" ? (
               <section>
-                <Card className="rounded-[32px] border-brand-mid/10 shadow-[0_28px_72px_-48px_rgba(73,54,40,0.55)]">
+                <Card className="border-brand-mid/10 rounded-[32px] shadow-[0_28px_72px_-48px_rgba(73,54,40,0.55)]">
                   <CardHeader className="px-6 pt-6 sm:px-8">
-                    <CardTitle className="font-heading text-3xl text-brand-dark">Saved Events</CardTitle>
+                    <CardTitle className="font-heading text-brand-dark text-3xl">
+                      Saved Events
+                    </CardTitle>
                     <CardDescription className="text-brand-mid">
                       Browse the events you bookmarked and jump back into their detail pages.
                     </CardDescription>
@@ -848,11 +918,14 @@ export function MyProfilePage() {
                     ) : bookmarksLoading ? (
                       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                         {Array.from({ length: 3 }).map((_, index) => (
-                          <div key={index} className="overflow-hidden rounded-[24px] border border-brand-mid/12 bg-white">
-                            <div className="h-44 animate-pulse bg-brand-mid/15" />
+                          <div
+                            key={index}
+                            className="border-brand-mid/12 overflow-hidden rounded-[24px] border bg-white"
+                          >
+                            <div className="bg-brand-mid/15 h-44 animate-pulse" />
                             <div className="space-y-3 p-5">
-                              <div className="h-4 animate-pulse rounded-full bg-brand-mid/12" />
-                              <div className="h-4 w-2/3 animate-pulse rounded-full bg-brand-mid/10" />
+                              <div className="bg-brand-mid/12 h-4 animate-pulse rounded-full" />
+                              <div className="bg-brand-mid/10 h-4 w-2/3 animate-pulse rounded-full" />
                             </div>
                           </div>
                         ))}
@@ -860,9 +933,14 @@ export function MyProfilePage() {
                     ) : bookmarks && bookmarks.items.length > 0 ? (
                       <>
                         <div className="mb-4 flex items-center justify-between gap-3">
-                          <p className="text-sm text-brand-mid">
-                            Showing <span className="font-semibold text-brand-dark">{bookmarks.items.length}</span> of{" "}
-                            <span className="font-semibold text-brand-dark">{bookmarks.total}</span> bookmarked events
+                          <p className="text-brand-mid text-sm">
+                            Showing{" "}
+                            <span className="text-brand-dark font-semibold">
+                              {bookmarks.items.length}
+                            </span>{" "}
+                            of{" "}
+                            <span className="text-brand-dark font-semibold">{bookmarks.total}</span>{" "}
+                            bookmarked events
                           </p>
                         </div>
 
@@ -881,14 +959,14 @@ export function MyProfilePage() {
                               className={cn(
                                 "flex size-9 items-center justify-center rounded-full border transition-colors",
                                 bookmarkPage <= 1
-                                  ? "cursor-not-allowed border-brand-mid/10 text-brand-mid/40"
+                                  ? "border-brand-mid/10 text-brand-mid/40 cursor-not-allowed"
                                   : "border-brand-mid/20 text-brand-dark hover:bg-brand-mid-alpha/70",
                               )}
                             >
                               <ChevronLeft className="size-4" />
                             </button>
 
-                            <p className="text-sm font-semibold text-brand-dark">
+                            <p className="text-brand-dark text-sm font-semibold">
                               Page {bookmarkPage} / {bookmarks.total_pages}
                             </p>
 
@@ -899,7 +977,7 @@ export function MyProfilePage() {
                               className={cn(
                                 "flex size-9 items-center justify-center rounded-full border transition-colors",
                                 bookmarkPage >= bookmarks.total_pages
-                                  ? "cursor-not-allowed border-brand-mid/10 text-brand-mid/40"
+                                  ? "border-brand-mid/10 text-brand-mid/40 cursor-not-allowed"
                                   : "border-brand-mid/20 text-brand-dark hover:bg-brand-mid-alpha/70",
                               )}
                             >
@@ -909,15 +987,20 @@ export function MyProfilePage() {
                         ) : null}
                       </>
                     ) : (
-                      <div className="rounded-[24px] border border-brand-mid/12 bg-brand-bg/75 px-6 py-12 text-center">
-                        <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-brand-mid/12 text-brand-mid">
+                      <div className="border-brand-mid/12 bg-brand-bg/75 rounded-[24px] border px-6 py-12 text-center">
+                        <div className="bg-brand-mid/12 text-brand-mid mx-auto flex size-16 items-center justify-center rounded-full">
                           <Bookmark className="size-7" />
                         </div>
-                        <p className="font-heading mt-4 text-2xl text-brand-dark">No bookmarked events yet</p>
-                        <p className="mt-2 text-sm text-brand-mid">
+                        <p className="font-heading text-brand-dark mt-4 text-2xl">
+                          No bookmarked events yet
+                        </p>
+                        <p className="text-brand-mid mt-2 text-sm">
                           Save interesting events from discovery to keep them handy here.
                         </p>
-                        <Button asChild className="mt-5 border-0 bg-brand-dark text-white hover:bg-brand-dark/85">
+                        <Button
+                          asChild
+                          className="bg-brand-dark hover:bg-brand-dark/85 mt-5 border-0 text-white"
+                        >
                           <Link href="/">Explore Events</Link>
                         </Button>
                       </div>
@@ -931,11 +1014,16 @@ export function MyProfilePage() {
               <section className="space-y-6">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                   <div>
-                    <h2 className="font-heading text-3xl font-bold text-brand-dark">My Events</h2>
-                    <p className="mt-1 text-sm text-brand-mid">Manage events you&apos;ve created.</p>
+                    <h2 className="font-heading text-brand-dark text-3xl font-bold">My Events</h2>
+                    <p className="text-brand-mid mt-1 text-sm">
+                      Manage events you&apos;ve created.
+                    </p>
                   </div>
 
-                  <Button asChild className="border-0 bg-brand-dark text-white hover:bg-brand-dark/85">
+                  <Button
+                    asChild
+                    className="bg-brand-dark hover:bg-brand-dark/85 border-0 text-white"
+                  >
                     <Link href={CREATE_EVENT_PAGE_PATH}>
                       <Plus className="size-4" />
                       Create New Event
@@ -944,56 +1032,59 @@ export function MyProfilePage() {
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                  <div className="flex items-center gap-3 rounded-[22px] bg-brand-surface px-5 py-4">
-                    <CalendarDays className="size-6 text-brand-dark" />
+                  <div className="bg-brand-surface flex items-center gap-3 rounded-[22px] px-5 py-4">
+                    <CalendarDays className="text-brand-dark size-6" />
                     <div>
-                      <p className="text-xl font-bold text-brand-dark">{hostedEvents.length}</p>
-                      <p className="text-xs text-brand-mid">Total Events</p>
+                      <p className="text-brand-dark text-xl font-bold">{hostedEvents.length}</p>
+                      <p className="text-brand-mid text-xs">Total Events</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 rounded-[22px] bg-brand-surface px-5 py-4">
+                  <div className="bg-brand-surface flex items-center gap-3 rounded-[22px] px-5 py-4">
                     <div className="size-3 rounded-full bg-emerald-500" />
                     <div>
-                      <p className="text-xl font-bold text-brand-dark">{liveEventCount}</p>
-                      <p className="text-xs text-brand-mid">Live</p>
+                      <p className="text-brand-dark text-xl font-bold">{liveEventCount}</p>
+                      <p className="text-brand-mid text-xs">Live</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 rounded-[22px] bg-brand-surface px-5 py-4">
-                    <Users className="size-6 text-brand-dark" />
+                  <div className="bg-brand-surface flex items-center gap-3 rounded-[22px] px-5 py-4">
+                    <Users className="text-brand-dark size-6" />
                     <div>
-                      <p className="text-xl font-bold text-brand-dark">{totalHostedAttendees}</p>
-                      <p className="text-xs text-brand-mid">Total Attendees</p>
+                      <p className="text-brand-dark text-xl font-bold">{totalHostedAttendees}</p>
+                      <p className="text-brand-mid text-xs">Total Attendees</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 rounded-[22px] bg-brand-surface px-5 py-4">
-                    <Shield className="size-6 text-brand-dark" />
+                  <div className="bg-brand-surface flex items-center gap-3 rounded-[22px] px-5 py-4">
+                    <Shield className="text-brand-dark size-6" />
                     <div>
-                      <p className="text-xl font-bold text-brand-dark">
-                        {hostProfile?.average_rating !== null && hostProfile?.average_rating !== undefined
+                      <p className="text-brand-dark text-xl font-bold">
+                        {hostProfile?.average_rating !== null &&
+                        hostProfile?.average_rating !== undefined
                           ? `${hostProfile.average_rating.toFixed(1)} ★`
                           : "New"}
                       </p>
-                      <p className="text-xs text-brand-mid">Avg Rating</p>
+                      <p className="text-brand-mid text-xs">Avg Rating</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="overflow-x-auto border-b border-brand-mid/15">
+                <div className="border-brand-mid/15 overflow-x-auto border-b">
                   <div className="flex min-w-max gap-0">
-                    {([
-                      { key: "upcoming", label: "Upcoming", count: upcomingHostedEvents.length },
-                      { key: "past", label: "Past", count: pastHostedEvents.length },
-                      { key: "draft", label: "Draft", count: draftHostedEvents.length },
-                    ] as const).map((tab) => (
+                    {(
+                      [
+                        { key: "upcoming", label: "Upcoming", count: upcomingHostedEvents.length },
+                        { key: "past", label: "Past", count: pastHostedEvents.length },
+                        { key: "draft", label: "Draft", count: draftHostedEvents.length },
+                      ] as const
+                    ).map((tab) => (
                       <button
                         key={tab.key}
                         type="button"
                         onClick={() => setEventsTab(tab.key)}
                         className={cn(
-                          "inline-flex items-center gap-2 border-b-[3px] px-6 py-3 text-sm transition-colors cursor-pointer",
+                          "inline-flex cursor-pointer items-center gap-2 border-b-[3px] px-6 py-3 text-sm transition-colors",
                           eventsTab === tab.key
-                            ? "border-brand-dark font-bold text-brand-dark"
-                            : "border-transparent font-medium text-brand-mid hover:text-brand-dark",
+                            ? "border-brand-dark text-brand-dark font-bold"
+                            : "text-brand-mid hover:text-brand-dark border-transparent font-medium",
                         )}
                       >
                         {tab.label}
@@ -1019,11 +1110,14 @@ export function MyProfilePage() {
                 ) : hostProfileLoading ? (
                   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {Array.from({ length: 3 }).map((_, index) => (
-                      <div key={index} className="overflow-hidden rounded-[24px] border border-brand-mid/12 bg-white">
-                        <div className="h-44 animate-pulse bg-brand-mid/15" />
+                      <div
+                        key={index}
+                        className="border-brand-mid/12 overflow-hidden rounded-[24px] border bg-white"
+                      >
+                        <div className="bg-brand-mid/15 h-44 animate-pulse" />
                         <div className="space-y-3 p-5">
-                          <div className="h-4 animate-pulse rounded-full bg-brand-mid/12" />
-                          <div className="h-4 w-2/3 animate-pulse rounded-full bg-brand-mid/10" />
+                          <div className="bg-brand-mid/12 h-4 animate-pulse rounded-full" />
+                          <div className="bg-brand-mid/10 h-4 w-2/3 animate-pulse rounded-full" />
                         </div>
                       </div>
                     ))}
@@ -1042,9 +1136,9 @@ export function MyProfilePage() {
                     ))}
                   </div>
                 ) : (
-                  <div className="rounded-[24px] border border-brand-mid/12 bg-white px-6 py-12 text-center">
-                    <p className="font-heading text-2xl text-brand-dark">No {eventsTab} events</p>
-                    <p className="mt-2 text-sm text-brand-mid">
+                  <div className="border-brand-mid/12 rounded-[24px] border bg-white px-6 py-12 text-center">
+                    <p className="font-heading text-brand-dark text-2xl">No {eventsTab} events</p>
+                    <p className="text-brand-mid mt-2 text-sm">
                       {eventsTab === "upcoming"
                         ? "Create a new event or publish an existing draft to see it here."
                         : eventsTab === "past"
