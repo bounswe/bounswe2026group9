@@ -17,6 +17,8 @@ export interface FilterState {
   temporal: TemporalFilter | null;
   /** Client-side personal filter (bookmarked / going). */
   personal: PersonalFilter | null;
+  /** Backend-personalized event suggestions, shown only to authenticated users. */
+  suggested: boolean;
   /** Multi-select category IDs (OR/union). */
   categoryIds: string[];
   /** Toggle: include past events in the result set. Maps to `quick_filter=past` when no other temporal is set. */
@@ -77,6 +79,7 @@ export function countActiveFilters(state: FilterState): number {
   return (
     (state.temporal ? 1 : 0) +
     (state.personal ? 1 : 0) +
+    (state.suggested ? 1 : 0) +
     state.categoryIds.length +
     (state.showPast ? 1 : 0) +
     (state.sort !== "start_time" ? 1 : 0) +
@@ -87,6 +90,7 @@ export function countActiveFilters(state: FilterState): number {
 export const DEFAULT_FILTER_STATE: FilterState = {
   temporal: null,
   personal: null,
+  suggested: false,
   categoryIds: [],
   showPast: false,
   sort: "start_time",
@@ -124,6 +128,10 @@ export function FilterSidebar({
       ...filters,
       personal: filters.personal === value ? null : value,
     });
+  }
+
+  function toggleSuggested() {
+    onFiltersChange({ ...filters, suggested: !filters.suggested });
   }
 
   function toggleCategory(id: string) {
@@ -242,6 +250,31 @@ export function FilterSidebar({
                   );
                 })}
               </div>
+            </section>
+          )}
+
+          {isAuthenticated && (
+            <section aria-labelledby="filter-suggested-heading">
+              <p
+                id="filter-suggested-heading"
+                className="text-brand-mid mb-3 text-xs font-bold tracking-widest uppercase"
+              >
+                Personalised
+              </p>
+              <button
+                type="button"
+                onClick={toggleSuggested}
+                aria-pressed={filters.suggested}
+                className={cn(
+                  "focus-visible:ring-brand-dark flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm font-bold transition-colors focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:outline-none",
+                  filters.suggested
+                    ? "bg-brand-dark border-brand-dark text-white"
+                    : "border-brand-mid-alpha text-brand-dark hover:bg-brand-mid-alpha",
+                )}
+              >
+                <Sparkles className="size-4" aria-hidden />
+                Suggested for you
+              </button>
             </section>
           )}
 

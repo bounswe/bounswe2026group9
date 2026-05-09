@@ -9,6 +9,7 @@ import {
   ArrowRight,
   CalendarDays,
   Check,
+  ChevronDown,
   Clock3,
   Globe,
   GripVertical,
@@ -1522,6 +1523,132 @@ export function EventEditor({ eventId, mode }: EventEditorProps) {
                                           </Button>
                                         ) : null}
                                       </div>
+                                    </div>
+
+                                    {/* ── Stop timing (issue #157) ─────────────────────────── */}
+                                    <div className="border-brand-mid-alpha/70 mt-3 ml-[3.25rem] border-t pt-3">
+                                      <button
+                                        type="button"
+                                        aria-expanded={location.segmentEnabled}
+                                        aria-controls={`segment-fields-${location.id}`}
+                                        onClick={(event) => {
+                                          event.stopPropagation();
+                                          patchLocation(location.id, {
+                                            segmentEnabled: !location.segmentEnabled,
+                                          });
+                                        }}
+                                        className="text-brand-mid hover:text-brand-dark inline-flex items-center gap-1.5 text-xs font-semibold tracking-wider uppercase transition-colors"
+                                      >
+                                        <ChevronDown
+                                          className={cn(
+                                            "size-3.5 transition-transform",
+                                            location.segmentEnabled && "rotate-180",
+                                          )}
+                                        />
+                                        {location.segmentEnabled
+                                          ? "Hide stop timing"
+                                          : "Add stop timing (optional)"}
+                                      </button>
+                                      {location.segmentEnabled ? (
+                                        <div
+                                          id={`segment-fields-${location.id}`}
+                                          className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2"
+                                          onClick={(event) => event.stopPropagation()}
+                                        >
+                                          <div>
+                                            <Label
+                                              className="text-xs"
+                                              htmlFor={`segment-start-date-${location.id}`}
+                                            >
+                                              Stop start
+                                            </Label>
+                                            <div className="mt-1 flex gap-2">
+                                              <Input
+                                                aria-label={`Stop ${index + 1} start date`}
+                                                className="h-9 flex-1"
+                                                id={`segment-start-date-${location.id}`}
+                                                onChange={(event) =>
+                                                  patchLocation(location.id, {
+                                                    segmentStartDate: event.target.value,
+                                                  })
+                                                }
+                                                type="date"
+                                                value={location.segmentStartDate}
+                                              />
+                                              <Input
+                                                aria-label={`Stop ${index + 1} start time`}
+                                                className="h-9 w-[7.5rem]"
+                                                onChange={(event) =>
+                                                  patchLocation(location.id, {
+                                                    segmentStartTime: event.target.value,
+                                                  })
+                                                }
+                                                type="time"
+                                                value={location.segmentStartTime}
+                                              />
+                                            </div>
+                                          </div>
+                                          <div>
+                                            <Label
+                                              className="text-xs"
+                                              htmlFor={`segment-end-date-${location.id}`}
+                                            >
+                                              Stop end
+                                            </Label>
+                                            <div className="mt-1 flex gap-2">
+                                              <Input
+                                                aria-label={`Stop ${index + 1} end date`}
+                                                className="h-9 flex-1"
+                                                id={`segment-end-date-${location.id}`}
+                                                onChange={(event) =>
+                                                  patchLocation(location.id, {
+                                                    segmentEndDate: event.target.value,
+                                                  })
+                                                }
+                                                type="date"
+                                                value={location.segmentEndDate}
+                                              />
+                                              <Input
+                                                aria-label={`Stop ${index + 1} end time`}
+                                                className="h-9 w-[7.5rem]"
+                                                onChange={(event) =>
+                                                  patchLocation(location.id, {
+                                                    segmentEndTime: event.target.value,
+                                                  })
+                                                }
+                                                type="time"
+                                                value={location.segmentEndTime}
+                                              />
+                                            </div>
+                                          </div>
+                                          <div className="sm:col-span-2">
+                                            <Label
+                                              className="text-xs"
+                                              htmlFor={`segment-desc-${location.id}`}
+                                            >
+                                              Stop notes (optional)
+                                            </Label>
+                                            <Textarea
+                                              className="mt-1 min-h-[64px] text-sm"
+                                              id={`segment-desc-${location.id}`}
+                                              maxLength={1000}
+                                              onChange={(event) =>
+                                                patchLocation(location.id, {
+                                                  segmentDescription: event.target.value,
+                                                })
+                                              }
+                                              placeholder="What happens at this stop?"
+                                              value={location.segmentDescription}
+                                            />
+                                            <p className="text-muted-foreground mt-1 text-right text-[11px]">
+                                              {location.segmentDescription.length}/1000
+                                            </p>
+                                          </div>
+                                          <FieldError
+                                            message={fieldErrors[`segment-${location.id}`]}
+                                          />
+                                        </div>
+                                      ) : null}
                                     </div>
                                   </div>
 

@@ -119,12 +119,14 @@ describe("fetchGeoJsonEvents URL construction", () => {
     await fetchGeoJsonEvents({
       quick_filter: "this_week",
       accessibility: { wheelchair: true },
+      suggested: true,
       sort: "distance",
     });
     const url = new URL(lastFetchUrl(fetchMock), "http://localhost");
     expect(url.pathname).toContain("/events/geojson");
     expect(url.searchParams.get("quick_filter")).toBe("this_week");
     expect(url.searchParams.get("wheelchair")).toBe("true");
+    expect(url.searchParams.get("suggested")).toBe("true");
     expect(url.searchParams.get("sort")).toBe("distance");
   });
 });

@@ -26,6 +26,7 @@ from app.repositories.protocols import (
     EventRepoProtocol,
     NotificationRepoProtocol,
 )
+from app.services.category_clusters import expand_category_ids
 
 logger = logging.getLogger(__name__)
 
@@ -125,12 +126,17 @@ def _find_candidates(
     host_id: str,
     attendances: AttendanceRepoProtocol,
 ) -> set[str]:
-    """Users with going attendance on ended events that share at least one category."""
+    """Users with going attendance on ended events that share at least one category
+    (exact match or cluster-similar category)."""
+    # Expand exact category IDs to include cluster-similar categories so that,
+    # e.g., a Sports event also reaches Health & Wellness / Outdoor attendees.
+    expanded_ids = expand_category_ids(db, set(category_ids))
+
     # Step 1: events in any of these categories (exclude the new event itself)
     cat_rows = (
         db.table("event_categories")
         .select("event_id")
-        .in_("category_id", category_ids)
+        .in_("category_id", list(expanded_ids))
         .execute()
     )
     overlap_event_ids = {row["event_id"] for row in (cat_rows.data or [])}

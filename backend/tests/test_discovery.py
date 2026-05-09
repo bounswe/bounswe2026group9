@@ -345,6 +345,30 @@ class TestSuggestedFilter:
         _cleanup_user(listener["id"])
         _cleanup_user(host["id"])
 
+    def test_geojson_match_returns_only_user_categories(self):
+        cat_a, cat_b = _get_category_ids(2)
+        host = _create_test_user("geoHost")
+        listener = _create_test_user("geoList")
+
+        past = _make_ended_event(host["id"], cat_a)
+        _add_attendance(listener["id"], past, "going")
+
+        ev_match = _create_published_event(host["id"], [cat_a], title="Geo Match")
+        ev_other = _create_published_event(host["id"], [cat_b], title="Geo Mismatch")
+
+        resp = client.get("/events/geojson?suggested=true", headers=_auth_header(listener["id"]))
+        assert resp.status_code == 200
+        ids = {feature["properties"]["id"] for feature in resp.json()["features"]}
+        assert ev_match["id"] in ids
+        assert ev_other["id"] not in ids
+
+        _cleanup_event(ev_match["id"])
+        _cleanup_event(ev_other["id"])
+        _cleanup_event(past)
+        db.table("attendances").delete().eq("user_id", listener["id"]).execute()
+        _cleanup_user(listener["id"])
+        _cleanup_user(host["id"])
+
 
 class TestListEventsCategorySort:
     def test_sort_category_orders_alphabetically(self):

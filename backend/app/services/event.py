@@ -1,11 +1,13 @@
 """Event service — business logic, validation, orchestration."""
 
+import logging
 import math
 from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException, status
 from supabase import Client
 
+from app.logging_config import log_action
 from app.models.event import (
     EventCreateRequest,
     EventDetailResponse,
@@ -36,17 +38,21 @@ from app.repositories.protocols import (
     InviteRepoProtocol,
     UserRepoProtocol,
 )
+from app.services.category_clusters import expand_category_ids as _expand_suggested_category_ids
 from app.services.rate_limit import is_rate_limit_exempt_email
 
-# Aliases kept for the (still-large) parts of this module that haven't been
-# DI-converted yet. Phase 1 slice A converts the validators + helpers; the
-# CRUD and read-side functions get their own slices and switch to kwargs.
+# Aliases kept for legacy patch-based unit tests that reach into the
+# repository modules through these names (test_similar_events_unit,
+# test_event_unit, test_segments_unit). Production code uses the
+# keyword-default DI seam at each function signature.
 attendance_repo = _attendance_repo
 bookmark_repo = _bookmark_repo
 event_repo = _event_repo
 image_repo = _image_repo
 invite_repo = _invite_repo
 user_repo = _user_repo
+
+_logger = logging.getLogger(__name__)
 
 
 def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
@@ -57,6 +63,7 @@ def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     dlam = math.radians(lng2 - lng1)
     a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlam / 2) ** 2
     return 2 * r * math.asin(math.sqrt(a))
+
 
 
 # --- Validators ---
@@ -342,6 +349,12 @@ def create_event(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create event")
 
     event_id = event["id"]
+
+    log_action(
+        _logger, "event.create",
+        event_id=event_id, user_id=user_id,
+        title=body.title, status=body.status, visibility=body.visibility,
+    )
 
     # Fetch related data for response
     locations = events.get_event_locations(db, event_id)
@@ -713,6 +726,13 @@ def update_event(
             segments=segment_rows,
         )
 
+    log_action(
+        _logger, "event.update",
+        event_id=event_id, user_id=user_id,
+        previous_status=event["status"],
+        has_real_changes=has_real_changes,
+    )
+
     # Emit notification only if there were real changes
     if has_real_changes and event["status"] in ("published", "updated"):
         from app.services.notification_emitter import emit_event_notification
@@ -778,15 +798,36 @@ def change_event_status(
 
     events.update_event_status(db, event_id, new_status)
 
+    # Map the status transition onto a stable action verb so log filters can
+    # query e.g. action=event.publish without parsing the previous status.
+    _STATUS_ACTION = {
+        ("draft", "published"): "event.publish",
+        ("published", "cancelled"): "event.cancel",
+        ("updated", "cancelled"): "event.cancel",
+        ("published", "ended"): "event.end",
+        ("updated", "ended"): "event.end",
+    }
+    log_action(
+        _logger,
+        _STATUS_ACTION.get((current, new_status), "event.status_change"),
+        event_id=event_id, user_id=user_id,
+        previous_status=current, new_status=new_status,
+    )
+
     # Emit recommendation notifications when an event becomes published
     if current == "draft" and new_status == "published":
         try:
             from app.services.recommendation_emitter import emit_event_recommendations
             emit_event_recommendations(db, event_id, user_id)
-        except Exception:
-            # Recommendations are best-effort: never fail the publish on emitter error
-            import logging
-            logging.getLogger(__name__).exception("emit_event_recommendations failed")
+        except Exception:  # noqa: BLE001 — best-effort emitter, must not fail publish
+            _logger.exception(
+                "emit_event_recommendations_failed",
+                extra={
+                    "action": "event.recommendation_emit_failed",
+                    "event_id": event_id,
+                    "user_id": user_id,
+                },
+            )
 
     # Emit notification on cancellation
     if new_status == "cancelled":
@@ -840,9 +881,25 @@ def delete_event(
             path = img["image_url"].split(f"/{images.BUCKET_NAME}/")[-1]
             images.delete_from_storage(db, path)
         except Exception:  # nosec B110 — storage cleanup is best-effort
-            pass  # Best-effort storage cleanup
+            # Structured warning so the operator can see which image failed
+            # without having to grep stdout. The DB delete still cascades.
+            _logger.warning(
+                "storage_cleanup_failed",
+                extra={
+                    "action": "event.storage_cleanup_failed",
+                    "event_id": event_id,
+                    "user_id": user_id,
+                    "image_id": img.get("id"),
+                },
+            )
 
     events.delete_event(db, event_id)
+
+    log_action(
+        _logger, "event.delete",
+        event_id=event_id, user_id=user_id,
+        previous_status=event["status"],
+    )
 
 
 # --- Discovery ---
@@ -902,15 +959,16 @@ def list_events(
     # Resolve "Suggested for you" — only meaningful for authenticated users.
     suggested_category_ids: set[str] | None = None
     suggested_fallback = False
+    suggested_fallback_reason: str | None = None
     if suggested and user_id:
-        suggested_category_ids = attendances.get_attended_ended_event_categories(
-            db, user_id,
-        )
-        if not suggested_category_ids:
-            # User has no attendance history yet — fall back to default listing
-            # but signal the empty-history hint to the UI.
-            suggested_category_ids = None
+        exact_ids = attendances.get_attended_ended_event_categories(db, user_id)
+        if not exact_ids:
+            # User has no attendance history — fall back to default listing.
             suggested_fallback = True
+            suggested_fallback_reason = "no_history"
+        else:
+            # Expand to include similar categories from the same cluster(s).
+            suggested_category_ids = _expand_suggested_category_ids(db, exact_ids)
 
     event_rows, total = events.list_events(
         db,
@@ -931,9 +989,14 @@ def list_events(
 
     total_pages = (total + page_size - 1) // page_size if total > 0 else 0
     if not event_rows:
+        # User had history but no current events match their (expanded) categories.
+        if suggested and suggested_category_ids and not suggested_fallback:
+            suggested_fallback = True
+            suggested_fallback_reason = "no_match"
         return EventListResponse(
             items=[], total=total, page=page, page_size=page_size,
             total_pages=total_pages, suggested_fallback=suggested_fallback,
+            suggested_fallback_reason=suggested_fallback_reason,
         )
 
     # For sort in {distance, category} the repo returned the full filtered set;
@@ -1031,6 +1094,7 @@ def list_events(
     return EventListResponse(
         items=items, total=total, page=page, page_size=page_size,
         total_pages=total_pages, suggested_fallback=suggested_fallback,
+        suggested_fallback_reason=suggested_fallback_reason,
     )
 
 
@@ -1100,6 +1164,11 @@ def get_similar_events(
     source_categories = events.get_event_categories(db, event_id)
     source_cat_ids = {c["id"] for c in source_categories}
 
+    # Expand source categories to include cluster-similar ones for a broader
+    # candidate pool and scoring (e.g. a Sports event also surfaces Outdoor).
+    expanded_cat_ids = _expand_suggested_category_ids(db, source_cat_ids)
+    cluster_only_ids = expanded_cat_ids - source_cat_ids  # similar but not exact
+
     # Source primary location — reuse the batch lookup so we go through the
     # repo seam instead of poking db.table directly.
     source_locs = events.get_primary_locations_for_events(db, [event_id])
@@ -1107,7 +1176,11 @@ def get_similar_events(
     source_lat = source_loc.get("latitude")
     source_lng = source_loc.get("longitude")
 
-    candidates = events.get_similar_candidates(db, event_id, limit=30)
+    # Pass the expanded category IDs so the repo pre-filters at DB level
+    # instead of returning an arbitrary date-ordered pool.
+    candidates = events.get_similar_candidates(
+        db, event_id, category_ids=list(expanded_cat_ids)
+    )
     if not candidates:
         return []
 
@@ -1119,7 +1192,10 @@ def get_similar_events(
     for cand in candidates:
         cid = cand["id"]
         cand_cat_ids = {c["id"] for c in cats_by_event.get(cid, [])}
-        overlap = len(source_cat_ids & cand_cat_ids)
+
+        # Exact category overlap scores higher than cluster-similar overlap.
+        exact_overlap = len(source_cat_ids & cand_cat_ids)
+        cluster_overlap = len(cluster_only_ids & cand_cat_ids)
         host_match = 1 if cand["host_id"] == source["host_id"] else 0
 
         proximity_bonus = 0
@@ -1130,7 +1206,7 @@ def get_similar_events(
                 if dist <= 50:
                     proximity_bonus = 1
 
-        score = overlap * 3 + host_match * 2 + proximity_bonus
+        score = exact_overlap * 3 + cluster_overlap * 1 + host_match * 2 + proximity_bonus
         scored.append((score, cand))
 
     scored.sort(key=lambda x: (-x[0], x[1]["start_datetime"], x[1]["id"]))

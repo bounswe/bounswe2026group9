@@ -16,6 +16,18 @@ export interface EventLocation {
   longitude: number;
   is_primary: boolean;
   order_index: number;
+  /** Optional reverse-geocoded street address (issue #295). */
+  location_address?: string | null;
+}
+
+/** Itinerary segment (issue #149 / #157) — host-defined start/end window for a stop. */
+export interface EventSegment {
+  id: string;
+  location_id: string;
+  order_index: number;
+  start_datetime: string;
+  end_datetime: string;
+  description: string | null;
 }
 
 export interface EventListItem {
@@ -51,6 +63,11 @@ export interface EventListResponse {
   page: number;
   page_size: number;
   total_pages: number;
+  /**
+   * Set by the backend when suggested=true was requested but the user has no
+   * past attendance history to bias on.
+   */
+  suggested_fallback?: boolean;
 }
 
 /** Backend-supported quick filter values (`/events?quick_filter=...`). */
@@ -82,9 +99,16 @@ export interface DiscoveryParams {
   radius_km?: number;
   use_default_area?: boolean;
   accessibility?: AccessibilityFilters;
+  /** Bias results toward categories from the authenticated user's past attendance. */
+  suggested?: boolean;
   sort?: SortOption;
   page?: number;
   page_size?: number;
+}
+
+export interface AllEventsResult {
+  items: EventListItem[];
+  suggested_fallback: boolean;
 }
 
 function appendDiscoveryParams(query: URLSearchParams, params: DiscoveryParams): void {
@@ -109,6 +133,7 @@ function appendDiscoveryParams(query: URLSearchParams, params: DiscoveryParams):
     if (a.quiet_friendly) query.set("quiet_friendly", "true");
   }
 
+  if (params.suggested) query.set("suggested", "true");
   if (params.sort) query.set("sort", params.sort);
 }
 
@@ -124,12 +149,13 @@ export async function fetchEvents(params: DiscoveryParams = {}): Promise<EventLi
   return apiRequest<EventListResponse>(`/events${qs ? `?${qs}` : ""}`, { auth: "optional" });
 }
 
-export async function fetchAllEvents(params: DiscoveryParams = {}): Promise<EventListItem[]> {
+export async function fetchAllEvents(params: DiscoveryParams = {}): Promise<AllEventsResult> {
   const pageSize = 100;
   const firstPage = await fetchEvents({ ...params, page: 1, page_size: pageSize });
+  const suggested_fallback = firstPage.suggested_fallback ?? false;
 
   if (firstPage.total_pages <= 1) {
-    return firstPage.items;
+    return { items: firstPage.items, suggested_fallback };
   }
 
   const remainingPages = await Promise.all(
@@ -138,7 +164,10 @@ export async function fetchAllEvents(params: DiscoveryParams = {}): Promise<Even
     ),
   );
 
-  return [firstPage, ...remainingPages].flatMap((page) => page.items);
+  return {
+    items: [firstPage, ...remainingPages].flatMap((page) => page.items),
+    suggested_fallback,
+  };
 }
 
 export async function fetchCategories(): Promise<Category[]> {
@@ -240,6 +269,8 @@ export interface EventDetail {
   bookmark_count: number;
   is_full: boolean | null;
   locations: EventLocation[];
+  /** Empty array when the event has no host-defined itinerary. */
+  segments?: EventSegment[];
   categories: Category[];
   images: EventImage[];
   venue_metadata: VenueMetadata | null;
@@ -397,6 +428,10 @@ export async function deleteEvent(eventId: string): Promise<void> {
 
 export async function fetchComments(eventId: string): Promise<CommentListResponse> {
   return apiRequest<CommentListResponse>(`/events/${eventId}/comments`);
+}
+
+export async function fetchSimilarEvents(eventId: string): Promise<EventListItem[]> {
+  return apiRequest<EventListItem[]>(`/events/${eventId}/similar`, { auth: "optional" });
 }
 
 export async function postComment(

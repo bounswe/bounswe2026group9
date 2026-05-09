@@ -34,6 +34,7 @@ class ProfileViewModel(
         if (token != null && userId != null) {
             loadCurrentProfile()
             loadHostedEvents()
+            loadGoingEvents()
             loadBookmarks(page = 1, reset = true)
         } else {
             _uiState.value = ProfileUiState()
@@ -90,6 +91,26 @@ class ProfileViewModel(
                 },
                 onFailure = {
                     _uiState.value = _uiState.value.copy(isLoadingHostedEvents = false)
+                }
+            )
+        }
+    }
+
+    // ── Going Events ──────────────────────────────────────────────────────────
+
+    fun loadGoingEvents() {
+        val token = currentToken ?: return
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoadingGoingEvents = true)
+            repository.getMyGoingEvents(token).fold(
+                onSuccess = { events ->
+                    _uiState.value = _uiState.value.copy(
+                        goingEvents = events,
+                        isLoadingGoingEvents = false
+                    )
+                },
+                onFailure = {
+                    _uiState.value = _uiState.value.copy(isLoadingGoingEvents = false)
                 }
             )
         }
@@ -190,6 +211,7 @@ class ProfileViewModel(
     fun refresh() {
         if (currentToken == null || currentUserId == null) return
         loadHostedEvents()
+        loadGoingEvents()
         loadBookmarks(page = 1, reset = true)
     }
 
