@@ -588,6 +588,11 @@ interface ApiService {
 
     // ── Check-in (QR) ──
 
+    @GET("attendances/me/events")
+    suspend fun getMyGoingEvents(
+        @Header("Authorization") token: String
+    ): List<EventListItemDto>
+
     @GET("attendances/me/{event_id}/qr")
     suspend fun getMyAttendeeQr(
         @Path("event_id") eventId: String,

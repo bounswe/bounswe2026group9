@@ -154,6 +154,19 @@ def find_users_going_on_events(db: Client, event_ids: list[str]) -> set[str]:
     return users
 
 
+def get_going_event_ids_for_user(db: Client, user_id: str) -> list[str]:
+    """Return event_ids where the user has status='going', ordered by marked_at desc."""
+    result = (
+        db.table("attendances")
+        .select("event_id")
+        .eq("user_id", user_id)
+        .eq("status", "going")
+        .order("marked_at", desc=True)
+        .execute()
+    )
+    return [row["event_id"] for row in (result.data or [])]
+
+
 def get_attended_ended_event_categories(db: Client, user_id: str) -> set[str]:
     """Return the set of category_ids for events the user attended (status='going')
     on events whose status='ended'. Used to bias the Discovery listing.

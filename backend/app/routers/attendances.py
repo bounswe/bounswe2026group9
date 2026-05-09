@@ -8,8 +8,9 @@ from app.database import get_supabase
 from app.middleware.auth import get_current_user_id
 from app.models.attendance import AttendanceResponse, AttendanceStatusRequest, QrTokenResponse
 from app.models.errors import AUTH_RESPONSES, NOT_FOUND_RESPONSE
+from app.models.event import EventListItemResponse
 from app.models.user import MessageResponse
-from app.services.attendance import get_my_qr, remove_attendance, set_attendance
+from app.services.attendance import get_my_going_events, get_my_qr, remove_attendance, set_attendance
 
 router = APIRouter(prefix="/events/{event_id}/attendance", tags=["attendances"])
 
@@ -46,6 +47,20 @@ def remove_attendance_endpoint(
     db = get_supabase()
     remove_attendance(db, str(event_id), user_id)
     return MessageResponse(message="Attendance removed successfully")
+
+
+@_qr_router.get(
+    "/me/events",
+    response_model=list[EventListItemResponse],
+    summary="List my going events",
+    description="Returns all events the authenticated user has marked as going, newest first.",
+    responses={**AUTH_RESPONSES},
+)
+def get_my_going_events_endpoint(
+    user_id: str = Depends(get_current_user_id),
+):
+    db = get_supabase()
+    return get_my_going_events(db, user_id)
 
 
 @_qr_router.get(

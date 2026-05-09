@@ -102,6 +102,19 @@ def get_event_by_id(db: Client, event_id: str) -> dict | None:
     return result.data[0] if result.data else None
 
 
+def get_events_by_ids(db: Client, event_ids: list[str]) -> list[dict[str, Any]]:
+    """Fetch multiple events by ID, preserving the given order."""
+    if not event_ids:
+        return []
+    rows: list[dict[str, Any]] = []
+    for i in range(0, len(event_ids), 100):
+        chunk = event_ids[i:i + 100]
+        result = db.table("events").select(_EVENT_COLS).in_("id", chunk).execute()
+        rows.extend(result.data or [])
+    order = {eid: idx for idx, eid in enumerate(event_ids)}
+    return sorted(rows, key=lambda r: order.get(r["id"], 9999))
+
+
 def get_event_locations(db: Client, event_id: str) -> list[dict]:
     # Deterministic order — matches the fallback in update_event_atomic so
     # that SegmentRequest.location_index against an *existing* location set

@@ -329,6 +329,41 @@ fun ProfileScreen(
                 }
             }
 
+            // ── Going Events ──────────────────────────────────────────────
+            item {
+                Spacer(Modifier.height(24.dp))
+                SectionLabel("GOING TO")
+            }
+
+            if (uiState.isLoadingGoingEvents) {
+                item {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) { CircularProgressIndicator(color = MaterialTheme.colorScheme.tertiary) }
+                }
+            } else if (uiState.goingEvents.isEmpty()) {
+                item {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            "No upcoming events marked as going",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+            } else {
+                items(uiState.goingEvents, key = { "going_${it.id}" }) { event ->
+                    HostedEventCard(
+                        event = event,
+                        onClick = { onEventClick(event.id) }
+                    )
+                }
+            }
+
             // ── Bookmarks Section Header ──────────────────────────────────
             item {
                 Spacer(Modifier.height(24.dp))
