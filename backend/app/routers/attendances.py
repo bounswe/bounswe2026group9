@@ -58,7 +58,7 @@ def remove_attendance_endpoint(
 )
 def get_my_going_events_endpoint(
     user_id: str = Depends(get_current_user_id),
-):
+) -> list[EventListItemResponse]:
     db = get_supabase()
     return get_my_going_events(db, user_id)
 
@@ -77,6 +77,6 @@ def get_my_going_events_endpoint(
 def get_my_qr_endpoint(
     event_id: UUID,
     user_id: str = Depends(get_current_user_id),
-):
+) -> QrTokenResponse:
     db = get_supabase()
     return get_my_qr(db, str(event_id), user_id)

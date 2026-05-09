@@ -5,6 +5,8 @@ cases. Documenting that shape here gives every client a single, predictable
 error contract instead of an opaque ``string``.
 """
 
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -40,23 +42,23 @@ class ValidationErrorResponse(BaseModel):
 
 # Reusable response dictionaries for ``responses=`` on endpoints.
 # Compose with ``{**AUTH_RESPONSES, ...}``  per-endpoint.
-COMMON_RESPONSES = {
+COMMON_RESPONSES: dict[int, dict[str, Any]] = {
     422: {"model": ValidationErrorResponse, "description": "Request validation failed."},
 }
 
-AUTH_RESPONSES = {
+AUTH_RESPONSES: dict[int, dict[str, Any]] = {
     401: {"model": ErrorResponse, "description": "Missing, invalid, or expired access token."},
 }
 
-FORBIDDEN_RESPONSE = {
+FORBIDDEN_RESPONSE: dict[int, dict[str, Any]] = {
     403: {"model": ErrorResponse, "description": "Authenticated but not allowed to perform this action."},
 }
 
-NOT_FOUND_RESPONSE = {
+NOT_FOUND_RESPONSE: dict[int, dict[str, Any]] = {
     404: {"model": ErrorResponse, "description": "Resource not found."},
 }
 
-CONFLICT_RESPONSE = {
+CONFLICT_RESPONSE: dict[int, dict[str, Any]] = {
     409: {"model": ErrorResponse, "description": "Conflict with current resource state (e.g. duplicate)."},
 }
 
