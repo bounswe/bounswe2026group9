@@ -9,6 +9,7 @@ import {
   Bookmark,
   BookmarkCheck,
   Calendar,
+  QrCode,
   Car,
   Check,
   CheckCircle,
@@ -35,6 +36,7 @@ import { Navbar } from "@/components/layout/navbar";
 import { StatusBadge, eventStatusVariant } from "@/components/event/status-badge";
 import { ImageCarousel } from "@/components/event/image-carousel";
 import { CommentSection } from "@/components/event/comment-section";
+import { AttendeeQrModal } from "@/components/event/attendee-qr-modal";
 import { SimilarEventsSection } from "@/components/event/similar-events";
 import { ConfirmDialog } from "@/components/event/confirm-dialog";
 import { AttendeeAvatarStack } from "@/components/event/attendee-avatar-stack";
@@ -472,6 +474,7 @@ function FullView({
   const [showMapModal, setShowMapModal] = useState(false);
   const [goingPressed, setGoingPressed] = useState(false);
   const [bookmarkPressed, setBookmarkPressed] = useState(false);
+  const [showQrModal, setShowQrModal] = useState(false);
 
   // Invite & access request state (host only)
   const [invites, setInvites] = useState<Invite[]>([]);
@@ -988,6 +991,16 @@ function FullView({
                             ? "Event Cancelled"
                             : "Going"}
                   </button>
+                  {isGoing && isActive && (
+                    <button
+                      onClick={() => setShowQrModal(true)}
+                      className="border-brand-dark text-brand-dark hover:bg-brand-dark/5 flex w-full cursor-pointer items-center justify-center gap-2 rounded-[10px] border-2 py-3 text-[15px] font-bold transition-colors"
+                      type="button"
+                    >
+                      <QrCode className="size-[18px]" />
+                      Show my QR
+                    </button>
+                  )}
                   <button
                     onClick={() => {
                       void toggleBookmark();
@@ -1333,6 +1346,14 @@ function FullView({
           locationName={primaryLocation.name}
         />
       )}
+
+      {/* QR check-in modal — only relevant for the user's own Going attendance. */}
+      <AttendeeQrModal
+        eventId={event.id}
+        eventTitle={event.title}
+        onClose={() => setShowQrModal(false)}
+        open={showQrModal}
+      />
     </>
   );
 }
