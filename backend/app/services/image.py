@@ -8,8 +8,9 @@ from PIL import Image
 from supabase import Client
 
 from app.models.event import EventImageResponse
-from app.repositories import event as event_repo
-from app.repositories import image as image_repo
+from app.repositories import event as _event_repo
+from app.repositories import image as _image_repo
+from app.repositories.protocols import EventRepoProtocol, ImageRepoProtocol
 
 ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp"}
 MAX_FILE_SIZE = 20 * 1024 * 1024  # 20MB
@@ -36,10 +37,16 @@ def _resize_image(file_bytes: bytes, content_type: str) -> tuple[bytes, str]:
 
 
 def upload_event_image(
-    db: Client, event_id: str, user_id: str, file: UploadFile,
+    db: Client,
+    event_id: str,
+    user_id: str,
+    file: UploadFile,
+    *,
+    images: ImageRepoProtocol = _image_repo,
+    events: EventRepoProtocol = _event_repo,
 ) -> EventImageResponse:
     # Check event exists and user is host
-    event = event_repo.get_event_by_id(db, event_id)
+    event = events.get_event_by_id(db, event_id)
     if not event:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
     if event["host_id"] != user_id:
@@ -58,7 +65,7 @@ def upload_event_image(
         )
 
     # Check image count
-    count = image_repo.count_event_images(db, event_id)
+    count = images.count_event_images(db, event_id)
     if count >= MAX_IMAGES_PER_EVENT:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -108,12 +115,12 @@ def upload_event_image(
     storage_path = f"{event_id}/{uuid.uuid4().hex}.{ext}"
 
     try:
-        image_url = image_repo.upload_to_storage(db, storage_path, resized_bytes, content_type)
+        image_url = images.upload_to_storage(db, storage_path, resized_bytes, content_type)
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Storage upload failed") from e
 
     # Save to DB
-    row = image_repo.insert_event_image(db, event_id, image_url)
+    row = images.insert_event_image(db, event_id, image_url)
     if not row:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to save image record")
 
@@ -121,17 +128,23 @@ def upload_event_image(
 
 
 def delete_event_image(
-    db: Client, event_id: str, image_id: str, user_id: str,
+    db: Client,
+    event_id: str,
+    image_id: str,
+    user_id: str,
+    *,
+    images: ImageRepoProtocol = _image_repo,
+    events: EventRepoProtocol = _event_repo,
 ) -> None:
     # Check event exists and user is host
-    event = event_repo.get_event_by_id(db, event_id)
+    event = events.get_event_by_id(db, event_id)
     if not event:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
     if event["host_id"] != user_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the host can delete images")
 
     # Check image exists and belongs to event
-    image = image_repo.get_event_image(db, image_id)
+    image = images.get_event_image(db, image_id)
     if not image or image["event_id"] != event_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Image not found")
 
@@ -139,9 +152,9 @@ def delete_event_image(
     image_url = image["image_url"]
     try:
         # URL format: .../storage/v1/object/public/event-images/{path}
-        path = image_url.split(f"/{image_repo.BUCKET_NAME}/")[-1]
-        image_repo.delete_from_storage(db, path)
-    except Exception:
+        path = image_url.split(f"/{images.BUCKET_NAME}/")[-1]
+        images.delete_from_storage(db, path)
+    except Exception:  # nosec B110 — storage delete is best-effort, DB record is authoritative
         pass  # Storage delete is best-effort, DB record is authoritative
 
-    image_repo.delete_event_image(db, image_id)
+    images.delete_event_image(db, image_id)

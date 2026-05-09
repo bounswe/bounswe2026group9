@@ -51,7 +51,7 @@ from app.services.rate_limit import is_rate_limit_exempt_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-REFRESH_TOKEN_COOKIE = "sem_refresh_token"
+REFRESH_TOKEN_COOKIE = "sem_refresh_token"  # nosec B105 — cookie name, not a credential
 REFRESH_COOKIE_MAX_AGE = 30 * 24 * 60 * 60  # 30 days
 
 

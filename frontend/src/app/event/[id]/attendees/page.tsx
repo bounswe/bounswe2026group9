@@ -7,6 +7,7 @@ import { ArrowLeft, Check, CheckCircle, Loader2, Lock, Users, XCircle } from "lu
 
 import { useAuth } from "@/hooks/use-auth";
 import { Navbar } from "@/components/layout/navbar";
+import { getProfileHref } from "@/lib/profile-route";
 import {
   fetchEventDetail,
   fetchAccessRequests,
@@ -155,9 +156,11 @@ export default function ManageAttendeesPage() {
                 </p>
                 <div className="space-y-2">
                   {event.attendees.map((attendee) => (
-                    <div
+                    <Link
                       key={attendee.id}
-                      className="bg-brand-bg flex items-center gap-3 rounded-lg px-3 py-2.5"
+                      href={getProfileHref(attendee.id, user?.id ?? null)}
+                      aria-label={`View ${attendee.username}'s profile`}
+                      className="bg-brand-bg hover:bg-brand-mid-alpha focus-visible:ring-brand-dark flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
                     >
                       <div className="bg-brand-mid flex size-8 shrink-0 items-center justify-center rounded-full text-[12px] font-bold text-white">
                         {attendee.username.slice(0, 2).toUpperCase()}
@@ -166,7 +169,7 @@ export default function ManageAttendeesPage() {
                         {attendee.username}
                       </span>
                       <Check className="ml-auto size-3.5 text-green-600" />
-                    </div>
+                    </Link>
                   ))}
                 </div>
               </div>
@@ -205,14 +208,18 @@ export default function ManageAttendeesPage() {
                         key={req.id}
                         className="bg-brand-bg flex items-center justify-between gap-3 rounded-lg px-3 py-2.5"
                       >
-                        <div className="flex min-w-0 items-center gap-3">
+                        <Link
+                          href={getProfileHref(req.user_id, user?.id ?? null)}
+                          aria-label={`View ${req.username}'s profile`}
+                          className="focus-visible:ring-brand-dark flex min-w-0 items-center gap-3 rounded-md transition-colors hover:opacity-80 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+                        >
                           <div className="bg-brand-surface text-brand-dark flex size-8 shrink-0 items-center justify-center rounded-full text-[12px] font-bold">
                             {req.username.slice(0, 2).toUpperCase()}
                           </div>
-                          <span className="text-brand-dark truncate text-[14px] font-bold">
+                          <span className="text-brand-dark truncate text-[14px] font-bold hover:underline">
                             {req.username}
                           </span>
-                        </div>
+                        </Link>
                         <div className="flex shrink-0 gap-2">
                           <button
                             onClick={() => {

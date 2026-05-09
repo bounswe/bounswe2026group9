@@ -35,11 +35,13 @@ import { Navbar } from "@/components/layout/navbar";
 import { StatusBadge, eventStatusVariant } from "@/components/event/status-badge";
 import { ImageCarousel } from "@/components/event/image-carousel";
 import { CommentSection } from "@/components/event/comment-section";
+import { SimilarEventsSection } from "@/components/event/similar-events";
 import { ConfirmDialog } from "@/components/event/confirm-dialog";
 import { AttendeeAvatarStack } from "@/components/event/attendee-avatar-stack";
 import { LocationMapModal } from "@/components/event/location-map-modal";
 import { ItineraryTimeline } from "@/components/event/itinerary-timeline";
 import { cn } from "@/lib/utils";
+import { getProfileHref } from "@/lib/profile-route";
 import {
   clearAccessRequestPending,
   isAccessRequestPending,
@@ -731,7 +733,7 @@ function FullView({
                   <>
                     Created by{" "}
                     <Link
-                      href={`/profile/${event.host_id}`}
+                      href={getProfileHref(event.host_id, currentUserId)}
                       className="text-brand-dark font-bold hover:underline"
                     >
                       {host.username}
@@ -763,9 +765,7 @@ function FullView({
               </p>
             </section>
 
-            {/* Itinerary — multi-stop route + per-stop timing (issue #157).
-              Renders only when there's at least one stop; collapses gracefully
-              when there's a single primary venue with no segments. */}
+            {/* Itinerary — multi-stop route + per-stop timing (issue #157) */}
             {(event.locations.length > 1 || (event.segments?.length ?? 0) > 0) && (
               <section className="mb-6">
                 <h3 className="font-heading text-brand-dark mb-3 text-lg font-semibold">
@@ -898,6 +898,9 @@ function FullView({
                 Comments are closed for cancelled events.
               </div>
             )}
+
+            {/* Similar events — backend filters out source event, cancelled, ended, and inaccessible private events. */}
+            <SimilarEventsSection eventId={event.id} />
           </div>
         </div>
         {/* close relative wrapper for left column */}
@@ -1131,9 +1134,12 @@ function FullView({
                         key={req.id}
                         className="bg-brand-bg flex items-center justify-between gap-2 rounded-lg px-3 py-2"
                       >
-                        <span className="text-brand-dark flex-1 truncate text-[13px] font-bold">
+                        <Link
+                          href={getProfileHref(req.user_id, currentUserId)}
+                          className="text-brand-dark flex-1 truncate text-[13px] font-bold hover:underline focus:outline-none focus-visible:underline"
+                        >
                           {req.username}
-                        </span>
+                        </Link>
                         <div className="flex gap-1.5">
                           <button
                             onClick={() => {
@@ -1165,11 +1171,20 @@ function FullView({
             {host ? (
               <div className="bg-brand-surface border-brand-mid-alpha rounded-xl border p-5">
                 <div className="mb-3 flex items-center gap-3">
-                  <div className="bg-brand-mid flex size-16 shrink-0 items-center justify-center rounded-full text-[22px] font-bold text-white">
+                  <Link
+                    href={getProfileHref(event.host_id, currentUserId)}
+                    aria-label={`View ${host.username}'s profile`}
+                    className="bg-brand-mid focus-visible:ring-brand-dark flex size-16 shrink-0 items-center justify-center rounded-full text-[22px] font-bold text-white transition-transform hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                  >
                     {host.username.slice(0, 2).toUpperCase()}
-                  </div>
+                  </Link>
                   <div>
-                    <p className="text-brand-dark text-[16px] font-bold">{host.username}</p>
+                    <Link
+                      href={getProfileHref(event.host_id, currentUserId)}
+                      className="text-brand-dark text-[16px] font-bold hover:underline focus:outline-none focus-visible:underline"
+                    >
+                      {host.username}
+                    </Link>
                     <p className="text-brand-mid text-[13px]">
                       {isHost ? "You are the host" : "Event Host"}
                     </p>
@@ -1188,7 +1203,7 @@ function FullView({
                 </p>
                 {event.host_id && (
                   <Link
-                    href={`/profile/${event.host_id}`}
+                    href={getProfileHref(event.host_id, currentUserId)}
                     className="text-brand-mid hover:text-brand-dark text-[13px] font-bold transition-colors"
                   >
                     View Profile →
@@ -1241,11 +1256,6 @@ function FullView({
                 <p className="text-brand-dark mb-0.5 text-[15px] font-bold">
                   {primaryLocation.name}
                 </p>
-                {primaryLocation.location_address ? (
-                  <p className="text-brand-mid/90 mb-0.5 text-[12px] leading-snug">
-                    {primaryLocation.location_address}
-                  </p>
-                ) : null}
                 {/* Map placeholder — opens modal */}
                 <button
                   onClick={() => setShowMapModal(true)}
@@ -1266,7 +1276,11 @@ function FullView({
                 {/* Avatar stack */}
                 {event.attendees && event.attendees.length > 0 && (
                   <div className="mb-3">
-                    <AttendeeAvatarStack attendees={event.attendees} maxShow={5} />
+                    <AttendeeAvatarStack
+                      attendees={event.attendees}
+                      maxShow={5}
+                      currentUserId={currentUserId}
+                    />
                   </div>
                 )}
                 {event.attendee_limit ? (

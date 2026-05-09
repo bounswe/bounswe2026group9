@@ -10,10 +10,16 @@ from app.models.rating import (
     ReviewListItemResponse,
     ReviewListResponse,
 )
-from app.repositories import attendance as attendance_repo
-from app.repositories import profile as profile_repo
-from app.repositories import rating as rating_repo
-from app.repositories import user as user_repo
+from app.repositories import attendance as _attendance_repo
+from app.repositories import profile as _profile_repo
+from app.repositories import rating as _rating_repo
+from app.repositories import user as _user_repo
+from app.repositories.protocols import (
+    AttendanceRepoProtocol,
+    ProfileRepoProtocol,
+    RatingRepoProtocol,
+    UserRepoProtocol,
+)
 
 
 def _normalise_review_text(text: str | None) -> str | None:
@@ -34,6 +40,11 @@ def rate_host(
     host_id: str,
     score: Decimal,
     review_text: str | None = None,
+    *,
+    users: UserRepoProtocol = _user_repo,
+    profiles: ProfileRepoProtocol = _profile_repo,
+    attendances: AttendanceRepoProtocol = _attendance_repo,
+    ratings: RatingRepoProtocol = _rating_repo,
 ) -> RatingResponse:
     if rater_id == host_id:
         raise HTTPException(
@@ -42,11 +53,11 @@ def rate_host(
         )
 
     # Check if host exists
-    host = user_repo.get_user_by_id(db, host_id)
+    host = users.get_user_by_id(db, host_id)
     if not host:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Host not found")
 
-    events = profile_repo.get_hosted_events(db, host_id)
+    events = profiles.get_hosted_events(db, host_id)
     if not events:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -54,14 +65,14 @@ def rate_host(
         )
 
     # Only allow rating if the rater attended at least one ended event by this host
-    if not attendance_repo.has_attended_ended_event_by_host(db, rater_id, host_id):
+    if not attendances.has_attended_ended_event_by_host(db, rater_id, host_id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only rate a host after attending one of their ended events"
         )
 
     # Upsert the rating (review_text overwrites previous value — locked decision #5)
-    rating = rating_repo.upsert_rating(db, {
+    rating = ratings.upsert_rating(db, {
         "rater_id": rater_id,
         "host_id": host_id,
         "score": float(score),
@@ -79,18 +90,24 @@ def rate_host(
 
 
 def list_reviews(
-    db: Client, host_id: str, *, page: int = 1, page_size: int = 20,
+    db: Client,
+    host_id: str,
+    *,
+    page: int = 1,
+    page_size: int = 20,
+    users: UserRepoProtocol = _user_repo,
+    ratings: RatingRepoProtocol = _rating_repo,
 ) -> ReviewListResponse:
     """Return paginated reviews for a host, newest-first.
 
     Mirrors `GET /users/{id}/profile`: 404 if the host does not exist,
     200 with empty `items` if the host exists but has no ratings yet.
     """
-    host = user_repo.get_user_by_id(db, host_id)
+    host = users.get_user_by_id(db, host_id)
     if not host:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-    rows, total = rating_repo.list_reviews_for_host(
+    rows, total = ratings.list_reviews_for_host(
         db, host_id, page=page, page_size=page_size,
     )
     total_pages = (total + page_size - 1) // page_size if total > 0 else 0
@@ -101,7 +118,7 @@ def list_reviews(
         )
 
     rater_ids = list({row["rater_id"] for row in rows})
-    rater_users = user_repo.get_users_by_ids(db, rater_ids)
+    rater_users = users.get_users_by_ids(db, rater_ids)
     username_by_id = {u["id"]: u.get("username", "unknown") for u in rater_users}
 
     items = [
