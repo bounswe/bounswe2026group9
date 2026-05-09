@@ -101,10 +101,7 @@ function NotificationItem({
   onMarkRead: (id: string) => void;
 }) {
   const router = useRouter();
-  const { icon, bg, fg } = getNotificationIcon(
-    notification.type,
-    notification.is_read,
-  );
+  const { icon, bg, fg } = getNotificationIcon(notification.type, notification.is_read);
 
   function handleClick() {
     if (!notification.is_read) {
@@ -119,20 +116,13 @@ function NotificationItem({
     <div
       onClick={handleClick}
       className={cn(
-        "group flex cursor-pointer items-start gap-3 px-5 py-4 transition-colors hover:bg-brand-surface/50 sm:px-6",
-        !notification.is_read &&
-          "border-l-[3px] border-l-brand-mid bg-brand-surface/30",
+        "group hover:bg-brand-surface/50 flex cursor-pointer items-start gap-3 px-5 py-4 transition-colors sm:px-6",
+        !notification.is_read && "border-l-brand-mid bg-brand-surface/30 border-l-[3px]",
         notification.is_read && "border-l-[3px] border-l-transparent",
       )}
     >
       {/* Icon */}
-      <div
-        className={cn(
-          "flex size-10 shrink-0 items-center justify-center rounded-full",
-          bg,
-          fg,
-        )}
-      >
+      <div className={cn("flex size-10 shrink-0 items-center justify-center rounded-full", bg, fg)}>
         {icon}
       </div>
 
@@ -140,7 +130,7 @@ function NotificationItem({
       <div className="min-w-0 flex-1">
         <p
           className={cn(
-            "text-sm leading-tight text-brand-dark",
+            "text-brand-dark text-sm leading-tight",
             !notification.is_read && "font-bold",
             notification.is_read && "font-medium",
           )}
@@ -165,7 +155,7 @@ function NotificationItem({
               e.stopPropagation();
               onMarkRead(notification.id);
             }}
-            className="size-3 rounded-full bg-brand-mid transition-transform hover:scale-125"
+            className="bg-brand-mid size-3 rounded-full transition-transform hover:scale-125"
             title="Mark as read"
           />
         )}
@@ -177,19 +167,16 @@ function NotificationItem({
 function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-20">
-      <div className="flex size-20 items-center justify-center rounded-full bg-brand-mid/10">
-        <Bell className="size-10 text-brand-mid/40" />
+      <div className="bg-brand-mid/10 flex size-20 items-center justify-center rounded-full">
+        <Bell className="text-brand-mid/40 size-10" />
       </div>
-      <h3 className="font-heading mt-6 text-lg font-bold text-brand-dark">
-        No notifications yet
-      </h3>
-      <p className="mt-2 max-w-xs text-center text-sm text-brand-mid">
-        When events you follow are updated or cancelled, you&apos;ll see
-        notifications here.
+      <h3 className="font-heading text-brand-dark mt-6 text-lg font-bold">No notifications yet</h3>
+      <p className="text-brand-mid mt-2 max-w-xs text-center text-sm">
+        When events you follow are updated or cancelled, you&apos;ll see notifications here.
       </p>
       <Link
         href="/"
-        className="mt-6 rounded-lg bg-brand-mid px-5 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-mid/80"
+        className="bg-brand-mid hover:bg-brand-mid/80 mt-6 rounded-lg px-5 py-2 text-sm font-bold text-white transition-colors"
       >
         Discover Events
       </Link>
@@ -228,16 +215,12 @@ function NotificationsContent() {
 
   async function handleMarkRead(id: string) {
     // Optimistic update
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)),
-    );
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
     try {
       await markNotificationRead(id);
     } catch {
       // Revert on error
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, is_read: false } : n)),
-      );
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: false } : n)));
     }
   }
 
@@ -266,11 +249,11 @@ function NotificationsContent() {
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-bold text-brand-dark sm:text-3xl">
+          <h1 className="font-heading text-brand-dark text-2xl font-bold sm:text-3xl">
             Notifications
           </h1>
           {total > 0 && (
-            <p className="mt-1 text-sm text-brand-mid">
+            <p className="text-brand-mid mt-1 text-sm">
               {unreadCount > 0
                 ? `${unreadCount} unread of ${total} total`
                 : `${total} notifications`}
@@ -283,7 +266,7 @@ function NotificationsContent() {
               void handleMarkAllRead();
             }}
             disabled={markingAll}
-            className="flex items-center gap-1.5 rounded-lg border border-brand-mid px-3 py-1.5 text-xs font-bold text-brand-dark transition-all hover:bg-brand-mid-alpha active:scale-[0.96] disabled:opacity-50"
+            className="border-brand-mid text-brand-dark hover:bg-brand-mid-alpha flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold transition-all active:scale-[0.96] disabled:opacity-50"
           >
             {markingAll ? (
               <Loader2 className="size-3.5 animate-spin" />
@@ -296,43 +279,45 @@ function NotificationsContent() {
       </div>
 
       {/* Content */}
-      <div className="overflow-hidden rounded-xl border border-brand-mid-alpha bg-white shadow-brand-panel">
+      <div className="border-brand-mid-alpha shadow-brand-panel overflow-hidden rounded-xl border bg-white">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="size-8 animate-spin text-brand-mid" />
+            <Loader2 className="text-brand-mid size-8 animate-spin" />
           </div>
         ) : notifications.length === 0 ? (
           <EmptyState />
         ) : (
           <>
-            <div className="divide-y divide-brand-mid-alpha/50">
+            <div className="divide-brand-mid-alpha/50 divide-y">
               {notifications.map((n) => (
                 <NotificationItem
                   key={n.id}
                   notification={n}
-                  onMarkRead={handleMarkRead}
+                  onMarkRead={(id) => {
+                    void handleMarkRead(id);
+                  }}
                 />
               ))}
             </div>
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between border-t border-brand-mid-alpha/50 px-5 py-3 sm:px-6">
+              <div className="border-brand-mid-alpha/50 flex items-center justify-between border-t px-5 py-3 sm:px-6">
                 <button
                   onClick={() => handlePageChange(page - 1)}
                   disabled={page <= 1}
-                  className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold text-brand-dark transition-colors hover:bg-brand-mid-alpha disabled:opacity-30"
+                  className="text-brand-dark hover:bg-brand-mid-alpha flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors disabled:opacity-30"
                 >
                   <ChevronLeft className="size-3.5" />
                   Previous
                 </button>
-                <span className="text-xs font-medium text-brand-mid">
+                <span className="text-brand-mid text-xs font-medium">
                   Page {page} of {totalPages}
                 </span>
                 <button
                   onClick={() => handlePageChange(page + 1)}
                   disabled={page >= totalPages}
-                  className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold text-brand-dark transition-colors hover:bg-brand-mid-alpha disabled:opacity-30"
+                  className="text-brand-dark hover:bg-brand-mid-alpha flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors disabled:opacity-30"
                 >
                   Next
                   <ChevronRight className="size-3.5" />
@@ -350,7 +335,7 @@ function NotificationsInner() {
   return (
     <ProtectedRoute>
       <Navbar showSearch={false} />
-      <main className="min-h-[calc(100vh-60px)] bg-brand-bg">
+      <main className="bg-brand-bg min-h-[calc(100vh-60px)]">
         <NotificationsContent />
       </main>
     </ProtectedRoute>
