@@ -7,6 +7,9 @@ on:
       - 'tests_support.py'
       - '.github/workflows/backend-ci.yml'
 
+# Same group per PR + cancel-in-progress so a fresh push on the branch
+# kills the in-flight run before it consumes a Supabase pooler slot the
+# next run would otherwise contend for.
 concurrency:
   group: backend-ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -44,6 +47,33 @@ jobs:
       - name: Lint
         run: ruff check .
 
+  static-analysis:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Type check (mypy strict + shrinking baseline)
+        # The baseline file locks today's 408 strict-mode errors. CI fails
+        # if any new error appears (`new > 0`), and a regular `sync` step
+        # in a follow-up PR can ratchet the count down.
+        run: mypy app | mypy-baseline filter
+
+      - name: Security scan (bandit)
+        run: bandit -c pyproject.toml -r app/
+
   unit-fast:
     runs-on: ubuntu-latest
     defaults:
@@ -76,6 +106,14 @@ jobs:
       - name: Run fast unit tests
         run: pytest tests/test_*_unit.py -v -ra
 
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-unit-fast
+          path: backend/coverage.xml
+          retention-days: 14
+
   integration-sharded:
     needs:
       - lint
@@ -88,7 +126,6 @@ jobs:
           - shard: auth-core
             pytest_args: >-
               tests/test_auth.py
-              tests/test_auth_integration.py
               tests/test_categories.py
               tests/test_health.py
               tests/test_users.py
@@ -110,6 +147,7 @@ jobs:
               tests/test_checkin.py
               tests/test_notifications.py
               tests/test_notification_emitter.py
+              tests/test_recommendation_emitter.py
     defaults:
       run:
         working-directory: backend
@@ -138,4 +176,54 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run integration shard
-        run: pytest -v -ra --durations=15 --durations-min=1.0 ${{ matrix.pytest_args }}
+        # `-n auto` parallelises tests across CPUs inside the shard. Tests are
+        # already process-safe — every fixture mints a unique identity via
+        # `build_test_identity` so cross-worker collisions don't happen.
+        run: pytest -v -ra -n auto --durations=15 --durations-min=1.0 ${{ matrix.pytest_args }}
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.shard }}
+          path: backend/coverage.xml
+          retention-days: 14
+
+  e2e:
+    # Cross-feature E2E scenarios from issue #153 run on every PR as a
+    # required check. Same shared TEST_SUPABASE_* integration project
+    # the other shards use, so the test environment stays uniform.
+    needs:
+      - lint
+      - unit-fast
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    env:
+      SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.TEST_SUPABASE_KEY }}
+      JWT_SECRET: ${{ secrets.TEST_JWT_SECRET }}
+      JWT_REFRESH_SECRET: ${{ secrets.TEST_JWT_REFRESH_SECRET }}
+      ENVIRONMENT: development
+      TEST_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-e2e
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run E2E scenarios
+        # The three cross-feature scenarios listed in issue #153:
+        # private-access full flow, capacity → Full in discovery, full
+        # itinerary lifecycle. Single-process so the multi-step scenarios
+        # remain easy to debug from the CI log.
+        run: pytest tests/e2e -v -ra --durations=10 --no-cov

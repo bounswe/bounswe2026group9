@@ -228,6 +228,9 @@ fun AppNavGraph(
                 onBack = { navController.popBackStack() },
                 onEventClick = { eventId ->
                     navController.navigate(Routes.eventDetail(eventId))
+                },
+                onNavigateToProfile = { raterId ->
+                    navController.navigate(Routes.hostProfile(raterId))
                 }
             )
         }

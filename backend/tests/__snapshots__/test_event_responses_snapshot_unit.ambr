@@ -1,0 +1,136 @@
+# serializer version: 1
+# name: test_event_detail_shape
+  dict({
+    'access_request_status': None,
+    'attendance_status': None,
+    'attendee_count': 5,
+    'attendee_limit': None,
+    'attendees': list([
+    ]),
+    'bookmark_count': 0,
+    'categories': list([
+      dict({
+        'id': '<*>',
+        'is_approved': True,
+        'is_predefined': True,
+        'name': 'Music',
+      }),
+    ]),
+    'created_at': '2030-05-01T00:00:00+00:00',
+    'description': 'Snapshot description',
+    'end_datetime': '2030-06-01T12:00:00+00:00',
+    'equipment_requirements': list([
+    ]),
+    'going_count': 5,
+    'host_id': '<*>',
+    'host_username': 'host',
+    'id': '<*>',
+    'images': list([
+    ]),
+    'is_age_restricted': False,
+    'is_bookmarked': False,
+    'is_full': None,
+    'locations': list([
+      dict({
+        'id': '<*>',
+        'is_primary': True,
+        'latitude': 41.0,
+        'location_address': None,
+        'longitude': 29.0,
+        'name': 'Main Stage',
+        'order_index': 0,
+      }),
+    ]),
+    'segments': list([
+    ]),
+    'start_datetime': '2030-06-01T10:00:00+00:00',
+    'status': 'published',
+    'title': 'Snapshot Event',
+    'updated_at': '2030-05-15T00:00:00+00:00',
+    'venue_metadata': None,
+    'visibility': 'public',
+  })
+# ---
+# name: test_event_geojson_feature_shape
+  dict({
+    'features': list([
+      dict({
+        'geometry': dict({
+          'coordinates': list([
+            29.0,
+            41.0,
+          ]),
+          'type': 'Point',
+        }),
+        'properties': dict({
+          'attendance_status': None,
+          'attendee_count': 5,
+          'attendee_limit': None,
+          'bookmark_count': 0,
+          'going_count': 5,
+          'host_id': '<*>',
+          'id': '<*>',
+          'is_bookmarked': None,
+          'primary_category': 'Music',
+          'primary_image_url': None,
+          'start_datetime': '2030-06-01T10:00:00+00:00',
+          'status': 'published',
+          'title': 'Snapshot Event',
+          'visibility': 'public',
+        }),
+        'type': 'Feature',
+      }),
+    ]),
+    'type': 'FeatureCollection',
+  })
+# ---
+# name: test_event_list_shape
+  dict({
+    'items': list([
+      dict({
+        'access_request_status': None,
+        'attendance_status': None,
+        'attendee_count': 5,
+        'attendee_limit': None,
+        'bookmark_count': 0,
+        'categories': list([
+          dict({
+            'id': '<*>',
+            'is_approved': True,
+            'is_predefined': True,
+            'name': 'Music',
+          }),
+        ]),
+        'description': 'Snapshot description',
+        'end_datetime': '2030-06-01T12:00:00+00:00',
+        'going_count': 5,
+        'has_access': True,
+        'host_id': '<*>',
+        'id': '<*>',
+        'is_age_restricted': False,
+        'is_bookmarked': False,
+        'is_full': None,
+        'primary_image_url': None,
+        'primary_location': dict({
+          'id': '<*>',
+          'is_primary': True,
+          'latitude': 41.0,
+          'location_address': None,
+          'longitude': 29.0,
+          'name': 'Main Stage',
+          'order_index': 0,
+        }),
+        'start_datetime': '2030-06-01T10:00:00+00:00',
+        'status': 'published',
+        'title': 'Snapshot Event',
+        'visibility': 'public',
+      }),
+    ]),
+    'page': 1,
+    'page_size': 20,
+    'suggested_fallback': False,
+    'suggested_fallback_reason': None,
+    'total': 1,
+    'total_pages': 1,
+  })
+# ---

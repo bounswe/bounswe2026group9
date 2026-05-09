@@ -9,6 +9,13 @@ __pycache__/
 .venv/
 .pytest_cache/
 .ruff_cache/
+.hypothesis/
+.mutmut-cache
+.benchmarks/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
 
 # IDE
 .vscode/
@@ -25,3 +32,5 @@ ISSUE_154_ROADMAP.md
 ISSUE_149_ROADMAP.md
 ISSUE_235_ROADMAP.md
 ISSUE_278_ROADMAP.md
+ISSUE_284_ROADMAP.md
+backend/TESTING_ROADMAP.md

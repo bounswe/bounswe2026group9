@@ -1,0 +1,15 @@
+# Code ownership for backend testing surface.
+# Pages a reviewer whenever the test infrastructure or its governance
+# moves. Adding more owners is fine — the point is that test-system
+# changes never land without somebody who owns the gate seeing them.
+
+backend/tests/                              @Ihsan2004
+backend/tests/db/                           @Ihsan2004
+backend/tests/e2e/                          @Ihsan2004
+backend/tests/hypothesis_strategies.py      @Ihsan2004
+backend/tests/conftest.py                   @Ihsan2004
+backend/TESTING.md                          @Ihsan2004
+backend/TESTING_ROADMAP.md                  @Ihsan2004
+backend/mypy-baseline.txt                   @Ihsan2004
+
+.github/workflows/backend-ci.yml            @Ihsan2004

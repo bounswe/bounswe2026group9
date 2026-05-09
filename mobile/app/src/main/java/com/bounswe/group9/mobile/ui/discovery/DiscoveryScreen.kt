@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -143,6 +144,10 @@ fun DiscoveryScreen(
             // Empty-history hint for the Suggested filter (issue #277). Shown above the listing
             // whenever the chip is on AND the server signalled it had no history to bias by.
             if (uiState.suggestedActive && uiState.suggestedFallback) {
+                val bannerText = when (uiState.suggestedFallbackReason) {
+                    "no_match" -> "No events matching your interests right now. Showing default results."
+                    else -> "Attend events to get personalised suggestions. Showing default results."
+                }
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -151,57 +156,67 @@ fun DiscoveryScreen(
                     color = MaterialTheme.colorScheme.secondaryContainer
                 ) {
                     Text(
-                        "Attend events to get personalised suggestions. Showing default results.",
+                        bannerText,
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 }
             }
-            Box(modifier = Modifier.fillMaxSize().weight(1f)) {
-            when {
-                uiState.isLoading -> {
-                    LazyColumn(
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(5) { EventCardSkeleton() }
-                    }
-                }
-                uiState.errorMessage != null -> {
-                    val errorMsg = uiState.errorMessage
-                    Column(
-                        modifier = Modifier.align(Alignment.Center).padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text("Something went wrong", fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(Modifier.height(4.dp))
-                        Text(errorMsg ?: "", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
-                        Spacer(Modifier.height(8.dp))
-                        TextButton(onClick = viewModel::refresh) {
-                            Text("Retry", color = MaterialTheme.colorScheme.tertiary)
+            // Map is always in composition — switching tabs or reloading data
+            // never destroys the MapLibre view (only visibility toggles).
+            PullToRefreshBox(
+                isRefreshing = uiState.isLoading,
+                onRefresh = { viewModel.refresh() },
+                modifier = Modifier.fillMaxSize().weight(1f)
+            ) {
+                // Map: always composed, visibility driven by visible= param
+                val showMap = isMapView && !uiState.isLoading && uiState.errorMessage == null
+                EventMapView(
+                    events = uiState.displayedEvents,
+                    onEventClick = onEventClick,
+                    onBookmarkToggle = { eventId -> viewModel.toggleBookmark(eventId) },
+                    token = token,
+                    visible = showMap,
+                    onRefresh = { viewModel.refresh() }
+                )
+
+                when {
+                    uiState.isLoading -> {
+                        LazyColumn(
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(5) { EventCardSkeleton() }
                         }
                     }
-                }
-                uiState.displayedEvents.isEmpty() -> {
-                    Text(
-                        if (uiState.bookmarkedOnly) "No bookmarked events"
-                        else if (uiState.goingOnly) "No events you're going to"
-                        else "No events found",
-                        modifier = Modifier.align(Alignment.Center),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                else -> {
-                    if (isMapView) {
-                        EventMapView(
-                            events = uiState.displayedEvents,
-                            onEventClick = onEventClick,
-                            onBookmarkToggle = { eventId -> viewModel.toggleBookmark(eventId) },
-                            token = token
+                    uiState.errorMessage != null -> {
+                        val errorMsg = uiState.errorMessage
+                        Column(
+                            modifier = Modifier.align(Alignment.Center).padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text("Something went wrong", fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(Modifier.height(4.dp))
+                            Text(errorMsg ?: "", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                            Spacer(Modifier.height(8.dp))
+                            TextButton(onClick = viewModel::refresh) {
+                                Text("Retry", color = MaterialTheme.colorScheme.tertiary)
+                            }
+                        }
+                    }
+                    isMapView -> { /* map is visible, nothing to overlay */ }
+                    uiState.displayedEvents.isEmpty() -> {
+                        Text(
+                            if (uiState.bookmarkedOnly) "No bookmarked events"
+                            else if (uiState.goingOnly) "No events you're going to"
+                            else "No events found",
+                            modifier = Modifier.align(Alignment.Center),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                    } else {
+                    }
+                    else -> {
                         LazyColumn(
                             state = listState,
                             contentPadding = PaddingValues(16.dp),
@@ -223,7 +238,6 @@ fun DiscoveryScreen(
                         }
                     }
                 }
-            }
             }
         }
     }

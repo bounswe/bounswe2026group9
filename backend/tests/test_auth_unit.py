@@ -1,4 +1,5 @@
 import time
+from unittest.mock import MagicMock
 
 import pytest
 from jose import JWTError
@@ -9,6 +10,15 @@ from app.services.auth import (
     hash_password,
     verify_password,
 )
+
+
+@pytest.fixture
+def db() -> MagicMock:
+    """Override the conftest session-scoped ``db`` so this file doesn't
+    contact a real Supabase. The autouse ``cleanup_test_users`` fixture
+    requests ``db`` and would otherwise resolve the real client at
+    ``SUPABASE_URL=fake``, which fails before any test runs."""
+    return MagicMock(name="supabase_client")
 
 
 class TestPassword:
