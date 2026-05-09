@@ -123,7 +123,7 @@ Start with Mehmet already authenticated on web and Emir already authenticated on
 
 ### 0:20 - 1:50: Web Event Creation with Route and Address Features
 
-**Speaker: Can Emir**  
+**Speaker: Can Emir**
 **Controller: Ibrahim**
 
 Mehmet creates **Belgrad Forest Bird Observation Route**.
@@ -145,7 +145,7 @@ Mehmet creates **Belgrad Forest Bird Observation Route**.
 
 ### 1:50 - 2:30: Web Publish and Detail Verification
 
-**Speaker: Can Emir**  
+**Speaker: Can Emir**
 **Controller: Ibrahim**
 
 Publish the event, then open the event detail page.
@@ -162,7 +162,7 @@ Publish the event, then open the event detail page.
 
 ### 2:30 - 3:20: Mobile Recommendation Notification
 
-**Speaker: Muhittin**  
+**Speaker: Muhittin**
 **Controller: Ihsan**
 
 Switch to Emir's mobile app.
@@ -178,7 +178,7 @@ Switch to Emir's mobile app.
 
 ### 3:20 - 4:00: Mobile Suggested Discovery and Similar Events
 
-**Speaker: Muhittin**  
+**Speaker: Muhittin**
 **Controller: Ihsan**
 
 Show that personalization also works from discovery.
@@ -195,7 +195,7 @@ Show that personalization also works from discovery.
 
 ### 4:00 - 4:50: Mobile Join and Attendee QR
 
-**Speaker: Muhittin**  
+**Speaker: Muhittin**
 **Controller: Ihsan**
 
 Emir joins the event.
@@ -210,7 +210,7 @@ Emir joins the event.
 
 ### 4:50 - 5:50: Host QR Check-In
 
-**Speaker: Can Emir**  
+**Speaker: Can Emir**
 **Controller: Ibrahim or Ihsan, depending on where scanning is available**
 
 Use Mehmet's host-side check-in screen.
@@ -228,7 +228,7 @@ Use Mehmet's host-side check-in screen.
 
 ### 5:50 - 6:40: Mobile Written Review After Event
 
-**Speaker: Muhittin**  
+**Speaker: Muhittin**
 **Controller: Ihsan**
 
 Switch to a pre-prepared completed version of the same event.
@@ -248,7 +248,7 @@ Switch to a pre-prepared completed version of the same event.
 
 ### 6:40 - 7:20: Web Host Profile Review Verification
 
-**Speaker: Can Emir**  
+**Speaker: Can Emir**
 **Controller: Ibrahim**
 
 Return to web as Mehmet or a public viewer.

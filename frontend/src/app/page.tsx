@@ -429,7 +429,7 @@ function DiscoveryLoadingOverlay() {
 function DiscoveryPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, status, user } = useAuth();
   const params = readParams(searchParams);
   const activePersonalFilter = isAuthenticated ? params.personal : null;
   const activeSuggested = isAuthenticated && params.suggested;
@@ -561,10 +561,10 @@ function DiscoveryPage() {
   );
 
   useEffect(() => {
-    if (!isAuthenticated && params.suggested) {
+    if (status === "guest" && params.suggested) {
       replaceParams({ suggested: false, resetPage: true });
     }
-  }, [isAuthenticated, params.suggested, replaceParams]);
+  }, [status, params.suggested, replaceParams]);
 
   // Auto-revert sort to start_time if geolocation was rejected and we have no fallback
   useEffect(() => {
