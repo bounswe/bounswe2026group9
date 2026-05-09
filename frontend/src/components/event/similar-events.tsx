@@ -112,14 +112,14 @@ function SimilarEventCard({ event }: SimilarEventCardProps) {
           />
         ) : (
           <div className="bg-brand-surface flex size-full items-center justify-center">
-            <span className="text-brand-mid font-serif text-xs uppercase tracking-wider">
+            <span className="text-brand-mid font-serif text-xs tracking-wider uppercase">
               No image
             </span>
           </div>
         )}
       </div>
       <div className="space-y-1 p-3">
-        <p className="text-brand-dark line-clamp-2 text-sm font-semibold leading-tight">
+        <p className="text-brand-dark line-clamp-2 text-sm leading-tight font-semibold">
           {event.title}
         </p>
         <p className="text-brand-mid text-xs">{formatShortDate(event.start_datetime)}</p>
