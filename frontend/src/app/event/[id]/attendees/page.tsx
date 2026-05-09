@@ -3,17 +3,21 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Check, CheckCircle, Loader2, Lock, Users, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle, Loader2, Lock, Users, XCircle } from "lucide-react";
 
 import { useAuth } from "@/hooks/use-auth";
 import { Navbar } from "@/components/layout/navbar";
+import { AttendeeRoster } from "@/components/event/attendee-roster";
 import { getProfileHref } from "@/lib/profile-route";
 import {
   fetchEventDetail,
   fetchAccessRequests,
   updateAccessRequest,
+  fetchEventAttendees,
+  checkInAttendee,
   type EventDetail,
   type AccessRequest,
+  type AttendeeStatus,
 } from "@/lib/events-api";
 
 export default function ManageAttendeesPage() {
@@ -23,9 +27,12 @@ export default function ManageAttendeesPage() {
 
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [accessRequests, setAccessRequests] = useState<AccessRequest[]>([]);
+  const [attendees, setAttendees] = useState<AttendeeStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [markingId, setMarkingId] = useState<string | null>(null);
+  const [markError, setMarkError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isInitialized) return;
@@ -49,10 +56,15 @@ export default function ManageAttendeesPage() {
         }
         setEvent(detail);
 
-        if (detail.visibility === "private") {
-          const requests = await fetchAccessRequests(id);
-          setAccessRequests(requests);
-        }
+        // Host roster with per-attendee check-in state (mobile parity for #234).
+        const [roster, requests] = await Promise.all([
+          fetchEventAttendees(id).catch(() => [] as AttendeeStatus[]),
+          detail.visibility === "private"
+            ? fetchAccessRequests(id).catch(() => [] as AccessRequest[])
+            : Promise.resolve([] as AccessRequest[]),
+        ]);
+        setAttendees(roster);
+        setAccessRequests(requests);
       } catch {
         setError("Failed to load event. Please try again.");
       } finally {
@@ -70,6 +82,22 @@ export default function ManageAttendeesPage() {
       setAccessRequests((prev) => prev.filter((r) => r.id !== requestId));
     } finally {
       setActionLoading(null);
+    }
+  }
+
+  async function handleMarkIn(userId: string) {
+    setMarkError(null);
+    setMarkingId(userId);
+    try {
+      const result = await checkInAttendee(id, { user_id: userId });
+      setAttendees((prev) =>
+        prev.map((a) => (a.user_id === userId ? { ...a, checked_in_at: result.checked_in_at } : a)),
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not mark as checked in.";
+      setMarkError(message);
+    } finally {
+      setMarkingId(null);
     }
   }
 
@@ -148,46 +176,16 @@ export default function ManageAttendeesPage() {
               )}
             </div>
 
-            {/* Attendees list */}
-            {event.attendees && event.attendees.length > 0 ? (
-              <div className="border-brand-mid-alpha rounded-xl border bg-white p-5">
-                <p className="text-brand-mid mb-4 text-[11px] font-bold tracking-widest uppercase">
-                  Going ({event.attendees.length})
-                </p>
-                <div className="space-y-2">
-                  {event.attendees.map((attendee) => (
-                    <Link
-                      key={attendee.id}
-                      href={getProfileHref(attendee.id, user?.id ?? null)}
-                      aria-label={`View ${attendee.username}'s profile`}
-                      className="bg-brand-bg hover:bg-brand-mid-alpha focus-visible:ring-brand-dark flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-                    >
-                      <div className="bg-brand-mid flex size-8 shrink-0 items-center justify-center rounded-full text-[12px] font-bold text-white">
-                        {attendee.username.slice(0, 2).toUpperCase()}
-                      </div>
-                      <span className="text-brand-dark text-[14px] font-bold">
-                        {attendee.username}
-                      </span>
-                      <Check className="ml-auto size-3.5 text-green-600" />
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="border-brand-mid-alpha rounded-xl border bg-white p-5">
-                <p className="text-brand-mid mb-3 text-[11px] font-bold tracking-widest uppercase">
-                  Going
-                </p>
-                {event.going_count === 0 ? (
-                  <p className="text-brand-mid text-sm">No attendees yet.</p>
-                ) : (
-                  <p className="text-brand-mid text-sm">
-                    {event.going_count} {event.going_count === 1 ? "person is" : "people are"}{" "}
-                    going.
-                  </p>
-                )}
-              </div>
-            )}
+            {/* Attendees list with check-in status (issue #233 web parity). */}
+            <AttendeeRoster
+              attendees={attendees}
+              currentUserId={user?.id ?? null}
+              markError={markError}
+              markingId={markingId}
+              onMarkIn={(userId) => {
+                void handleMarkIn(userId);
+              }}
+            />
 
             {/* Access requests — private events only */}
             {event.visibility === "private" && (

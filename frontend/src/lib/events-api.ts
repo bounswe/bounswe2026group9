@@ -325,6 +325,44 @@ export async function removeAttendance(eventId: string): Promise<void> {
   });
 }
 
+// ─── QR check-in (issue #233) ──────────────────────────────────────────────────
+
+export interface QrTokenResponse {
+  token: string;
+  expires_at: string | null;
+}
+
+export interface AttendeeStatus {
+  user_id: string;
+  username: string;
+  checked_in_at: string | null;
+}
+
+export interface CheckInResult {
+  user_id: string;
+  username: string | null;
+  checked_in_at: string;
+}
+
+export async function fetchMyAttendeeQr(eventId: string): Promise<QrTokenResponse> {
+  return apiRequest<QrTokenResponse>(`/attendances/me/${eventId}/qr`, { auth: "required" });
+}
+
+export async function fetchEventAttendees(eventId: string): Promise<AttendeeStatus[]> {
+  return apiRequest<AttendeeStatus[]>(`/events/${eventId}/attendees`, { auth: "required" });
+}
+
+export async function checkInAttendee(
+  eventId: string,
+  body: { token?: string; user_id?: string },
+): Promise<CheckInResult> {
+  return apiRequest<CheckInResult>(`/events/${eventId}/check-in`, {
+    method: "POST",
+    auth: "required",
+    body,
+  });
+}
+
 export async function addBookmark(eventId: string): Promise<void> {
   await apiRequest(`/events/${eventId}/bookmark`, {
     method: "POST",
