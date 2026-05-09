@@ -1,6 +1,7 @@
 package com.bounswe.group9.mobile.ui.profile
 
 import com.bounswe.group9.mobile.data.remote.BookmarkListResponseDto
+import com.bounswe.group9.mobile.data.remote.EventListItemDto
 import com.bounswe.group9.mobile.data.remote.HostProfileDto
 import com.bounswe.group9.mobile.data.remote.MyProfileDto
 import com.bounswe.group9.mobile.data.repository.ProfileRepository
@@ -36,6 +37,9 @@ class ProfileViewModelTest {
             BookmarkListResponseDto(
                 items = emptyList(), total = 0, page = 1, page_size = 20, total_pages = 1
             )
+        )
+        coEvery { repository.getMyGoingEvents(any()) } returns Result.success(
+            emptyList<EventListItemDto>()
         )
     }
 

@@ -42,26 +42,26 @@ class ValidationErrorResponse(BaseModel):
 
 # Reusable response dictionaries for ``responses=`` on endpoints.
 # Compose with ``{**AUTH_RESPONSES, ...}``  per-endpoint.
-COMMON_RESPONSES: dict[int, dict[str, Any]] = {
+COMMON_RESPONSES: dict[int | str, dict[str, Any]] = {
     422: {"model": ValidationErrorResponse, "description": "Request validation failed."},
 }
 
-AUTH_RESPONSES: dict[int, dict[str, Any]] = {
+AUTH_RESPONSES: dict[int | str, dict[str, Any]] = {
     401: {"model": ErrorResponse, "description": "Missing, invalid, or expired access token."},
 }
 
-FORBIDDEN_RESPONSE: dict[int, dict[str, Any]] = {
+FORBIDDEN_RESPONSE: dict[int | str, dict[str, Any]] = {
     403: {"model": ErrorResponse, "description": "Authenticated but not allowed to perform this action."},
 }
 
-NOT_FOUND_RESPONSE: dict[int, dict[str, Any]] = {
+NOT_FOUND_RESPONSE: dict[int | str, dict[str, Any]] = {
     404: {"model": ErrorResponse, "description": "Resource not found."},
 }
 
-CONFLICT_RESPONSE: dict[int, dict[str, Any]] = {
+CONFLICT_RESPONSE: dict[int | str, dict[str, Any]] = {
     409: {"model": ErrorResponse, "description": "Conflict with current resource state (e.g. duplicate)."},
 }
 
-RATE_LIMIT_RESPONSE = {
+RATE_LIMIT_RESPONSE: dict[int | str, dict[str, Any]] = {
     429: {"model": ErrorResponse, "description": "Rate limit exceeded — retry later."},
 }
