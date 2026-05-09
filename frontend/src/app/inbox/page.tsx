@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Loader2,
   MessageSquare,
+  Sparkles,
   UserPlus,
   XCircle,
 } from "lucide-react";
@@ -49,7 +50,7 @@ function formatTimeAgo(dateStr: string): string {
   });
 }
 
-function getNotificationIcon(type: string, isRead: boolean) {
+export function getNotificationIcon(type: string, isRead: boolean) {
   const baseClass = "size-[18px]";
 
   switch (type) {
@@ -84,6 +85,12 @@ function getNotificationIcon(type: string, isRead: boolean) {
         bg: isRead ? "bg-brand-dark/20" : "bg-brand-dark",
         fg: isRead ? "text-brand-dark" : "text-white",
       };
+    case "event_recommended":
+      return {
+        icon: <Sparkles className={baseClass} />,
+        bg: isRead ? "bg-brand-dark/15" : "bg-brand-dark",
+        fg: isRead ? "text-brand-dark/70" : "text-white",
+      };
     default:
       return {
         icon: <Bell className={baseClass} />,
@@ -93,7 +100,7 @@ function getNotificationIcon(type: string, isRead: boolean) {
   }
 }
 
-function NotificationItem({
+export function NotificationItem({
   notification,
   onMarkRead,
 }: {
@@ -128,6 +135,11 @@ function NotificationItem({
 
       {/* Content */}
       <div className="min-w-0 flex-1">
+        {notification.type === "event_recommended" && (
+          <span className="bg-brand-surface text-brand-dark mb-1.5 inline-flex items-center rounded-md px-1.5 py-[1px] text-[10px] font-semibold tracking-wide uppercase">
+            Recommended for you
+          </span>
+        )}
         <p
           className={cn(
             "text-brand-dark text-sm leading-tight",
