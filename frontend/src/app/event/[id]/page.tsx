@@ -770,10 +770,7 @@ function FullView({
                 <h3 className="font-heading text-brand-dark mb-3 text-lg font-semibold">
                   Itinerary
                 </h3>
-                <ItineraryTimeline
-                  locations={event.locations}
-                  segments={event.segments ?? []}
-                />
+                <ItineraryTimeline locations={event.locations} segments={event.segments ?? []} />
               </section>
             )}
 
@@ -804,7 +801,7 @@ function FullView({
                       </span>
                       <span
                         className={cn(
-                          "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+                          "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase",
                           eq.is_required
                             ? "bg-brand-dark text-white"
                             : "border-brand-mid-alpha text-brand-mid border",

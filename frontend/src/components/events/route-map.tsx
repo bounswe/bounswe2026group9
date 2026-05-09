@@ -154,7 +154,7 @@ export function RouteMap({
                 className="flex flex-col items-center"
                 title={stop.label ?? undefined}
               >
-                <div className="bg-brand-dark relative flex size-9 items-center justify-center rounded-full text-xs font-bold text-white shadow-brand-card">
+                <div className="bg-brand-dark shadow-brand-card relative flex size-9 items-center justify-center rounded-full text-xs font-bold text-white">
                   {index + 1}
                   <span className="border-t-brand-dark absolute -bottom-1.5 left-1/2 -translate-x-1/2 border-x-[6px] border-t-[8px] border-x-transparent" />
                 </div>
@@ -165,7 +165,7 @@ export function RouteMap({
       </div>
 
       {!hideControls && (
-        <div className="absolute right-3 top-3 z-10 flex flex-col gap-1">
+        <div className="absolute top-3 right-3 z-10 flex flex-col gap-1">
           <button
             aria-label="Zoom in"
             className="border-brand-mid-alpha text-brand-dark shadow-brand-card flex size-8 items-center justify-center rounded-lg border bg-white/90 backdrop-blur-sm transition-colors hover:bg-white"
@@ -185,8 +185,12 @@ export function RouteMap({
         </div>
       )}
 
-      <div className="absolute bottom-2 right-2 rounded bg-white/80 px-2 py-0.5 text-[10px] text-gray-500">
-        © <a href="https://openfreemap.org" rel="noreferrer" target="_blank">OpenFreeMap</a> · ©{" "}
+      <div className="absolute right-2 bottom-2 rounded bg-white/80 px-2 py-0.5 text-[10px] text-gray-500">
+        ©{" "}
+        <a href="https://openfreemap.org" rel="noreferrer" target="_blank">
+          OpenFreeMap
+        </a>{" "}
+        · ©{" "}
         <a href="https://www.openstreetmap.org/copyright" rel="noreferrer" target="_blank">
           OpenStreetMap
         </a>

@@ -57,9 +57,7 @@ describe("ItineraryTimeline", () => {
   });
 
   it("shows the segment description when a matching segment exists", () => {
-    render(
-      <ItineraryTimeline locations={[HOST_LOC, STOP_LOC]} segments={[STOP_SEGMENT]} />,
-    );
+    render(<ItineraryTimeline locations={[HOST_LOC, STOP_LOC]} segments={[STOP_SEGMENT]} />);
     expect(screen.getByText("Tower visit")).toBeInTheDocument();
   });
 

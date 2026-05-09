@@ -1526,7 +1526,7 @@ export function EventEditor({ eventId, mode }: EventEditorProps) {
                                     </div>
 
                                     {/* ── Stop timing (issue #157) ─────────────────────────── */}
-                                    <div className="ml-[3.25rem] mt-3 border-t border-brand-mid-alpha/70 pt-3">
+                                    <div className="border-brand-mid-alpha/70 mt-3 ml-[3.25rem] border-t pt-3">
                                       <button
                                         type="button"
                                         aria-expanded={location.segmentEnabled}
@@ -1537,7 +1537,7 @@ export function EventEditor({ eventId, mode }: EventEditorProps) {
                                             segmentEnabled: !location.segmentEnabled,
                                           });
                                         }}
-                                        className="text-brand-mid hover:text-brand-dark inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider transition-colors"
+                                        className="text-brand-mid hover:text-brand-dark inline-flex items-center gap-1.5 text-xs font-semibold tracking-wider uppercase transition-colors"
                                       >
                                         <ChevronDown
                                           className={cn(
@@ -1545,7 +1545,9 @@ export function EventEditor({ eventId, mode }: EventEditorProps) {
                                             location.segmentEnabled && "rotate-180",
                                           )}
                                         />
-                                        {location.segmentEnabled ? "Hide stop timing" : "Add stop timing (optional)"}
+                                        {location.segmentEnabled
+                                          ? "Hide stop timing"
+                                          : "Add stop timing (optional)"}
                                       </button>
                                       {location.segmentEnabled ? (
                                         <div
