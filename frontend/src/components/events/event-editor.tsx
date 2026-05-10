@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -66,6 +66,8 @@ import {
   type EventFormErrors,
   type EventFormValues,
 } from "@/lib/event-form";
+import { LocationSearchInput } from "@/components/events/location-search-input";
+import { reverseGeocode, type NominatimResult } from "@/lib/nominatim";
 import { cn } from "@/lib/utils";
 
 const EventLocationMap = dynamic(
@@ -686,6 +688,55 @@ export function EventEditor({ eventId, mode }: EventEditorProps) {
       ),
     }));
   }
+
+  // Per-stop reverse-geocode lookup. Mirrors mobile's CreateEventViewModel where each
+  // LocationEntry has its own in-flight job so concurrent pin drops on different stops
+  // don't cancel each other.
+  const [addressLookupIds, setAddressLookupIds] = useState<Set<string>>(new Set());
+  const reverseGeocodeAbortMap = useRef<Map<string, AbortController>>(new Map());
+
+  const triggerReverseGeocode = useCallback(
+    (locationId: string, latitude: number, longitude: number) => {
+      reverseGeocodeAbortMap.current.get(locationId)?.abort();
+      const controller = new AbortController();
+      reverseGeocodeAbortMap.current.set(locationId, controller);
+      setAddressLookupIds((prev) => {
+        const next = new Set(prev);
+        next.add(locationId);
+        return next;
+      });
+      void reverseGeocode(latitude, longitude, controller.signal)
+        .then((address) => {
+          if (controller.signal.aborted) return;
+          if (address) {
+            setFormValues((currentValues) => ({
+              ...currentValues,
+              locations: currentValues.locations.map((location) =>
+                location.id === locationId ? { ...location, locationAddress: address } : location,
+              ),
+            }));
+          }
+        })
+        .finally(() => {
+          if (controller.signal.aborted) return;
+          setAddressLookupIds((prev) => {
+            const next = new Set(prev);
+            next.delete(locationId);
+            return next;
+          });
+          reverseGeocodeAbortMap.current.delete(locationId);
+        });
+    },
+    [],
+  );
+
+  useEffect(() => {
+    const map = reverseGeocodeAbortMap.current;
+    return () => {
+      map.forEach((controller) => controller.abort());
+      map.clear();
+    };
+  }, []);
 
   function setPrimaryLocation(locationId: string) {
     clearValidationFeedback();
@@ -1370,6 +1421,7 @@ export function EventEditor({ eventId, mode }: EventEditorProps) {
                                 latitude: latitude.toFixed(6),
                                 longitude: longitude.toFixed(6),
                               });
+                              triggerReverseGeocode(locationId, latitude, longitude);
                             }}
                           />
                         </div>
@@ -1460,20 +1512,27 @@ export function EventEditor({ eventId, mode }: EventEditorProps) {
                                       </div>
                                       <div className="min-w-0 flex-1">
                                         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                                          <Input
-                                            className="h-9 min-w-0 flex-1"
-                                            onChange={(event) =>
-                                              patchLocation(location.id, {
-                                                name: event.target.value,
-                                              })
+                                          <LocationSearchInput
+                                            ariaInvalid={hasLocationErrors}
+                                            onChange={(name) =>
+                                              patchLocation(location.id, { name })
                                             }
-                                            onClick={(event) => {
-                                              event.stopPropagation();
-                                            }}
-                                            onFocus={() => {
+                                            onFocus={() => setActiveLocationId(location.id)}
+                                            onPick={(result: NominatimResult) => {
                                               setActiveLocationId(location.id);
+                                              patchLocation(location.id, {
+                                                name: result.shortName || result.displayName,
+                                                latitude: result.lat.toFixed(6),
+                                                longitude: result.lng.toFixed(6),
+                                                locationAddress: result.displayName,
+                                              });
+                                              triggerReverseGeocode(
+                                                location.id,
+                                                result.lat,
+                                                result.lng,
+                                              );
                                             }}
-                                            placeholder={`Location ${index + 1}`}
+                                            placeholder={`Search a place for stop ${index + 1}`}
                                             value={location.name}
                                           />
                                         </div>
@@ -1489,6 +1548,20 @@ export function EventEditor({ eventId, mode }: EventEditorProps) {
                                               : "No pin placed yet."}
                                           </p>
                                         </div>
+                                        {addressLookupIds.has(location.id) ? (
+                                          <p className="text-brand-mid mt-1 inline-flex items-center gap-1.5 text-xs">
+                                            <LoaderCircle className="size-3 animate-spin" />
+                                            Looking up address…
+                                          </p>
+                                        ) : location.locationAddress?.trim() ? (
+                                          <p
+                                            className="text-brand-mid/90 mt-1 truncate text-xs"
+                                            title={location.locationAddress}
+                                          >
+                                            <MapPin className="mr-1 inline size-3 -translate-y-px" />
+                                            {location.locationAddress}
+                                          </p>
+                                        ) : null}
                                         <FieldError message={locationErrorMessage} />
                                       </div>
 
