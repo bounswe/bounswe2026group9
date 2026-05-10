@@ -434,6 +434,10 @@ export async function fetchSimilarEvents(eventId: string): Promise<EventListItem
   return apiRequest<EventListItem[]>(`/events/${eventId}/similar`, { auth: "optional" });
 }
 
+export async function fetchMyGoingEvents(): Promise<EventListItem[]> {
+  return apiRequest<EventListItem[]>(`/attendances/me/events`, { auth: "required" });
+}
+
 export async function postComment(
   eventId: string,
   content: string,
