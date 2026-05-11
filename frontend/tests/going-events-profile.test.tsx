@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -206,7 +206,9 @@ describe("Going Events tab — past sub-tab", () => {
     await userEvent.click(pastTab);
 
     expect(await screen.findByText("Beach Volleyball")).toBeInTheDocument();
-    expect(screen.getByText(/attended/i)).toBeInTheDocument();
+    // "Attended" appears in both the tab label ("Past / Attended") and the badge
+    const attendedMatches = screen.getAllByText(/attended/i);
+    expect(attendedMatches.length).toBeGreaterThanOrEqual(2);
   });
 
   it("shows the empty state when there are no attended events", async () => {
@@ -222,7 +224,8 @@ describe("Going Events tab — past sub-tab", () => {
 
 describe("Going Events tab — error state", () => {
   it("shows an error message when the fetch fails", async () => {
-    fetchMyGoingEventsMock.mockRejectedValue(new Error("Network error"));
+    // Reject with a non-Error so getErrorMessage falls back to the user-friendly string
+    fetchMyGoingEventsMock.mockRejectedValue("Network error");
     await renderProfileAndOpenGoingTab();
 
     expect(await screen.findByText(/we could not load your going events/i)).toBeInTheDocument();

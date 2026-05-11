@@ -188,12 +188,7 @@ function myEventStatusChip(event: HostedEventSummary) {
   };
 }
 
-function GoingEventCard({ event }: { event: EventListItem }) {
-  const isPast =
-    event.status === "cancelled" ||
-    event.status === "ended" ||
-    new Date(event.end_datetime).getTime() < Date.now();
-
+function GoingEventCard({ event, isPast }: { event: EventListItem; isPast: boolean }) {
   return (
     <Link
       href={`/event/${event.id}`}
@@ -1084,7 +1079,7 @@ export function MyProfilePage() {
                 ) : visibleGoingEvents.length > 0 ? (
                   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {visibleGoingEvents.map((event) => (
-                      <GoingEventCard key={event.id} event={event} />
+                      <GoingEventCard key={event.id} event={event} isPast={goingTab === "past"} />
                     ))}
                   </div>
                 ) : (
