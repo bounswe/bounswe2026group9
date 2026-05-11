@@ -226,6 +226,39 @@ class DiscoveryViewModelTest {
     }
 
     @Test
+    fun `rapid applyFilters cancels previous loadJob so stale response cannot overwrite newer results`() = runTest {
+        // First call returns event A; second call returns event B.
+        val eventA = sampleEvent("a", false)
+        val eventB = sampleEvent("b", false)
+        var callCount = 0
+        coEvery {
+            repository.getEvents(
+                token = any(), search = any(), categoryId = any(), quickFilter = any(),
+                wheelchair = any(), accessibleRestroom = any(), elevator = any(),
+                seating = any(), captions = any(), quietFriendly = any(),
+                sort = any(), nearLat = any(), nearLng = any(), radiusKm = any(),
+                page = any(), pageSize = any()
+            )
+        } answers {
+            callCount++
+            if (callCount == 1) Result.success(emptyResponse().copy(items = listOf(eventA)))
+            else Result.success(emptyResponse().copy(items = listOf(eventB)))
+        }
+
+        val vm = viewModel()
+        // First applyFilters — launches loadJob (R1).
+        vm.applyFilters()
+        // Second applyFilters immediately — cancels R1, launches R2.
+        vm.applyFilters()
+        advanceUntilIdle()
+
+        // Only R2's result (eventB) should be in state; R1 was cancelled before it could write.
+        val ids = vm.uiState.value.events.map { it.id }
+        assertFalse(ids.contains("a"), "Stale R1 result must not appear after R2 wins")
+        assertTrue(ids.contains("b"), "R2 result must be rendered")
+    }
+
+    @Test
     fun `activeFilterCount counts active flags`() {
         val vm = viewModel()
         assertEquals(0, vm.activeFilterCount())

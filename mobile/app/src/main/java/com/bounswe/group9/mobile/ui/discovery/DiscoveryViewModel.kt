@@ -20,6 +20,7 @@ class DiscoveryViewModel(
     private var token: String? = null
     private var tokenInitialized = false
     private var searchJob: Job? = null
+    private var loadJob: Job? = null
 
     init {
         loadCategories()
@@ -212,7 +213,8 @@ class DiscoveryViewModel(
         else
             state.copy(isLoadingMore = true)
 
-        viewModelScope.launch {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             repository.getEvents(
                 token = token,
                 search = state.search.takeIf { it.isNotBlank() },
