@@ -40,7 +40,14 @@ function makeEventListItem(overrides: Record<string, unknown> = {}) {
     bookmark_count: 1,
     is_full: false,
     categories: [{ id: "c-1", name: "Sport", is_predefined: true, is_approved: true }],
-    primary_location: { id: "loc-1", name: "Central Park", latitude: 40.78, longitude: -73.96, is_primary: true, order_index: 0 },
+    primary_location: {
+      id: "loc-1",
+      name: "Central Park",
+      latitude: 40.78,
+      longitude: -73.96,
+      is_primary: true,
+      order_index: 0,
+    },
     primary_image_url: null,
     ...overrides,
   };

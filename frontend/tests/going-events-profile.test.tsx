@@ -22,6 +22,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock }),
   useParams: () => ({}),
   usePathname: () => "/profile",
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 // Auth — authenticated user
@@ -224,8 +225,6 @@ describe("Going Events tab — error state", () => {
     fetchMyGoingEventsMock.mockRejectedValue(new Error("Network error"));
     await renderProfileAndOpenGoingTab();
 
-    expect(
-      await screen.findByText(/we could not load your going events/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/we could not load your going events/i)).toBeInTheDocument();
   });
 });
