@@ -40,6 +40,7 @@ import {
   type ProfileUpdatePayload,
   type ProfileVisibility,
 } from "@/lib/api";
+import { fetchMyGoingEvents, type EventListItem } from "@/lib/events-api";
 import {
   CREATE_EVENT_PAGE_PATH,
   getEditEventPagePath,
@@ -50,7 +51,8 @@ import { cn } from "@/lib/utils";
 
 const BOOKMARKS_PAGE_SIZE = 6;
 type MyEventsTab = "draft" | "past" | "upcoming";
-type ProfileSection = "my-events" | "saved-events" | "settings";
+type GoingTab = "upcoming" | "past";
+type ProfileSection = "going-events" | "my-events" | "saved-events" | "settings";
 
 interface ProfileFormState {
   dateOfBirth: string;
@@ -184,6 +186,64 @@ function myEventStatusChip(event: HostedEventSummary) {
     className: "border border-emerald-200 bg-emerald-100 text-emerald-700",
     label: "Live",
   };
+}
+
+function GoingEventCard({ event, isPast }: { event: EventListItem; isPast: boolean }) {
+  return (
+    <Link
+      href={`/event/${event.id}`}
+      className="group border-brand-mid/12 overflow-hidden rounded-[24px] border bg-white shadow-[0_20px_54px_-42px_rgba(73,54,40,0.55)] transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_26px_66px_-40px_rgba(73,54,40,0.6)]"
+    >
+      <div className="bg-brand-mid/20 relative h-44 overflow-hidden">
+        {event.primary_image_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={event.primary_image_url}
+            alt={event.title}
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center bg-[linear-gradient(135deg,rgba(73,54,40,0.9),rgba(171,136,109,0.7))]">
+            <CalendarDays className="size-10 text-white/45" />
+          </div>
+        )}
+        <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-4">
+          <span
+            className={cn(
+              "rounded-full px-3 py-1 text-[11px] font-bold tracking-[0.14em] uppercase",
+              isPast
+                ? "border-brand-mid/15 bg-brand-bg text-brand-mid border"
+                : "border border-emerald-200 bg-emerald-100 text-emerald-700",
+            )}
+          >
+            {isPast ? "Attended" : "Going"}
+          </span>
+        </div>
+      </div>
+
+      <div className="space-y-3 p-5">
+        <div className="flex flex-wrap gap-2">
+          {event.categories.slice(0, 3).map((category) => (
+            <span
+              key={category.id}
+              className="bg-brand-bg text-brand-mid rounded-full px-3 py-1 text-[11px] font-semibold"
+            >
+              {category.name}
+            </span>
+          ))}
+        </div>
+        <div>
+          <h3 className="font-heading text-brand-dark text-xl font-semibold">{event.title}</h3>
+          <p className="text-brand-mid mt-1 text-sm font-medium">
+            {formatDateTime(event.start_datetime)}
+          </p>
+        </div>
+        <p className="text-brand-mid text-xs">
+          {event.primary_location ? event.primary_location.name : "Location not set"}
+        </p>
+      </div>
+    </Link>
+  );
 }
 
 function BookmarkedEventCard({ event }: { event: BookmarkedEventSummary }) {
@@ -411,13 +471,17 @@ export function MyProfilePage() {
   const [profileError, setProfileError] = useState<string | null>(null);
   const [bookmarks, setBookmarks] = useState<BookmarkListResponse | null>(null);
   const [hostProfile, setHostProfile] = useState<HostProfileSummaryResponse | null>(null);
+  const [goingEvents, setGoingEvents] = useState<EventListItem[]>([]);
   const [bookmarksLoading, setBookmarksLoading] = useState(true);
   const [bookmarksError, setBookmarksError] = useState<string | null>(null);
   const [hostProfileLoading, setHostProfileLoading] = useState(true);
   const [hostProfileError, setHostProfileError] = useState<string | null>(null);
+  const [goingEventsLoading, setGoingEventsLoading] = useState(true);
+  const [goingEventsError, setGoingEventsError] = useState<string | null>(null);
   const [bookmarkPage, setBookmarkPage] = useState(1);
   const [activeSection, setActiveSection] = useState<ProfileSection>("settings");
   const [eventsTab, setEventsTab] = useState<MyEventsTab>("upcoming");
+  const [goingTab, setGoingTab] = useState<GoingTab>("upcoming");
   const [cancellingEventId, setCancellingEventId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -517,6 +581,37 @@ export function MyProfilePage() {
     };
   }, [bookmarkPage, isInitialized, status]);
 
+  useEffect(() => {
+    if (!isInitialized || status !== "authenticated") {
+      return;
+    }
+
+    let active = true;
+
+    void fetchMyGoingEvents()
+      .then((events) => {
+        if (!active) {
+          return;
+        }
+
+        setGoingEvents(events);
+        setGoingEventsError(null);
+        setGoingEventsLoading(false);
+      })
+      .catch((error: unknown) => {
+        if (!active) {
+          return;
+        }
+
+        setGoingEventsError(getErrorMessage(error, "We could not load your going events."));
+        setGoingEventsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [isInitialized, status]);
+
   function updateForm<K extends keyof ProfileFormState>(key: K, value: ProfileFormState[K]) {
     setForm((current) => (current ? { ...current, [key]: value } : current));
     setSaveError(null);
@@ -610,6 +705,20 @@ export function MyProfilePage() {
       setCancellingEventId(null);
     }
   }
+
+  const upcomingGoingEvents = goingEvents.filter(
+    (event) =>
+      event.status !== "cancelled" &&
+      event.status !== "ended" &&
+      new Date(event.end_datetime).getTime() >= Date.now(),
+  );
+  const pastGoingEvents = goingEvents.filter(
+    (event) =>
+      event.status === "cancelled" ||
+      event.status === "ended" ||
+      new Date(event.end_datetime).getTime() < Date.now(),
+  );
+  const visibleGoingEvents = goingTab === "upcoming" ? upcomingGoingEvents : pastGoingEvents;
 
   const hostedEvents = hostProfile?.hosted_events ?? [];
   const draftHostedEvents = hostedEvents.filter((event) => event.status === "draft");
@@ -728,6 +837,12 @@ export function MyProfilePage() {
                       icon: CalendarDays,
                       key: "my-events",
                       label: "My Events",
+                    },
+                    {
+                      description: "Going & attended",
+                      icon: Users,
+                      key: "going-events",
+                      label: "Going Events",
                     },
                     {
                       description: "Bookmarked events",
@@ -896,6 +1011,99 @@ export function MyProfilePage() {
                   </Card>
                 </section>
               </div>
+            ) : null}
+
+            {activeSection === "going-events" ? (
+              <section className="space-y-6">
+                <div>
+                  <h2 className="font-heading text-brand-dark text-3xl font-bold">Going Events</h2>
+                  <p className="text-brand-mid mt-1 text-sm">
+                    Events you&apos;ve marked as going or already attended.
+                  </p>
+                </div>
+
+                <div className="border-brand-mid/15 overflow-x-auto border-b">
+                  <div className="flex min-w-max gap-0">
+                    {(
+                      [
+                        { key: "upcoming", label: "Upcoming", count: upcomingGoingEvents.length },
+                        { key: "past", label: "Past / Attended", count: pastGoingEvents.length },
+                      ] as const
+                    ).map((tab) => (
+                      <button
+                        key={tab.key}
+                        type="button"
+                        onClick={() => setGoingTab(tab.key)}
+                        className={cn(
+                          "inline-flex cursor-pointer items-center gap-2 border-b-[3px] px-6 py-3 text-sm transition-colors",
+                          goingTab === tab.key
+                            ? "border-brand-dark text-brand-dark font-bold"
+                            : "text-brand-mid hover:text-brand-dark border-transparent font-medium",
+                        )}
+                      >
+                        {tab.label}
+                        <span
+                          className={cn(
+                            "rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                            goingTab === tab.key
+                              ? "bg-brand-dark text-white"
+                              : "bg-brand-surface text-brand-mid",
+                          )}
+                        >
+                          {tab.count}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {goingEventsError ? (
+                  <div className="rounded-[20px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {goingEventsError}
+                  </div>
+                ) : goingEventsLoading ? (
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {Array.from({ length: 3 }).map((_, index) => (
+                      <div
+                        key={index}
+                        className="border-brand-mid/12 overflow-hidden rounded-[24px] border bg-white"
+                      >
+                        <div className="bg-brand-mid/15 h-44 animate-pulse" />
+                        <div className="space-y-3 p-5">
+                          <div className="bg-brand-mid/12 h-4 animate-pulse rounded-full" />
+                          <div className="bg-brand-mid/10 h-4 w-2/3 animate-pulse rounded-full" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : visibleGoingEvents.length > 0 ? (
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {visibleGoingEvents.map((event) => (
+                      <GoingEventCard key={event.id} event={event} isPast={goingTab === "past"} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="border-brand-mid/12 bg-brand-bg/75 rounded-[24px] border px-6 py-12 text-center">
+                    <div className="bg-brand-mid/12 text-brand-mid mx-auto flex size-16 items-center justify-center rounded-full">
+                      <Users className="size-7" />
+                    </div>
+                    <p className="font-heading text-brand-dark mt-4 text-2xl">
+                      {goingTab === "upcoming" ? "No upcoming events" : "No attended events yet"}
+                    </p>
+                    <p className="text-brand-mid mt-2 text-sm">
+                      {goingTab === "upcoming"
+                        ? "Mark events as going from the discovery page to see them here."
+                        : "Events you attended will appear here after they end."}
+                    </p>
+                    <Button
+                      asChild
+                      className="bg-brand-dark hover:bg-brand-dark/85 mt-5 border-0 text-white"
+                    >
+                      <Link href="/">Explore Events</Link>
+                    </Button>
+                  </div>
+                )}
+              </section>
             ) : null}
 
             {activeSection === "saved-events" ? (
