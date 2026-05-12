@@ -10,6 +10,15 @@ This README is the main entry point for setting up the repository locally. It co
 
 **Live deployment:** https://thesocialeventmapper.social
 
+## Default Test Credentials
+
+Two pre-created accounts are available on the live deployment for immediate testing:
+
+| Account | Email | Password |
+|---------|-------|----------|
+| User 1 | `mehmet.kaya.demo@gmail.com` | `Demo1234!` |
+| User 2 | `emir.demir.demo@gmail.com`  | `Demo1234!` |
+
 ## Repository Structure
 
 ```text
@@ -36,12 +45,16 @@ This README is the main entry point for setting up the repository locally. It co
 The repository already contains:
 
 - backend CI: [.github/workflows/backend-ci.yml](./.github/workflows/backend-ci.yml)
+- frontend CI: [.github/workflows/frontend-ci.yml](./.github/workflows/frontend-ci.yml)
+- Android CI (lint + unit tests on PRs): [.github/workflows/android-ci.yml](./.github/workflows/android-ci.yml)
 - Android APK build workflow: [.github/workflows/android-build.yml](./.github/workflows/android-build.yml)
 - production deploy pipeline for backend and frontend Docker images: [.github/workflows/deploy.yml](./.github/workflows/deploy.yml)
 
 Current automation coverage:
 
 - backend CI runs lint and backend test shards on pull requests
+- frontend CI runs type check, lint, and Vitest suite on pull requests
+- Android CI runs detekt and unit tests on pull requests touching `mobile/`
 - Android APK workflow builds a debug APK on every push to `main`
 - the same Android workflow attaches the APK to a GitHub release when a release is created
 - production deploy workflow builds and deploys backend and frontend Docker images on pushes to `main`
@@ -116,31 +129,56 @@ For local testing:
 
 Do **not** use `localhost` from the Android emulator, because the emulator sees its own loopback interface instead of your machine.
 
+## Data Seeding
+
+The live deployment at `https://thesocialeventmapper.social` is already fully seeded with predefined categories and sample content — use the default credentials above to log in and test immediately without any setup.
+
+If you are connecting a **fresh Supabase instance**, run the following SQL in the [Supabase SQL Editor](https://supabase.com/dashboard) to populate the predefined categories:
+
+```sql
+INSERT INTO categories (name, is_predefined, is_approved) VALUES
+  ('Arts & Culture',   true, true),
+  ('Business',         true, true),
+  ('Community',        true, true),
+  ('Education',        true, true),
+  ('Family',           true, true),
+  ('Film & Media',     true, true),
+  ('Food & Drink',     true, true),
+  ('Gaming',           true, true),
+  ('Health & Wellness',true, true),
+  ('Music',            true, true),
+  ('Nightlife',        true, true),
+  ('Outdoor',          true, true),
+  ('Sports',           true, true),
+  ('Technology',       true, true),
+  ('Travel',           true, true)
+ON CONFLICT (name) DO NOTHING;
+```
+
 ## Local Development Quick Start
 
-For the common local setup:
+The fastest way to run the full web application locally (backend + frontend together):
 
-1. Start the backend on `http://localhost:8888`
-2. Start the frontend on `http://localhost:3000`
-3. Point the mobile app to the local backend if you are testing mobile
+```bash
+cp backend/.env.example backend/.env   # fill in your values first
+docker compose up --build
+```
+
+This starts:
+- Backend API at [http://localhost:8888](http://localhost:8888) (Swagger: [/docs](http://localhost:8888/docs))
+- Web frontend at [http://localhost:3000](http://localhost:3000)
+
+For mobile, point the app to `http://10.0.2.2:8888/` (emulator) or your LAN IP (physical device) as described in the Mobile section.
 
 ## Backend
 
 Detailed backend notes live in [backend/README.md](./backend/README.md).
 
-### Run Backend with Docker Compose
-
-From the repository root:
+### Run Backend Only with Docker Compose
 
 ```bash
 docker compose up --build backend
 ```
-
-This starts the FastAPI server using:
-
-- backend source mounted into the container
-- `backend/.env`
-- local port mapping `8888:8000`
 
 Useful URLs:
 
@@ -252,7 +290,7 @@ Before running the app locally, update:
 Change:
 
 ```kotlin
-const val BASE_URL = "https://thesocialeventmapper.social/"
+const val BASE_URL = "https://api.thesocialeventmapper.social/"
 ```
 
 To one of these:
