@@ -167,7 +167,9 @@ jobs:
         run: ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Install Maestro
-        run: curl -Ls "https://get.maestro.mobile.dev" | bash
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
         env:
           MAESTRO_VERSION: 1.39.0
 
@@ -203,7 +205,6 @@ jobs:
           disable-animations: true
           script: |
             adb install mobile/app/build/outputs/apk/debug/app-debug.apk
-            export PATH="$PATH:$HOME/.maestro/bin"
             maestro test mobile/maestro/ --format junit --output mobile/maestro-results.xml
 
       - name: Upload Maestro results
