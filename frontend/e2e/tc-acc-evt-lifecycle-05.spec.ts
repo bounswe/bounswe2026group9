@@ -44,7 +44,11 @@ test.describe("TC-ACC-EVT-LIFECYCLE-05 — host edit + cancellation", () => {
     // Step 1 — open the edit page for the future event.
     await page.goto(`/edit-event/${env.events.future}`);
 
-    const titleInput = page.getByLabel(/title/i).first();
+    // The event editor uses a placeholder rather than an associated <label>
+    // for the title field, so getByLabel does not work here.
+    const titleInput = page.getByPlaceholder(
+      /give your event a memorable name/i,
+    );
     await expect(titleInput).toBeEditable();
     const original = (await titleInput.inputValue()) ?? "";
     const updated = `${original.replace(/ — Updated$/i, "")} — Updated`;
@@ -73,24 +77,24 @@ test.describe("TC-ACC-EVT-LIFECYCLE-05 — host edit + cancellation", () => {
 
     await page.goto(`/edit-event/${env.events.ongoing}`);
 
-    // The start-time field should be either disabled, readonly, or absent —
-    // any of those satisfies "user cannot mutate start time".
-    const startTimeInputs = page.locator(
-      'input[type="datetime-local"], input[name*="start" i]',
+    // The event editor renders the start as a separate date input
+    // (type="date") plus a time input (type="time"). On an ongoing event
+    // these should be disabled, readonly, or absent — any of those
+    // satisfies "user cannot mutate start time".
+    const startInputs = page.locator(
+      'input[type="date"], input[type="time"]',
     );
-    const count = await startTimeInputs.count();
+    const count = await startInputs.count();
     if (count > 0) {
       for (let i = 0; i < count; i++) {
-        const input = startTimeInputs.nth(i);
+        const input = startInputs.nth(i);
         const isDisabled = await input.isDisabled().catch(() => false);
         const isReadonly = await input.evaluate(
           (el: HTMLInputElement) => el.readOnly,
         );
-        // At least one of disabled/readonly must hold for each start-time
-        // input on an ongoing event.
         expect(
           isDisabled || isReadonly,
-          `start-time input #${i} should be disabled or readonly on an ongoing event`,
+          `start input #${i} should be disabled or readonly on an ongoing event`,
         ).toBeTruthy();
       }
     }
