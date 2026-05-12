@@ -27,9 +27,7 @@ test.describe("TC-ACC-EVENT-CAPACITY-01 — capacity enforcement", () => {
     "Set E2E_USER_A_*, E2E_USER_B_*, and E2E_EVENT_FULL_ID — see e2e/README.md",
   );
 
-  test("User A fills the event then User B is blocked in UI and API", async ({
-    browser,
-  }) => {
+  test("User A fills the event then User B is blocked in UI and API", async ({ browser }) => {
     requireEnv(env.userA.email, "E2E_USER_A_EMAIL");
     requireEnv(env.userA.password, "E2E_USER_A_PASSWORD");
     requireEnv(env.userB.email, "E2E_USER_B_EMAIL");
@@ -88,11 +86,11 @@ test.describe("TC-ACC-EVENT-CAPACITY-01 — capacity enforcement", () => {
     );
     expect([400, 409]).toContain(apiResponse.status());
 
-    const body = await apiResponse.json().catch(() => ({}));
-    if (body && typeof body === "object" && "detail" in body) {
-      expect(String((body as { detail: string }).detail).toLowerCase()).toMatch(
-        /full|capacity/,
-      );
+    const body = (await apiResponse.json().catch(() => ({}))) as {
+      detail?: unknown;
+    };
+    if (body && typeof body === "object" && typeof body.detail === "string") {
+      expect(body.detail.toLowerCase()).toMatch(/full|capacity/);
     }
 
     // Sanity: reload the page as User B, attendee count remains 2/2 and

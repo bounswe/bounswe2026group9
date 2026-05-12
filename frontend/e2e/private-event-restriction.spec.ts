@@ -25,7 +25,7 @@ test.describe("Private event access restriction", () => {
 
     // The app either redirects to /login or shows a locked / not-found UI.
     const url = page.url();
-    const onLogin = /\/login/.test(url);
+    const onLogin = url.includes("/login");
     const lockedCopy = await page
       .getByText(/private|locked|sign in|not found/i)
       .first()
@@ -35,9 +35,7 @@ test.describe("Private event access restriction", () => {
     expect(onLogin || lockedCopy).toBeTruthy();
   });
 
-  test("backend rejects direct GET for a non-attendee user", async ({
-    page,
-  }) => {
+  test("backend rejects direct GET for a non-attendee user", async ({ page }) => {
     requireEnv(env.user.email, "E2E_USER_EMAIL");
     requireEnv(env.user.password, "E2E_USER_PASSWORD");
     requireEnv(env.events.private, "E2E_EVENT_PRIVATE_ID");
@@ -59,10 +57,7 @@ test.describe("Private event access restriction", () => {
       // for a non-attendee. We can't enumerate every private field without
       // the schema, but personal identifiers like the host email should
       // never appear.
-      const body = (await resp.json().catch(() => ({}))) as Record<
-        string,
-        unknown
-      >;
+      const body = (await resp.json().catch(() => ({}))) as Record<string, unknown>;
       expect(JSON.stringify(body)).not.toMatch(/host_email|attendees_email/i);
     }
   });
