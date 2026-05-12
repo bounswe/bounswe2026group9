@@ -66,7 +66,9 @@ test.describe("TC-WEB-ACC-06 — Suggested discovery filter", () => {
 
     // Step 3 — open discovery
     await page.goto("/");
-    await expect(page).toHaveURL(/\/$|^\/\?/);
+    // toHaveURL matches against the entire URL (including host), so anchor
+    // on the host + optional query string instead of a leading-slash pattern.
+    await expect(page).toHaveURL(/localhost:\d+\/(\?.*)?$/);
 
     // Step 4 — open the filter section. On wide viewports the sidebar is
     // always visible; on narrow viewports there is a toggle button.
