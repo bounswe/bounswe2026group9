@@ -48,22 +48,14 @@ test.describe("Rate host", () => {
       "Rate-host card not visible (user not eligible)",
     );
 
-    // RatingStars are role=button with aria-labels like "5 stars". We pick 4.
+    // The RatingStars component renders each star as a button with
+    // aria-label="Rate N stars". We pick 4. The same aria-label is
+    // also used for the read-only display, so we scope to enabled.
     const fourStars = page
-      .getByRole("button", { name: /4\s*stars?/i })
+      .getByRole("button", { name: /rate\s*4\s*stars?/i })
       .first();
-    if (await fourStars.isVisible().catch(() => false)) {
-      await fourStars.click();
-    } else {
-      // Fallback: click the 4th star icon in the rate-host card.
-      const stars = page.locator('button:has(svg[class*="Star"]), button:has(svg)').filter({
-        hasText: "",
-      });
-      const count = await stars.count();
-      if (count >= 4) {
-        await stars.nth(3).click();
-      }
-    }
+    await expect(fourStars).toBeVisible();
+    await fourStars.click();
 
     await submitBtn.click();
 
