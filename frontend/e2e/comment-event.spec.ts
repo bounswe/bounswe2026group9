@@ -12,9 +12,7 @@ import { loginViaUI } from "./fixtures/auth";
 import { env, requireEnv } from "./fixtures/env";
 
 test.describe("Comment on event", () => {
-  test("guest sees the textarea disabled with a sign-in placeholder", async ({
-    page,
-  }) => {
+  test("guest sees the textarea disabled with a sign-in placeholder", async ({ page }) => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
 
@@ -23,9 +21,7 @@ test.describe("Comment on event", () => {
     await links.first().click();
     await expect(page).toHaveURL(/\/event\/[\w-]+/);
 
-    const textarea = page
-      .getByPlaceholder(/sign in to leave a comment/i)
-      .first();
+    const textarea = page.getByPlaceholder(/sign in to leave a comment/i).first();
     test.skip(
       !(await textarea.isVisible().catch(() => false)),
       "Comment textarea not present on this event",
@@ -33,9 +29,7 @@ test.describe("Comment on event", () => {
     await expect(textarea).toBeDisabled();
   });
 
-  test("authenticated user can post a comment and see it appear", async ({
-    page,
-  }) => {
+  test("authenticated user can post a comment and see it appear", async ({ page }) => {
     test.skip(!env.user.email || !env.user.password, "Need E2E_USER_*");
     requireEnv(env.user.email, "E2E_USER_EMAIL");
     requireEnv(env.user.password, "E2E_USER_PASSWORD");
@@ -58,10 +52,7 @@ test.describe("Comment on event", () => {
     await page.waitForLoadState("networkidle");
 
     const textarea = page.getByPlaceholder(/write a comment/i).first();
-    test.skip(
-      !(await textarea.isVisible().catch(() => false)),
-      "Comments closed on this event",
-    );
+    test.skip(!(await textarea.isVisible().catch(() => false)), "Comments closed on this event");
 
     const marker = `e2e-comment-${Date.now()}`;
     await textarea.fill(marker);

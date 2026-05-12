@@ -6,17 +6,12 @@ import { env } from "./env";
  * Log in via the real `/login` page so we exercise the same code path
  * the user does (form submit → cookie set → redirect).
  */
-export async function loginViaUI(
-  page: Page,
-  credentials: { email: string; password: string },
-) {
+export async function loginViaUI(page: Page, credentials: { email: string; password: string }) {
   await page.goto("/login");
   await expect(page.getByText(/welcome back/i)).toBeVisible();
 
   await page.getByRole("textbox", { name: "Email" }).fill(credentials.email);
-  await page
-    .getByRole("textbox", { name: "Password" })
-    .fill(credentials.password);
+  await page.getByRole("textbox", { name: "Password" }).fill(credentials.password);
 
   await Promise.all([
     page.waitForURL((url) => !url.pathname.startsWith("/login"), {
@@ -43,9 +38,7 @@ export async function authedApiRequest(
   const url = `${env.apiBaseUrl}${path.startsWith("/") ? path : `/${path}`}`;
   return await request.fetch(url, {
     method,
-    headers: body
-      ? { "Content-Type": "application/json" }
-      : undefined,
+    headers: body ? { "Content-Type": "application/json" } : undefined,
     data: body ? JSON.stringify(body) : undefined,
   });
 }

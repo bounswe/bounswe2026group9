@@ -23,14 +23,9 @@ import { authedApiRequest, loginViaUI } from "./fixtures/auth";
 import { env, requireEnv } from "./fixtures/env";
 
 test.describe("Create and publish event", () => {
-  test.skip(
-    !env.host.email || !env.host.password,
-    "Set E2E_HOST_EMAIL / E2E_HOST_PASSWORD",
-  );
+  test.skip(!env.host.email || !env.host.password, "Set E2E_HOST_EMAIL / E2E_HOST_PASSWORD");
 
-  test("authenticated host can open create-event and fill step 1", async ({
-    page,
-  }) => {
+  test("authenticated host can open create-event and fill step 1", async ({ page }) => {
     requireEnv(env.host.email, "E2E_HOST_EMAIL");
     requireEnv(env.host.password, "E2E_HOST_PASSWORD");
 
@@ -43,17 +38,13 @@ test.describe("Create and publish event", () => {
     await expect(page).toHaveURL(/\/create-event/);
 
     // Title input — uses a placeholder rather than an associated label.
-    const titleInput = page.getByPlaceholder(
-      /Give your event a memorable name/i,
-    );
+    const titleInput = page.getByPlaceholder(/Give your event a memorable name/i);
     await expect(titleInput).toBeVisible();
     await titleInput.fill("E2E Smoke Event");
     await expect(titleInput).toHaveValue("E2E Smoke Event");
 
     // Description textarea.
-    const descInput = page.getByPlaceholder(
-      /Tell people what the event is/i,
-    );
+    const descInput = page.getByPlaceholder(/Tell people what the event is/i);
     await expect(descInput).toBeVisible();
     await descInput.fill("Created by Playwright smoke spec.");
 
@@ -67,9 +58,7 @@ test.describe("Create and publish event", () => {
     }
   });
 
-  test("backend accepts a minimal event payload as the host", async ({
-    page,
-  }) => {
+  test("backend accepts a minimal event payload as the host", async ({ page }) => {
     requireEnv(env.host.email, "E2E_HOST_EMAIL");
     requireEnv(env.host.password, "E2E_HOST_PASSWORD");
 

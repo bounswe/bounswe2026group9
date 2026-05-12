@@ -18,9 +18,7 @@ const hostId = process.env.E2E_HOST_PROFILE_ID;
 test.describe("View host profile", () => {
   test.skip(!hostId, "Set E2E_HOST_PROFILE_ID");
 
-  test("host profile renders core tabs and the rating widget", async ({
-    page,
-  }) => {
+  test("host profile renders core tabs and the rating widget", async ({ page }) => {
     await page.goto(`/profile/${hostId}`);
     await page.waitForLoadState("networkidle");
 
@@ -35,8 +33,14 @@ test.describe("View host profile", () => {
         name: new RegExp(tabName, "i"),
       });
       const visible =
-        (await tab.first().isVisible().catch(() => false)) ||
-        (await linkVariant.first().isVisible().catch(() => false));
+        (await tab
+          .first()
+          .isVisible()
+          .catch(() => false)) ||
+        (await linkVariant
+          .first()
+          .isVisible()
+          .catch(() => false));
       expect(visible, `${tabName} tab should be visible`).toBeTruthy();
     }
 
@@ -45,9 +49,7 @@ test.describe("View host profile", () => {
     await expect(ratingFigure).toBeVisible();
   });
 
-  test("Reviews tab loads reviews list or its empty state", async ({
-    page,
-  }) => {
+  test("Reviews tab loads reviews list or its empty state", async ({ page }) => {
     await page.goto(`/profile/${hostId}`);
     await page.waitForLoadState("networkidle");
 

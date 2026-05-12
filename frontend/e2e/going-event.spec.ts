@@ -16,10 +16,7 @@ import { loginViaUI } from "./fixtures/auth";
 import { env, requireEnv } from "./fixtures/env";
 
 test.describe("Mark event as Going", () => {
-  test.skip(
-    !env.user.email || !env.user.password,
-    "Set E2E_USER_EMAIL / E2E_USER_PASSWORD",
-  );
+  test.skip(!env.user.email || !env.user.password, "Set E2E_USER_EMAIL / E2E_USER_PASSWORD");
 
   test("user toggles Going on the event detail page", async ({ page }) => {
     requireEnv(env.user.email, "E2E_USER_EMAIL");
@@ -48,9 +45,7 @@ test.describe("Mark event as Going", () => {
     // The button label flips between "Going" and "Attended ✓" after click,
     // so use a single locator that matches either state — otherwise the
     // post-click textContent() call would fail to resolve the element.
-    const goingBtn = page
-      .getByRole("button", { name: /going|attended/i })
-      .first();
+    const goingBtn = page.getByRole("button", { name: /going|attended/i }).first();
     test.skip(
       !(await goingBtn.isVisible().catch(() => false)),
       "Going CTA not present (event may be private without access or user owns it)",

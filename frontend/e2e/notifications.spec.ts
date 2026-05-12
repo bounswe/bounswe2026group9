@@ -17,10 +17,7 @@ import { loginViaUI } from "./fixtures/auth";
 import { env, requireEnv } from "./fixtures/env";
 
 test.describe("Notifications inbox", () => {
-  test.skip(
-    !env.user.email || !env.user.password,
-    "Set E2E_USER_EMAIL / E2E_USER_PASSWORD",
-  );
+  test.skip(!env.user.email || !env.user.password, "Set E2E_USER_EMAIL / E2E_USER_PASSWORD");
 
   test("inbox page renders for authenticated user", async ({ page }) => {
     requireEnv(env.user.email, "E2E_USER_EMAIL");
@@ -35,14 +32,10 @@ test.describe("Notifications inbox", () => {
     await page.waitForLoadState("networkidle");
 
     // Page heading — either "Inbox" or "Notifications".
-    await expect(
-      page.getByRole("heading", { name: /inbox|notifications/i }).first(),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: /inbox|notifications/i }).first()).toBeVisible();
   });
 
-  test("if seeded, update notification is present in inbox", async ({
-    page,
-  }) => {
+  test("if seeded, update notification is present in inbox", async ({ page }) => {
     test.skip(
       process.env.E2E_EXPECT_UPDATE_NOTIFICATION !== "1",
       "Seed an event-updated notification and set E2E_EXPECT_UPDATE_NOTIFICATION=1",
@@ -58,14 +51,10 @@ test.describe("Notifications inbox", () => {
     await page.goto("/inbox");
     await page.waitForLoadState("networkidle");
 
-    await expect(
-      page.getByText(/updated|changed|new (time|location|date)/i).first(),
-    ).toBeVisible();
+    await expect(page.getByText(/updated|changed|new (time|location|date)/i).first()).toBeVisible();
   });
 
-  test("if seeded, cancellation notification is present in inbox", async ({
-    page,
-  }) => {
+  test("if seeded, cancellation notification is present in inbox", async ({ page }) => {
     test.skip(
       process.env.E2E_EXPECT_CANCELLATION_NOTIFICATION !== "1",
       "Seed an event-cancelled notification and set E2E_EXPECT_CANCELLATION_NOTIFICATION=1",

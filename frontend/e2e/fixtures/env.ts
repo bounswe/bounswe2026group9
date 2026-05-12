@@ -34,13 +34,8 @@ export const env = {
   },
 } as const;
 
-export function requireEnv<T>(
-  value: T | undefined,
-  name: string,
-): asserts value is T {
+export function requireEnv<T>(value: T | undefined, name: string): asserts value is T {
   if (value === undefined || value === null || value === "") {
-    throw new Error(
-      `[e2e] Required env variable ${name} is not set — see frontend/e2e/README.md`,
-    );
+    throw new Error(`[e2e] Required env variable ${name} is not set — see frontend/e2e/README.md`);
   }
 }

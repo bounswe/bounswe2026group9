@@ -28,9 +28,7 @@ test.describe("Register and login regression", () => {
     // The register form has email + password + (optionally) confirm /
     // username fields. Use role-based queries so the "Show password"
     // toggle button does not match our password label search.
-    const usernameField = page
-      .getByRole("textbox", { name: /username/i })
-      .first();
+    const usernameField = page.getByRole("textbox", { name: /username/i }).first();
     if (await usernameField.isVisible().catch(() => false)) {
       await usernameField.fill(`e2e_${suffix}`);
     }

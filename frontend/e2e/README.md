@@ -8,32 +8,32 @@ and the Lab 9 report.
 
 ### Strategy regression set (Section 10)
 
-| Spec | Wiki scenario |
-|---|---|
-| `auth-smoke.spec.ts` | Sanity / always runs (no seed) |
-| `register-flow.spec.ts` | Register and login |
-| `event-create.spec.ts` | Create and publish event |
-| `tc-acc-evt-lifecycle-05.spec.ts` | Edit event + Cancel event |
-| `discovery-browse.spec.ts` | Browse events in map / list view, open detail |
-| `discovery-filters.spec.ts` | Apply discovery filters (quick, accessibility, past) |
-| `tc-web-acc-06-suggested-filter.spec.ts` | Suggested discovery filter |
-| `bookmark-event.spec.ts` | Bookmark event |
-| `going-event.spec.ts` | Mark event as Going |
-| `tc-acc-event-capacity-01.spec.ts` | Enforce capacity |
-| `comment-event.spec.ts` | Comment on event |
-| `rate-host.spec.ts` | Rate host |
-| `host-profile.spec.ts` | View host profile |
-| `notifications.spec.ts` | Receive update / cancellation notifications |
-| `private-event-restriction.spec.ts` | Verify private event restriction |
-| `recommendation-privacy.spec.ts` | Verify recommendation privacy |
+| Spec                                     | Wiki scenario                                        |
+| ---------------------------------------- | ---------------------------------------------------- |
+| `auth-smoke.spec.ts`                     | Sanity / always runs (no seed)                       |
+| `register-flow.spec.ts`                  | Register and login                                   |
+| `event-create.spec.ts`                   | Create and publish event                             |
+| `tc-acc-evt-lifecycle-05.spec.ts`        | Edit event + Cancel event                            |
+| `discovery-browse.spec.ts`               | Browse events in map / list view, open detail        |
+| `discovery-filters.spec.ts`              | Apply discovery filters (quick, accessibility, past) |
+| `tc-web-acc-06-suggested-filter.spec.ts` | Suggested discovery filter                           |
+| `bookmark-event.spec.ts`                 | Bookmark event                                       |
+| `going-event.spec.ts`                    | Mark event as Going                                  |
+| `tc-acc-event-capacity-01.spec.ts`       | Enforce capacity                                     |
+| `comment-event.spec.ts`                  | Comment on event                                     |
+| `rate-host.spec.ts`                      | Rate host                                            |
+| `host-profile.spec.ts`                   | View host profile                                    |
+| `notifications.spec.ts`                  | Receive update / cancellation notifications          |
+| `private-event-restriction.spec.ts`      | Verify private event restriction                     |
+| `recommendation-privacy.spec.ts`         | Verify recommendation privacy                        |
 
 ### Lab 9 acceptance test owners
 
-| Spec | Test ID | Owner |
-|---|---|---|
-| `tc-web-acc-06-suggested-filter.spec.ts` | TC-WEB-ACC-06 | Muhittin Köybaşı (AT06) |
-| `tc-acc-event-capacity-01.spec.ts` | TC-ACC-EVENT-CAPACITY-01 | İbrahim Fırat Yoğurtçu (AT04) |
-| `tc-acc-evt-lifecycle-05.spec.ts` | TC-ACC-EVT-LIFECYCLE-05 | Faik İhsan Südüpak (AT05) |
+| Spec                                     | Test ID                  | Owner                         |
+| ---------------------------------------- | ------------------------ | ----------------------------- |
+| `tc-web-acc-06-suggested-filter.spec.ts` | TC-WEB-ACC-06            | Muhittin Köybaşı (AT06)       |
+| `tc-acc-event-capacity-01.spec.ts`       | TC-ACC-EVENT-CAPACITY-01 | İbrahim Fırat Yoğurtçu (AT04) |
+| `tc-acc-evt-lifecycle-05.spec.ts`        | TC-ACC-EVT-LIFECYCLE-05  | Faik İhsan Südüpak (AT05)     |
 
 ## Setup
 
@@ -69,25 +69,25 @@ clone — only `auth-smoke.spec.ts`, `register-flow.spec.ts`, and the
 guest paths of `discovery-browse.spec.ts` and `discovery-filters.spec.ts`
 run without seed data.
 
-| Env var | Used by | Purpose |
-|---|---|---|
-| `BASE_URL` | all | Frontend URL (default `http://localhost:3000`) |
-| `API_BASE_URL` | capacity, private, event-create | Backend URL (default `http://localhost:8888`) |
-| `E2E_USER_EMAIL` / `E2E_USER_PASSWORD` | bookmark, going, comment, rate-host, notifications, suggested, recommendation-privacy, private | Registered user, ideally with attendance history |
-| `E2E_NEW_USER_PASSWORD` | register-flow | Password used for the randomly-generated email (default `Sm0kePass!23`) |
-| `E2E_HOST_EMAIL` / `E2E_HOST_PASSWORD` | event-create, lifecycle | Host account that owns the lifecycle events |
-| `E2E_USER_A_EMAIL` / `E2E_USER_A_PASSWORD` | capacity | Fills the last seat |
-| `E2E_USER_B_EMAIL` / `E2E_USER_B_PASSWORD` | capacity | Blocked by FULL |
-| `E2E_EVENT_FULL_ID` | capacity | Event with `attendeeLimit=2`, `going=1` at start |
-| `E2E_EVENT_FUTURE_ID` | lifecycle | Future event owned by the host |
-| `E2E_EVENT_ONGOING_ID` | lifecycle | Ongoing event owned by the host |
-| `E2E_EVENT_PRIVATE_ID` | private-event-restriction | Private event the user does NOT host |
-| `E2E_EVENT_GOING_ID` | going-event | Public, non-full, future event |
-| `E2E_EVENT_COMMENT_ID` | comment-event | Event with comments open |
-| `E2E_HOST_PROFILE_ID` | host-profile | Host with at least one event |
-| `E2E_RATEABLE_HOST_ID` | rate-host | Host the test user is eligible to rate |
-| `E2E_EXPECT_UPDATE_NOTIFICATION` | notifications | `1` if an update notification is seeded for the user |
-| `E2E_EXPECT_CANCELLATION_NOTIFICATION` | notifications | `1` if a cancellation notification is seeded for the user |
+| Env var                                    | Used by                                                                                        | Purpose                                                                 |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `BASE_URL`                                 | all                                                                                            | Frontend URL (default `http://localhost:3000`)                          |
+| `API_BASE_URL`                             | capacity, private, event-create                                                                | Backend URL (default `http://localhost:8888`)                           |
+| `E2E_USER_EMAIL` / `E2E_USER_PASSWORD`     | bookmark, going, comment, rate-host, notifications, suggested, recommendation-privacy, private | Registered user, ideally with attendance history                        |
+| `E2E_NEW_USER_PASSWORD`                    | register-flow                                                                                  | Password used for the randomly-generated email (default `Sm0kePass!23`) |
+| `E2E_HOST_EMAIL` / `E2E_HOST_PASSWORD`     | event-create, lifecycle                                                                        | Host account that owns the lifecycle events                             |
+| `E2E_USER_A_EMAIL` / `E2E_USER_A_PASSWORD` | capacity                                                                                       | Fills the last seat                                                     |
+| `E2E_USER_B_EMAIL` / `E2E_USER_B_PASSWORD` | capacity                                                                                       | Blocked by FULL                                                         |
+| `E2E_EVENT_FULL_ID`                        | capacity                                                                                       | Event with `attendeeLimit=2`, `going=1` at start                        |
+| `E2E_EVENT_FUTURE_ID`                      | lifecycle                                                                                      | Future event owned by the host                                          |
+| `E2E_EVENT_ONGOING_ID`                     | lifecycle                                                                                      | Ongoing event owned by the host                                         |
+| `E2E_EVENT_PRIVATE_ID`                     | private-event-restriction                                                                      | Private event the user does NOT host                                    |
+| `E2E_EVENT_GOING_ID`                       | going-event                                                                                    | Public, non-full, future event                                          |
+| `E2E_EVENT_COMMENT_ID`                     | comment-event                                                                                  | Event with comments open                                                |
+| `E2E_HOST_PROFILE_ID`                      | host-profile                                                                                   | Host with at least one event                                            |
+| `E2E_RATEABLE_HOST_ID`                     | rate-host                                                                                      | Host the test user is eligible to rate                                  |
+| `E2E_EXPECT_UPDATE_NOTIFICATION`           | notifications                                                                                  | `1` if an update notification is seeded for the user                    |
+| `E2E_EXPECT_CANCELLATION_NOTIFICATION`     | notifications                                                                                  | `1` if a cancellation notification is seeded for the user               |
 
 Example `.env.e2e`:
 

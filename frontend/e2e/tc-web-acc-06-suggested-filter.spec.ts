@@ -35,9 +35,7 @@ test.describe("TC-WEB-ACC-06 — Suggested discovery filter", () => {
     // The "Suggested for you" CTA lives under the `Personalised` section which
     // is only rendered for authenticated users.
     await expect(page.getByText(/Personalised/i)).toHaveCount(0);
-    await expect(
-      page.getByRole("button", { name: /suggested for you/i }),
-    ).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /suggested for you/i })).toHaveCount(0);
 
     // Confirm no /events request goes out with suggested=true.
     const seenSuggestedTrue: string[] = [];
@@ -85,8 +83,8 @@ test.describe("TC-WEB-ACC-06 — Suggested discovery filter", () => {
     await expect(suggestedButton).toHaveAttribute("aria-pressed", "false");
 
     // Capture the network request that fires once the filter is applied.
-    const eventsRequest = page.waitForRequest((req) =>
-      req.url().includes("/events") && req.url().includes("suggested=true"),
+    const eventsRequest = page.waitForRequest(
+      (req) => req.url().includes("/events") && req.url().includes("suggested=true"),
     );
 
     await suggestedButton.click();
@@ -120,15 +118,9 @@ test.describe("TC-WEB-ACC-06 — Suggested discovery filter", () => {
 
     if (linkCount > 0) {
       // No private / cancelled / ended badges should be visible in results.
-      await expect(
-        page.locator('span:has-text("Private")').first(),
-      ).toHaveCount(0);
-      await expect(
-        page.locator('span:has-text("Cancelled")').first(),
-      ).toHaveCount(0);
-      await expect(
-        page.locator('span:has-text("Ended")').first(),
-      ).toHaveCount(0);
+      await expect(page.locator('span:has-text("Private")').first()).toHaveCount(0);
+      await expect(page.locator('span:has-text("Cancelled")').first()).toHaveCount(0);
+      await expect(page.locator('span:has-text("Ended")').first()).toHaveCount(0);
 
       // Step 9 — open the first card → detail page renders
       const firstHref = await eventLinks.first().getAttribute("href");

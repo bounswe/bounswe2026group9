@@ -21,14 +21,9 @@ import { loginViaUI } from "./fixtures/auth";
 import { env, requireEnv } from "./fixtures/env";
 
 test.describe("Recommendation privacy", () => {
-  test.skip(
-    !env.user.email || !env.user.password,
-    "Set E2E_USER_EMAIL / E2E_USER_PASSWORD",
-  );
+  test.skip(!env.user.email || !env.user.password, "Set E2E_USER_EMAIL / E2E_USER_PASSWORD");
 
-  test("suggested results do not include private, cancelled, or ended events", async ({
-    page,
-  }) => {
+  test("suggested results do not include private, cancelled, or ended events", async ({ page }) => {
     requireEnv(env.user.email, "E2E_USER_EMAIL");
     requireEnv(env.user.password, "E2E_USER_PASSWORD");
 

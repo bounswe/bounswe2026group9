@@ -11,14 +11,9 @@ import { loginViaUI } from "./fixtures/auth";
 import { env, requireEnv } from "./fixtures/env";
 
 test.describe("Bookmark event", () => {
-  test.skip(
-    !env.user.email || !env.user.password,
-    "Set E2E_USER_EMAIL / E2E_USER_PASSWORD",
-  );
+  test.skip(!env.user.email || !env.user.password, "Set E2E_USER_EMAIL / E2E_USER_PASSWORD");
 
-  test("toggle bookmark from discovery card and verify persistence", async ({
-    page,
-  }) => {
+  test("toggle bookmark from discovery card and verify persistence", async ({ page }) => {
     requireEnv(env.user.email, "E2E_USER_EMAIL");
     requireEnv(env.user.password, "E2E_USER_PASSWORD");
 
@@ -30,10 +25,7 @@ test.describe("Bookmark event", () => {
     await page.waitForLoadState("networkidle");
 
     const eventLinks = page.locator('a[href^="/event/"]');
-    test.skip(
-      (await eventLinks.count()) === 0,
-      "No events on discovery to bookmark",
-    );
+    test.skip((await eventLinks.count()) === 0, "No events on discovery to bookmark");
 
     // Identify a card. Each event card is rendered as <a href="/event/..">
     // with the Bookmark / Saved button NESTED inside the link itself, so we
@@ -43,9 +35,7 @@ test.describe("Bookmark event", () => {
     const cardHref = await firstCard.getAttribute("href");
     expect(cardHref).toBeTruthy();
 
-    const bookmarkBtn = firstCard
-      .getByRole("button", { name: /^(bookmark|saved)$/i })
-      .first();
+    const bookmarkBtn = firstCard.getByRole("button", { name: /^(bookmark|saved)$/i }).first();
 
     test.skip(
       !(await bookmarkBtn.isVisible().catch(() => false)),
@@ -68,8 +58,7 @@ test.describe("Bookmark event", () => {
       .first()
       .getByRole("button", { name: /^(bookmark|saved)$/i })
       .first();
-    const persistedText =
-      (await persistedBtn.textContent())?.toLowerCase() ?? "";
+    const persistedText = (await persistedBtn.textContent())?.toLowerCase() ?? "";
     expect(persistedText).toEqual(after);
   });
 });

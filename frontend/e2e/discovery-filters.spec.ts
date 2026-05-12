@@ -32,10 +32,7 @@ test.describe("Discovery filters", () => {
 
     const eventsRequest = page.waitForRequest((req) => {
       const url = req.url();
-      return (
-        url.includes("/events") &&
-        /quick_filter=today|temporal=today|today/i.test(url)
-      );
+      return url.includes("/events") && /quick_filter=today|temporal=today|today/i.test(url);
     });
 
     await todayButton.click();
@@ -51,9 +48,7 @@ test.describe("Discovery filters", () => {
     await expect(todayButton).toHaveAttribute("aria-pressed", "true");
   });
 
-  test("wheelchair accessibility filter propagates to the URL", async ({
-    page,
-  }) => {
+  test("wheelchair accessibility filter propagates to the URL", async ({ page }) => {
     await page.goto("/");
 
     const filtersToggle = page.getByRole("button", { name: /^filters?$/i });

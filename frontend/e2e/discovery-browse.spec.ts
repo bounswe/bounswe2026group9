@@ -13,9 +13,7 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Discovery browse — list, map, open detail", () => {
-  test("home page renders discovery and exposes view toggle", async ({
-    page,
-  }) => {
+  test("home page renders discovery and exposes view toggle", async ({ page }) => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
 
@@ -29,9 +27,7 @@ test.describe("Discovery browse — list, map, open detail", () => {
     expect(count).toBeGreaterThanOrEqual(1);
   });
 
-  test("at least one event card surfaces and opens its detail page", async ({
-    page,
-  }) => {
+  test("at least one event card surfaces and opens its detail page", async ({ page }) => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
 
