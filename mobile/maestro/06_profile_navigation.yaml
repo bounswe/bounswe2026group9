@@ -3,6 +3,8 @@ appId: com.bounswe.group9.mobile
 # E2E flow: authenticated user navigates to profile and sees their stats.
 - launchApp:
     clearState: true
+- assertVisible: "SOCIAL EVENT MAPPER"
+- tapOn: "Sign In"
 - assertVisible: "Welcome back"
 - tapOn: "Email"
 - inputText: "emir27_bora@hotmail.com"

@@ -4,6 +4,8 @@ appId: com.bounswe.group9.mobile
 # After login, the create event form is accessible with all required fields.
 - launchApp:
     clearState: true
+- assertVisible: "SOCIAL EVENT MAPPER"
+- tapOn: "Sign In"
 - assertVisible: "Welcome back"
 - tapOn: "Email"
 - inputText: "emir27_bora@hotmail.com"

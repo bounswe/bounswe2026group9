@@ -3,6 +3,8 @@ appId: com.bounswe.group9.mobile
 # E2E flow: user navigates to the register tab and sees the registration form fields.
 - launchApp:
     clearState: true
+- assertVisible: "SOCIAL EVENT MAPPER"
+- tapOn: "Sign In"
 - assertVisible: "Welcome back"
 - tapOn: "Sign Up"
 - assertVisible: "Create account"

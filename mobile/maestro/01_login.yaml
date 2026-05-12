@@ -3,6 +3,8 @@ appId: com.bounswe.group9.mobile
 # E2E flow: user logs in with valid credentials and lands on the discovery screen.
 - launchApp:
     clearState: true
+- assertVisible: "SOCIAL EVENT MAPPER"
+- tapOn: "Sign In"
 - assertVisible: "Welcome back"
 - assertVisible: "Sign in to your account"
 - tapOn: "Email"
