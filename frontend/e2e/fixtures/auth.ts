@@ -11,12 +11,12 @@ export async function loginViaUI(
   credentials: { email: string; password: string },
 ) {
   await page.goto("/login");
-  await expect(
-    page.getByRole("heading", { name: /welcome back/i }),
-  ).toBeVisible();
+  await expect(page.getByText(/welcome back/i)).toBeVisible();
 
-  await page.getByLabel("Email").fill(credentials.email);
-  await page.getByLabel("Password").fill(credentials.password);
+  await page.getByRole("textbox", { name: "Email" }).fill(credentials.email);
+  await page
+    .getByRole("textbox", { name: "Password" })
+    .fill(credentials.password);
 
   await Promise.all([
     page.waitForURL((url) => !url.pathname.startsWith("/login"), {

@@ -26,15 +26,18 @@ test.describe("Register and login regression", () => {
     await page.goto("/register");
 
     // The register form has email + password + (optionally) confirm /
-    // username fields. We fill whatever we find by label.
-    const usernameField = page.getByLabel(/username/i).first();
+    // username fields. Use role-based queries so the "Show password"
+    // toggle button does not match our password label search.
+    const usernameField = page
+      .getByRole("textbox", { name: /username/i })
+      .first();
     if (await usernameField.isVisible().catch(() => false)) {
       await usernameField.fill(`e2e_${suffix}`);
     }
 
-    await page.getByLabel(/email/i).first().fill(email);
+    await page.getByRole("textbox", { name: /email/i }).first().fill(email);
 
-    const passwordFields = page.getByLabel(/password/i);
+    const passwordFields = page.getByRole("textbox", { name: /password/i });
     const passwordCount = await passwordFields.count();
     for (let i = 0; i < passwordCount; i++) {
       await passwordFields.nth(i).fill(TEST_PASSWORD);
