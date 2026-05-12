@@ -78,13 +78,20 @@ Native end-to-end flows live in [`mobile/maestro/`](../maestro/). They run again
 | Profile navigation | [`06_profile_navigation.yaml`](../maestro/06_profile_navigation.yaml) | Login → open profile → verify stats visible |
 | Filter category & sort | [`07_filter_category_and_sort.yaml`](../maestro/07_filter_category_and_sort.yaml) | Open filters → select category + sort → apply |
 
-Run all flows locally:
+**These flows are manual-only — they are not part of CI.** Reasons: they require a live network connection to the production backend, and `clearState` timing on headless emulators is unreliable without real device warm-up.
+
+Run all flows locally (emulator or device must be running with the app installed):
 
 ```bash
+export JAVA_HOME=$(/usr/libexec/java_home -v 17)   # macOS — Java 17 required
 maestro test mobile/maestro/
 ```
 
-In CI the `maestro` job in [`.github/workflows/android-ci.yml`](../.github/workflows/android-ci.yml) runs all flows automatically on every PR that touches `mobile/**`. Results are uploaded as the `maestro-e2e-reports` artifact (JUnit XML).
+Run a single flow:
+
+```bash
+maestro test mobile/maestro/01_login.yaml
+```
 
 Offline / error UX is covered indirectly by:
 
