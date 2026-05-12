@@ -45,7 +45,12 @@ test.describe("Mark event as Going", () => {
     await page.waitForLoadState("networkidle");
     await expect(page).toHaveURL(/\/event\/[\w-]+/);
 
-    const goingBtn = page.getByRole("button", { name: /^going$/i }).first();
+    // The button label flips between "Going" and "Attended ✓" after click,
+    // so use a single locator that matches either state — otherwise the
+    // post-click textContent() call would fail to resolve the element.
+    const goingBtn = page
+      .getByRole("button", { name: /going|attended/i })
+      .first();
     test.skip(
       !(await goingBtn.isVisible().catch(() => false)),
       "Going CTA not present (event may be private without access or user owns it)",
@@ -60,15 +65,7 @@ test.describe("Mark event as Going", () => {
     await goingBtn.click();
     await page.waitForTimeout(750); // wait for optimistic UI + round trip
 
-    // After clicking, either the button text changes (e.g., to a checkmark
-    // state) or the button stays as "Going" but with active styling. We
-    // check that aria-pressed flipped or that an active class was added.
-    const ariaPressedAfter = await goingBtn.getAttribute("aria-pressed");
     const afterText = (await goingBtn.textContent())?.toLowerCase() ?? "";
-
-    // At least one of these should hold:
-    const flipped =
-      ariaPressedAfter === "true" || afterText !== beforeText;
-    expect(flipped).toBeTruthy();
+    expect(afterText).not.toEqual(beforeText);
   });
 });
