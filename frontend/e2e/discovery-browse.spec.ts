@@ -57,7 +57,8 @@ test.describe("Discovery browse — list, map, open detail", () => {
     );
 
     await mapToggle.click();
-    // The URL should add ?view=map or remain on the home page; either is OK.
-    await expect(page).toHaveURL(/^\/(\?|$)/);
+    // The URL should stay on the home page (with or without a query string).
+    // toHaveURL matches against the full URL, so use a host-aware pattern.
+    await expect(page).toHaveURL(/localhost:\d+\/(\?.*)?$/);
   });
 });
