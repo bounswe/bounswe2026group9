@@ -68,7 +68,6 @@ jobs:
 
   instrumented:
     name: Compose UI tests (emulator)
-    needs: [fast]
     runs-on: ubuntu-latest
     # Hardware-acceleration KVM is required by the emulator runner.
     steps:
@@ -138,7 +137,6 @@ jobs:
 
   maestro:
     name: Maestro E2E flows
-    needs: [fast]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

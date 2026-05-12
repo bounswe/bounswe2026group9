@@ -45,7 +45,7 @@ class CreateEventScreenTest {
     }
 
     @Test
-    fun authenticated_shows_next_and_back_navigation_buttons() {
+    fun authenticated_shows_next_button_on_first_step() {
         composeRule.setContent {
             CreateEventScreen(
                 token = "fake-token",
@@ -54,8 +54,8 @@ class CreateEventScreenTest {
             )
         }
 
+        // Back is only shown when currentStep > 0; on step 0 only Next is visible
         composeRule.onNodeWithText("Next").assertIsDisplayed()
-        composeRule.onNodeWithText("Back").assertIsDisplayed()
     }
 
     @Test
