@@ -1,0 +1,15 @@
+appId: com.bounswe.group9.mobile
+---
+# E2E flow: user opens filters, selects a category and a sort option, then applies.
+- launchApp
+- assertVisible: "SOCIAL EVENT MAPPER"
+- tapOn:
+    description: "Open Filters"
+- assertVisible: "Filters"
+- assertVisible: "SORT BY"
+- tapOn: "Start Time"
+- assertVisible: "CATEGORY"
+- scrollDown
+- tapOn: "Music"
+- tapOn: "Apply Filters"
+- assertVisible: "SOCIAL EVENT MAPPER"

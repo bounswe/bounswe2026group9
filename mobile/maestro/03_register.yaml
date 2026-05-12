@@ -1,0 +1,13 @@
+appId: com.bounswe.group9.mobile
+---
+# E2E flow: user navigates to the register tab and sees the registration form fields.
+- launchApp:
+    clearState: true
+- assertVisible: "Welcome back"
+- tapOn: "Sign Up"
+- assertVisible: "Create account"
+- assertVisible: "Get started for free"
+- assertVisible: "Username"
+- assertVisible: "Email"
+- assertVisible: "Password"
+- assertVisible: "Date of Birth"

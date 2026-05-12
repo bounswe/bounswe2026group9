@@ -135,3 +135,81 @@ jobs:
             mobile/app/build/reports/androidTests/
             mobile/app/build/outputs/androidTest-results/
           retention-days: 30
+
+  maestro:
+    name: Maestro E2E flows
+    needs: [fast]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make gradlew executable
+        run: chmod +x mobile/gradlew
+
+      - name: Build debug APK
+        working-directory: mobile
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Install Maestro
+        run: curl -Ls "https://get.maestro.mobile.dev" | bash
+        env:
+          MAESTRO_VERSION: 1.39.0
+
+      - name: AVD cache
+        uses: actions/cache@v4
+        id: avd-cache-maestro
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-api-30-${{ runner.os }}
+
+      - name: Create AVD snapshot
+        if: steps.avd-cache-maestro.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: echo "Generated AVD snapshot for caching."
+
+      - name: Run Maestro flows
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            adb install mobile/app/build/outputs/apk/debug/app-debug.apk
+            export PATH="$PATH:$HOME/.maestro/bin"
+            maestro test mobile/maestro/ --format junit --output mobile/maestro-results.xml
+
+      - name: Upload Maestro results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-e2e-reports
+          path: mobile/maestro-results.xml
+          retention-days: 30

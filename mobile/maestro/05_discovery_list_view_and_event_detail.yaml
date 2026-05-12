@@ -1,0 +1,13 @@
+appId: com.bounswe.group9.mobile
+---
+# E2E flow: user switches to list view and taps the first event to open detail.
+- launchApp
+- assertVisible: "SOCIAL EVENT MAPPER"
+- tapOn:
+    description: "Switch to List View"
+- assertVisible: "Discover"
+- tapOn:
+    index: 0
+    selector:
+      type: com.bounswe.group9.mobile
+- assertVisible: "Event Details"

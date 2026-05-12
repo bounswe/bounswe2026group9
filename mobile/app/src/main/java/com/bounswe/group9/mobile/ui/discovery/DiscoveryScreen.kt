@@ -50,6 +50,8 @@ import android.location.LocationManager
 import android.os.Bundle
 import android.os.Looper
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.core.content.ContextCompat
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -469,7 +471,9 @@ private fun DiscoveryTopBar(
                 // Map/List toggle
                 FilledIconButton(
                     onClick = onViewToggle,
-                    modifier = Modifier.size(50.dp),
+                    modifier = Modifier.size(50.dp).semantics {
+                        contentDescription = if (isMapView) "Switch to List View" else "Switch to Map View"
+                    },
                     shape = RoundedCornerShape(14.dp),
                     colors = IconButtonDefaults.filledIconButtonColors(
                         containerColor = Color.White.copy(alpha = 0.15f),
@@ -491,7 +495,7 @@ private fun DiscoveryTopBar(
                 ) {
                     FilledIconButton(
                         onClick = onFilterClick,
-                        modifier = Modifier.size(50.dp),
+                        modifier = Modifier.size(50.dp).semantics { contentDescription = "Open Filters" },
                         shape = RoundedCornerShape(14.dp),
                         colors = IconButtonDefaults.filledIconButtonColors(
                             containerColor = Color.White.copy(alpha = 0.15f),
