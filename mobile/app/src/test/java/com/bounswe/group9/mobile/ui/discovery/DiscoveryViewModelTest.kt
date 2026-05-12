@@ -122,12 +122,29 @@ class DiscoveryViewModelTest {
     }
 
     @Test
-    fun `onCategorySelected toggles the same id back to null`() {
+    fun `onCategoryToggled adds and removes from selectedCategoryIds`() {
         val vm = viewModel()
-        vm.onCategorySelected("cat-1")
-        assertEquals("cat-1", vm.uiState.value.selectedCategoryId)
-        vm.onCategorySelected("cat-1")
-        assertNull(vm.uiState.value.selectedCategoryId)
+        vm.onCategoryToggled("cat-1")
+        assertTrue(vm.uiState.value.selectedCategoryIds.contains("cat-1"))
+        vm.onCategoryToggled("cat-1")
+        assertFalse(vm.uiState.value.selectedCategoryIds.contains("cat-1"))
+    }
+
+    @Test
+    fun `onCategoryToggled allows multiple categories selected simultaneously`() {
+        val vm = viewModel()
+        vm.onCategoryToggled("cat-1")
+        vm.onCategoryToggled("cat-2")
+        assertEquals(setOf("cat-1", "cat-2"), vm.uiState.value.selectedCategoryIds)
+    }
+
+    @Test
+    fun `onSortSelected sets and clears selectedSort`() {
+        val vm = viewModel()
+        vm.onSortSelected("start_time")
+        assertEquals("start_time", vm.uiState.value.selectedSort)
+        vm.onSortSelected(null)
+        assertNull(vm.uiState.value.selectedSort)
     }
 
     @Test
@@ -159,7 +176,7 @@ class DiscoveryViewModelTest {
         val vm = viewModel()
         vm.setToken("tok")
         advanceUntilIdle()
-        vm.onCategorySelected("cat-1")
+        vm.onCategoryToggled("cat-1")
         vm.onQuickFilterSelected("weekend")
         vm.onWheelchairToggle()
         vm.onBookmarkedOnlyToggle()
@@ -168,7 +185,7 @@ class DiscoveryViewModelTest {
         advanceUntilIdle()
 
         val state = vm.uiState.value
-        assertNull(state.selectedCategoryId)
+        assertTrue(state.selectedCategoryIds.isEmpty())
         assertNull(state.selectedQuickFilter)
         assertFalse(state.bookmarkedOnly)
         assertFalse(state.wheelchair)
@@ -262,7 +279,7 @@ class DiscoveryViewModelTest {
     fun `activeFilterCount counts active flags`() {
         val vm = viewModel()
         assertEquals(0, vm.activeFilterCount())
-        vm.onCategorySelected("cat-1")
+        vm.onCategoryToggled("cat-1")
         vm.onQuickFilterSelected("today")
         vm.onWheelchairToggle()
         assertEquals(3, vm.activeFilterCount())

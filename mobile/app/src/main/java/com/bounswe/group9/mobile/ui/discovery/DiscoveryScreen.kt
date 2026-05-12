@@ -253,7 +253,8 @@ fun DiscoveryScreen(
                 uiState = uiState,
                 isLoggedIn = token != null,
                 onQuickFilterSelect = viewModel::onQuickFilterSelected,
-                onCategorySelect = viewModel::onCategorySelected,
+                onCategoryToggle = viewModel::onCategoryToggled,
+                onSortSelect = viewModel::onSortSelected,
                 onBookmarkedToggle = viewModel::onBookmarkedOnlyToggle,
                 onGoingToggle = viewModel::onGoingOnlyToggle,
                 onWheelchairToggle = viewModel::onWheelchairToggle,
@@ -510,7 +511,7 @@ private fun FilterSheetContent(
     uiState: DiscoveryUiState,
     isLoggedIn: Boolean,
     onQuickFilterSelect: (String?) -> Unit,
-    onCategorySelect: (String?) -> Unit,
+    onCategoryToggle: (String) -> Unit,
     onBookmarkedToggle: () -> Unit,
     onGoingToggle: () -> Unit,
     onWheelchairToggle: () -> Unit,
@@ -521,12 +522,13 @@ private fun FilterSheetContent(
     onQuietFriendlyToggle: () -> Unit,
     onSuggestedToggle: () -> Unit,
     onProximitySortToggle: () -> Unit,
+    onSortSelect: (String?) -> Unit,
     onClear: () -> Unit,
     onApply: () -> Unit
 ) {
-    val hasAnyFilter = uiState.selectedQuickFilter != null || uiState.selectedCategoryId != null ||
+    val hasAnyFilter = uiState.selectedQuickFilter != null || uiState.selectedCategoryIds.isNotEmpty() ||
         uiState.bookmarkedOnly || uiState.goingOnly || uiState.hasAccessibilityFilter ||
-        uiState.proximitySort || uiState.suggestedActive
+        uiState.proximitySort || uiState.suggestedActive || uiState.selectedSort != null
 
     Column(modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)) {
         // Header
@@ -552,34 +554,11 @@ private fun FilterSheetContent(
                 .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            // ── Quick Filters ──────────────────────────────────────────────────
-            FilterSectionLabel("QUICK FILTERS")
-            Row(
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                listOf(
-                    "now" to "Now",
-                    "today" to "Today",
-                    "weekend" to "Weekend",
-                    "this_week" to "This Week",
-                    "upcoming" to "Upcoming",
-                    "past" to "Past"
-                ).forEach { (key, label) ->
-                    FilterPill(label = label, selected = uiState.selectedQuickFilter == key) {
-                        onQuickFilterSelect(key)
-                    }
-                }
-                if (isLoggedIn) {
-                    FilterPill("✨ Suggested for you", uiState.suggestedActive, onSuggestedToggle)
-                    FilterPill("🔖 Bookmarked", uiState.bookmarkedOnly, onBookmarkedToggle)
-                    FilterPill("✓ Going", uiState.goingOnly, onGoingToggle)
-                }
-            }
-
+            FilterQuickFiltersSection(uiState, isLoggedIn, onQuickFilterSelect,
+                onBookmarkedToggle, onGoingToggle, onSuggestedToggle)
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
-
-            // ── Ranking & Proximity ────────────────────────────────────────────
+            FilterSortSection(uiState, onSortSelect)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
             FilterSectionLabel("RANKING")
             FilterSwitchRow(
                 label = "Proximity Ranking",
@@ -587,53 +566,11 @@ private fun FilterSheetContent(
                 checked = uiState.proximitySort,
                 onCheckedChange = { onProximitySortToggle() }
             )
-
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
-
-            // ── Accessibility ──────────────────────────────────────────────────
-            FilterSectionLabel("ACCESSIBILITY")
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                FilterSwitchRow("Wheelchair Access", checked = uiState.wheelchair,
-                    onCheckedChange = { onWheelchairToggle() })
-                FilterSwitchRow("Accessible Restroom", checked = uiState.accessibleRestroom,
-                    onCheckedChange = { onAccessibleRestroomToggle() })
-                FilterSwitchRow("Elevator Available", checked = uiState.elevator,
-                    onCheckedChange = { onElevatorToggle() })
-                FilterSwitchRow("Seating Available", checked = uiState.seating,
-                    onCheckedChange = { onSeatingToggle() })
-                FilterSwitchRow("Captions Support", checked = uiState.captions,
-                    onCheckedChange = { onCaptionsToggle() })
-                FilterSwitchRow("Quiet-Friendly", checked = uiState.quietFriendly,
-                    onCheckedChange = { onQuietFriendlyToggle() })
-            }
-
+            FilterAccessibilitySection(uiState, onWheelchairToggle, onAccessibleRestroomToggle,
+                onElevatorToggle, onSeatingToggle, onCaptionsToggle, onQuietFriendlyToggle)
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
-
-            // ── Category ───────────────────────────────────────────────────────
-            FilterSectionLabel("CATEGORY")
-            uiState.categories.forEach { cat ->
-                val selected = uiState.selectedCategoryId == cat.id
-                Row(
-                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                        .clickable { onCategorySelect(cat.id) }
-                        .padding(horizontal = 10.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(cat.name, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
-                    Box(
-                        modifier = Modifier.size(20.dp).clip(RoundedCornerShape(4.dp))
-                            .background(
-                                if (selected) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (selected) Icon(Icons.Default.Check, null,
-                            tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(14.dp))
-                    }
-                }
-            }
+            FilterCategorySection(uiState, onCategoryToggle)
         }
 
         Button(
@@ -643,6 +580,103 @@ private fun FilterSheetContent(
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
         ) {
             Text("Apply Filters", fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+@Composable
+private fun FilterQuickFiltersSection(
+    uiState: DiscoveryUiState,
+    isLoggedIn: Boolean,
+    onQuickFilterSelect: (String?) -> Unit,
+    onBookmarkedToggle: () -> Unit,
+    onGoingToggle: () -> Unit,
+    onSuggestedToggle: () -> Unit
+) {
+    FilterSectionLabel("QUICK FILTERS")
+    Row(
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        if (isLoggedIn) FilterPill("✨ Suggested for you", uiState.suggestedActive, onSuggestedToggle)
+        listOf("now" to "Now", "today" to "Today", "weekend" to "Weekend",
+            "this_week" to "This Week", "upcoming" to "Upcoming", "past" to "Past"
+        ).forEach { (key, label) ->
+            FilterPill(label = label, selected = uiState.selectedQuickFilter == key) {
+                onQuickFilterSelect(key)
+            }
+        }
+        if (isLoggedIn) {
+            FilterPill("🔖 Bookmarked", uiState.bookmarkedOnly, onBookmarkedToggle)
+            FilterPill("✓ Going", uiState.goingOnly, onGoingToggle)
+        }
+    }
+}
+
+@Composable
+private fun FilterSortSection(uiState: DiscoveryUiState, onSortSelect: (String?) -> Unit) {
+    FilterSectionLabel("SORT BY")
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        listOf("start_time" to "Start Time", "category" to "Category").forEach { (key, label) ->
+            FilterPill(
+                label = label,
+                selected = uiState.selectedSort == key && !uiState.proximitySort
+            ) { onSortSelect(if (uiState.selectedSort == key) null else key) }
+        }
+    }
+}
+
+@Composable
+private fun FilterAccessibilitySection(
+    uiState: DiscoveryUiState,
+    onWheelchairToggle: () -> Unit,
+    onAccessibleRestroomToggle: () -> Unit,
+    onElevatorToggle: () -> Unit,
+    onSeatingToggle: () -> Unit,
+    onCaptionsToggle: () -> Unit,
+    onQuietFriendlyToggle: () -> Unit
+) {
+    FilterSectionLabel("ACCESSIBILITY")
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        FilterSwitchRow("Wheelchair Access", checked = uiState.wheelchair,
+            onCheckedChange = { onWheelchairToggle() })
+        FilterSwitchRow("Accessible Restroom", checked = uiState.accessibleRestroom,
+            onCheckedChange = { onAccessibleRestroomToggle() })
+        FilterSwitchRow("Elevator Available", checked = uiState.elevator,
+            onCheckedChange = { onElevatorToggle() })
+        FilterSwitchRow("Seating Available", checked = uiState.seating,
+            onCheckedChange = { onSeatingToggle() })
+        FilterSwitchRow("Captions Support", checked = uiState.captions,
+            onCheckedChange = { onCaptionsToggle() })
+        FilterSwitchRow("Quiet-Friendly", checked = uiState.quietFriendly,
+            onCheckedChange = { onQuietFriendlyToggle() })
+    }
+}
+
+@Composable
+private fun FilterCategorySection(uiState: DiscoveryUiState, onCategoryToggle: (String) -> Unit) {
+    FilterSectionLabel("CATEGORY")
+    uiState.categories.forEach { cat ->
+        val selected = cat.id in uiState.selectedCategoryIds
+        Row(
+            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+                .clickable { onCategoryToggle(cat.id) }
+                .padding(horizontal = 10.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(cat.name, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+            Box(
+                modifier = Modifier.size(20.dp).clip(RoundedCornerShape(4.dp))
+                    .background(
+                        if (selected) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                if (selected) Icon(Icons.Default.Check, null,
+                    tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(14.dp))
+            }
         }
     }
 }

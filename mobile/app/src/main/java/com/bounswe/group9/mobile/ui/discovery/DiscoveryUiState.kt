@@ -7,7 +7,8 @@ data class DiscoveryUiState(
     val events: List<EventListItemDto> = emptyList(),
     val categories: List<CategoryDto> = emptyList(),
     val search: String = "",
-    val selectedCategoryId: String? = null,
+    // Multi-select: empty = no filter, size == 1 → sent to API, size >= 2 → client-side filtered
+    val selectedCategoryIds: Set<String> = emptySet(),
     // quick_filter: "now"|"today"|"weekend"|"upcoming"|"this_week"|"past"|null
     val selectedQuickFilter: String? = null,
     val bookmarkedOnly: Boolean = false,
@@ -19,6 +20,9 @@ data class DiscoveryUiState(
     val seating: Boolean = false,
     val captions: Boolean = false,
     val quietFriendly: Boolean = false,
+    // Explicit sort: "start_time" | "category" | null (null = server default)
+    // "distance" sort is handled separately via proximitySort + GPS coords below.
+    val selectedSort: String? = null,
     // Proximity ranking: sort=distance using device GPS coords
     val proximitySort: Boolean = false,
     val nearLat: Double? = null,
@@ -39,9 +43,15 @@ data class DiscoveryUiState(
     val hasAccessibilityFilter: Boolean get() =
         wheelchair || accessibleRestroom || elevator || seating || captions || quietFriendly
 
-    /** Client-side filter for bookmarked/going (server handles everything else). */
+    /**
+     * Client-side filters applied on top of the server response:
+     * - bookmarkedOnly / goingOnly (personal filters the API can't gate directly)
+     * - multi-category (when 2+ selected the API returns unfiltered results so we filter here)
+     */
     val displayedEvents: List<EventListItemDto> get() = events.filter { event ->
         (!bookmarkedOnly || event.is_bookmarked == true) &&
-        (!goingOnly || event.attendance_status == "going")
+        (!goingOnly || event.attendance_status == "going") &&
+        (selectedCategoryIds.size <= 1 ||
+            event.categories.any { it.id in selectedCategoryIds })
     }
 }
