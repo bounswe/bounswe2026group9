@@ -1,0 +1,17 @@
+appId: com.bounswe.group9.mobile
+---
+# E2E flow: user searches for an event and opens the filter sheet on discovery.
+- launchApp
+- assertVisible: "SOCIAL EVENT MAPPER"
+- tapOn: "Search events or places..."
+- inputText: "music"
+- assertVisible: "Search events or places..."
+- hideKeyboard
+- tapOn:
+    label: "Open Filters"
+- assertVisible: "Filters"
+- assertVisible: "QUICK FILTERS"
+- assertVisible: "Today"
+- assertVisible: "SORT BY"
+- assertVisible: "Apply Filters"
+- tapOn: "Apply Filters"

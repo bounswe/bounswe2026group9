@@ -1,0 +1,14 @@
+appId: com.bounswe.group9.mobile
+---
+# E2E flow: user toggles between map view and list view on the discovery screen.
+- launchApp
+- assertVisible: "SOCIAL EVENT MAPPER"
+- tapOn:
+    label: "Switch to List View"
+- assertVisible: "Discover"
+- assertNotVisible:
+    label: "Switch to List View"
+- tapOn:
+    label: "Switch to Map View"
+- assertVisible:
+    label: "Switch to List View"

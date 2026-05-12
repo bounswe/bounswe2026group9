@@ -1,0 +1,22 @@
+appId: com.bounswe.group9.mobile
+---
+# E2E flow: unauthenticated user is blocked from creating an event.
+# After login, the create event form is accessible with all required fields.
+- launchApp:
+    clearState: true
+- assertVisible: "SOCIAL EVENT MAPPER"
+- tapOn: "Sign In"
+- assertVisible: "Welcome back"
+- tapOn: "Email"
+- inputText: "emir27_bora@hotmail.com"
+- tapOn: "Password"
+- inputText: "Deneme123."
+- tapOn:
+    text: "Sign In"
+    index: 1
+- assertVisible: "SOCIAL EVENT MAPPER"
+- tapOn: "+ Create Event"
+- assertVisible: "Event title"
+- assertVisible: "Give your event a memorable name"
+- assertVisible: "Save draft"
+- assertVisible: "Next"

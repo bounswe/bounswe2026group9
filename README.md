@@ -355,6 +355,29 @@ From `mobile/`:
 ./gradlew assembleDebug
 ```
 
+### Mobile E2E Tests (Maestro)
+
+Maestro flows live in [`mobile/maestro/`](./mobile/maestro/). They run against a live emulator or device with the app installed.
+
+Install Maestro CLI:
+
+```bash
+curl -Ls "https://get.maestro.mobile.dev" | bash
+```
+
+Run all flows:
+
+```bash
+# Make sure an emulator is running and the app is installed first
+maestro test mobile/maestro/
+```
+
+Run a single flow:
+
+```bash
+maestro test mobile/maestro/01_login.yaml
+```
+
 ## Local End-to-End Verification
 
 After starting the backend and frontend:
@@ -364,6 +387,23 @@ After starting the backend and frontend:
 3. Register or log in through the web app
 4. Create or browse events
 5. If testing mobile, confirm the app can reach the same backend URL
+
+## Performance Tests (k6)
+
+Load test scripts live in [`performance/`](./performance/). Install k6 from [k6.io](https://k6.io/docs/get-started/installation/) then run:
+
+```bash
+# Health & categories smoke (20 VUs, 30s)
+k6 run performance/k6_health.js
+
+# Discovery endpoint under load
+k6 run --vus 10 --duration 30s performance/k6_discovery.js
+
+# Auth login flow
+k6 run performance/k6_auth.js
+```
+
+Override the target URL with `BASE_URL=http://localhost:8888 k6 run performance/k6_health.js`.
 
 ## Docker and Deployment Reference
 
