@@ -8,7 +8,7 @@ appId: com.bounswe.group9.mobile
 - assertVisible: "Search events or places..."
 - hideKeyboard
 - tapOn:
-    description: "Open Filters"
+    label: "Open Filters"
 - assertVisible: "Filters"
 - assertVisible: "QUICK FILTERS"
 - assertVisible: "Today"
