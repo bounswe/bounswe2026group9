@@ -35,13 +35,15 @@ test.describe("Bookmark event", () => {
       "No events on discovery to bookmark",
     );
 
-    // Identify a card. Each card has a Bookmark / Saved button.
+    // Identify a card. Each event card is rendered as <a href="/event/..">
+    // with the Bookmark / Saved button NESTED inside the link itself, so we
+    // scope the button search to the link element (not its parent, which
+    // would also pick up sibling cards' buttons).
     const firstCard = eventLinks.first();
     const cardHref = await firstCard.getAttribute("href");
     expect(cardHref).toBeTruthy();
 
-    const cardContainer = firstCard.locator("..");
-    const bookmarkBtn = cardContainer
+    const bookmarkBtn = firstCard
       .getByRole("button", { name: /^(bookmark|saved)$/i })
       .first();
 
@@ -61,12 +63,13 @@ test.describe("Bookmark event", () => {
     // Reload and confirm the state stuck.
     await page.reload();
     await page.waitForLoadState("networkidle");
-    const persisted = page.locator(`a[href="${cardHref}"]`).first();
-    const persistedBtn = persisted
-      .locator("..")
+    const persistedBtn = page
+      .locator(`a[href="${cardHref}"]`)
+      .first()
       .getByRole("button", { name: /^(bookmark|saved)$/i })
       .first();
-    const persistedText = (await persistedBtn.textContent())?.toLowerCase() ?? "";
+    const persistedText =
+      (await persistedBtn.textContent())?.toLowerCase() ?? "";
     expect(persistedText).toEqual(after);
   });
 });
