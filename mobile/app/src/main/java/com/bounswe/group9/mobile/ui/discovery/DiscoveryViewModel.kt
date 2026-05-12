@@ -42,9 +42,14 @@ class DiscoveryViewModel(
         }
     }
 
-    fun onCategorySelected(categoryId: String?) {
-        val new = if (_uiState.value.selectedCategoryId == categoryId) null else categoryId
-        _uiState.value = _uiState.value.copy(selectedCategoryId = new)
+    fun onCategoryToggled(categoryId: String) {
+        val current = _uiState.value.selectedCategoryIds
+        val updated = if (categoryId in current) current - categoryId else current + categoryId
+        _uiState.value = _uiState.value.copy(selectedCategoryIds = updated)
+    }
+
+    fun onSortSelected(sort: String?) {
+        _uiState.value = _uiState.value.copy(selectedSort = sort)
     }
 
     fun onQuickFilterSelected(filter: String?) {
@@ -166,7 +171,7 @@ class DiscoveryViewModel(
 
     fun clearFilters() {
         _uiState.value = _uiState.value.copy(
-            selectedCategoryId = null,
+            selectedCategoryIds = emptySet(),
             selectedQuickFilter = null,
             bookmarkedOnly = false,
             goingOnly = false,
@@ -176,6 +181,7 @@ class DiscoveryViewModel(
             seating = false,
             captions = false,
             quietFriendly = false,
+            selectedSort = null,
             proximitySort = false,
             nearLat = null,
             nearLng = null,
@@ -190,7 +196,8 @@ class DiscoveryViewModel(
         val s = _uiState.value
         var count = 0
         if (s.selectedQuickFilter != null) count++
-        if (s.selectedCategoryId != null) count++
+        count += s.selectedCategoryIds.size
+        if (s.selectedSort != null) count++
         if (s.bookmarkedOnly) count++
         if (s.goingOnly) count++
         if (s.wheelchair) count++
@@ -218,7 +225,10 @@ class DiscoveryViewModel(
             repository.getEvents(
                 token = token,
                 search = state.search.takeIf { it.isNotBlank() },
-                categoryId = state.selectedCategoryId,
+                // Pass categoryId only when exactly 1 category is selected.
+                // With 2+ selections the API returns unfiltered results and
+                // DiscoveryUiState.displayedEvents applies the client-side filter.
+                categoryId = state.selectedCategoryIds.singleOrNull(),
                 quickFilter = state.selectedQuickFilter,
                 wheelchair = state.wheelchair.takeIf { it },
                 accessibleRestroom = state.accessibleRestroom.takeIf { it },
@@ -226,7 +236,11 @@ class DiscoveryViewModel(
                 seating = state.seating.takeIf { it },
                 captions = state.captions.takeIf { it },
                 quietFriendly = state.quietFriendly.takeIf { it },
-                sort = if (state.proximitySort && state.nearLat != null) "distance" else null,
+                // Proximity sort (GPS) takes precedence; otherwise use the explicit selection.
+                sort = when {
+                    state.proximitySort && state.nearLat != null -> "distance"
+                    else -> state.selectedSort
+                },
                 nearLat = state.nearLat,
                 nearLng = state.nearLng,
                 // Suggested only goes to the wire when the chip is on AND the user is signed in.
