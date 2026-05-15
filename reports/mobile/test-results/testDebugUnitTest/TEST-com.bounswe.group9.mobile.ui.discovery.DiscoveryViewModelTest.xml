@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.bounswe.group9.mobile.ui.discovery.DiscoveryViewModelTest" tests="13" skipped="0" failures="0" errors="0" timestamp="2026-05-12T18:50:11.470Z" hostname="runnervmeorf1" time="0.472">
+  <properties/>
+  <testcase name="toggleBookmark optimistically flips and rolls back on failure()" classname="com.bounswe.group9.mobile.ui.discovery.DiscoveryViewModelTest" time="0.065"/>
+  <testcase name="loadNextPage stops when currentPage reaches totalPages()" classname="com.bounswe.group9.mobile.ui.discovery.DiscoveryViewModelTest" time="0.099"/>
+  <testcase name="activeFilterCount counts active flags()" classname="com.bounswe.group9.mobile.ui.discovery.DiscoveryViewModelTest" time="0.023"/>
+  <testcase name="onCategoryToggled allows multiple categories selected simultaneously()" classname="com.bounswe.group9.mobile.ui.discovery.DiscoveryViewModelTest" time="0.02"/>
+  <testcase name="onSearchChange updates state immediately and reloads after debounce()" classname="com.bounswe.group9.mobile.ui.discovery.DiscoveryViewModelTest" time="0.053"/>
+  <testcase name="setToken triggers initial load()" classname="com.bounswe.group9.mobile.ui.discovery.DiscoveryViewModelTest" time="0.035"/>
+  <testcase name="rapid applyFilters cancels previous loadJob so stale response cannot overwrite newer results()" classname="com.bounswe.group9.mobile.ui.discovery.DiscoveryViewModelTest" time="0.033"/>
+  <testcase name="bookmarked and going toggles are mutually exclusive()" classname="com.bounswe.group9.mobile.ui.discovery.DiscoveryViewModelTest" time="0.018"/>
+  <testcase name="clearFilters resets every flag and reloads()" classname="com.bounswe.group9.mobile.ui.discovery.DiscoveryViewModelTest" time="0.041"/>
+  <testcase name="onQuickFilterSelected toggles the same value back to null()" classname="com.bounswe.group9.mobile.ui.discovery.DiscoveryViewModelTest" time="0.015"/>
+  <testcase name="setToken with same value twice loads only once()" classname="com.bounswe.group9.mobile.ui.discovery.DiscoveryViewModelTest" time="0.03"/>
+  <testcase name="onSortSelected sets and clears selectedSort()" classname="com.bounswe.group9.mobile.ui.discovery.DiscoveryViewModelTest" time="0.013"/>
+  <testcase name="onCategoryToggled adds and removes from selectedCategoryIds()" classname="com.bounswe.group9.mobile.ui.discovery.DiscoveryViewModelTest" time="0.013"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

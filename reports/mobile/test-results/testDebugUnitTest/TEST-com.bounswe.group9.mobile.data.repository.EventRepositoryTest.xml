@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.bounswe.group9.mobile.data.repository.EventRepositoryTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-05-12T18:50:10.314Z" hostname="runnervmeorf1" time="0.484">
+  <properties/>
+  <testcase name="getEventDetail without description field parses as Limited()" classname="com.bounswe.group9.mobile.data.repository.EventRepositoryTest" time="0.058"/>
+  <testcase name="getEventDetail with description field parses as Full()" classname="com.bounswe.group9.mobile.data.repository.EventRepositoryTest" time="0.053"/>
+  <testcase name="getEventDetail 404 yields a typed NotFound error()" classname="com.bounswe.group9.mobile.data.repository.EventRepositoryTest" time="0.05"/>
+  <testcase name="getEventDetail 403 with age message yields Underage error()" classname="com.bounswe.group9.mobile.data.repository.EventRepositoryTest" time="0.046"/>
+  <testcase name="getEvents 401 retries the request without the Authorization header()" classname="com.bounswe.group9.mobile.data.repository.EventRepositoryTest" time="0.091"/>
+  <testcase name="getEvents serialises every filter as a query parameter and adds bearer header()" classname="com.bounswe.group9.mobile.data.repository.EventRepositoryTest" time="0.047"/>
+  <testcase name="getEvents 500 surfaces failure with the status code in the message()" classname="com.bounswe.group9.mobile.data.repository.EventRepositoryTest" time="0.042"/>
+  <testcase name="addBookmark POSTs to events bookmark path with bearer header()" classname="com.bounswe.group9.mobile.data.repository.EventRepositoryTest" time="0.045"/>
+  <testcase name="getEvents drops blank search to avoid sending an empty query()" classname="com.bounswe.group9.mobile.data.repository.EventRepositoryTest" time="0.044"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

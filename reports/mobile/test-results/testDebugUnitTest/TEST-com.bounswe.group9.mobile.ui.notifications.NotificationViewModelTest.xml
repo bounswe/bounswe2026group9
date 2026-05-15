@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.bounswe.group9.mobile.ui.notifications.NotificationViewModelTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-05-12T18:50:12.074Z" hostname="runnervmeorf1" time="0.054">
+  <properties/>
+  <testcase name="setToken null clears state without calling the repo()" classname="com.bounswe.group9.mobile.ui.notifications.NotificationViewModelTest" time="0.008"/>
+  <testcase name="setToken triggers initial load and surfaces unread count()" classname="com.bounswe.group9.mobile.ui.notifications.NotificationViewModelTest" time="0.004"/>
+  <testcase name="event_recommended notifications flow through the list unchanged()" classname="com.bounswe.group9.mobile.ui.notifications.NotificationViewModelTest" time="0.003"/>
+  <testcase name="markAsRead flips item and decrements unreadCount()" classname="com.bounswe.group9.mobile.ui.notifications.NotificationViewModelTest" time="0.005"/>
+  <testcase name="markAllAsRead flips every item and zeros the badge()" classname="com.bounswe.group9.mobile.ui.notifications.NotificationViewModelTest" time="0.004"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

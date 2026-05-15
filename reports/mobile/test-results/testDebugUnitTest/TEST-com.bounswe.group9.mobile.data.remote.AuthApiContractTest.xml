@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.bounswe.group9.mobile.data.remote.AuthApiContractTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-05-12T18:50:09.079Z" hostname="runnervmeorf1" time="0.443">
+  <properties/>
+  <testcase name="register serializes username email password and date_of_birth fields()" classname="com.bounswe.group9.mobile.data.remote.AuthApiContractTest" time="0.428"/>
+  <testcase name="login posts credentials JSON and parses AuthResponse()" classname="com.bounswe.group9.mobile.data.remote.AuthApiContractTest" time="0.011"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

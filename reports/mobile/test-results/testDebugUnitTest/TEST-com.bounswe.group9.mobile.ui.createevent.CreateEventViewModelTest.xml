@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.bounswe.group9.mobile.ui.createevent.CreateEventViewModelTest" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-05-12T18:50:11.116Z" hostname="runnervmeorf1" time="0.347">
+  <properties/>
+  <testcase name="stepCompleted reflects required-field state()" classname="com.bounswe.group9.mobile.ui.createevent.CreateEventViewModelTest" time="0.019"/>
+  <testcase name="saveProgress with no persisted event creates a draft via the repository()" classname="com.bounswe.group9.mobile.ui.createevent.CreateEventViewModelTest" time="0.033"/>
+  <testcase name="onAttendeeLimitChange filters to digits only()" classname="com.bounswe.group9.mobile.ui.createevent.CreateEventViewModelTest" time="0.002"/>
+  <testcase name="addImageUri appends to selectedImageUris and removeImageUri removes it()" classname="com.bounswe.group9.mobile.ui.createevent.CreateEventViewModelTest" time="0.173"/>
+  <testcase name="step 1 validation rejects end before start()" classname="com.bounswe.group9.mobile.ui.createevent.CreateEventViewModelTest" time="0.004"/>
+  <testcase name="init with null token surfaces a sign-in error()" classname="com.bounswe.group9.mobile.ui.createevent.CreateEventViewModelTest" time="0.002"/>
+  <testcase name="nextStep on step 0 with blank fields sets per-field errors and stays on step 0()" classname="com.bounswe.group9.mobile.ui.createevent.CreateEventViewModelTest" time="0.003"/>
+  <testcase name="nextStep on step 0 with a complete form advances to step 1()" classname="com.bounswe.group9.mobile.ui.createevent.CreateEventViewModelTest" time="0.002"/>
+  <testcase name="init with token loads available categories()" classname="com.bounswe.group9.mobile.ui.createevent.CreateEventViewModelTest" time="0.011"/>
+  <testcase name="addLocation appends and removeLocation respects the minimum of one()" classname="com.bounswe.group9.mobile.ui.createevent.CreateEventViewModelTest" time="0.002"/>
+  <testcase name="toggleCategory adds and removes ids from the set()" classname="com.bounswe.group9.mobile.ui.createevent.CreateEventViewModelTest" time="0.004"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
