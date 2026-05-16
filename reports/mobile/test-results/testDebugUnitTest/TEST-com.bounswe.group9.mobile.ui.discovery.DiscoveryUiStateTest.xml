@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.bounswe.group9.mobile.ui.discovery.DiscoveryUiStateTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-05-12T18:50:11.463Z" hostname="runnervmeorf1" time="0.006">
+  <properties/>
+  <testcase name="displayedEvents keeps only bookmarked items when bookmarkedOnly is on()" classname="com.bounswe.group9.mobile.ui.discovery.DiscoveryUiStateTest" time="0.003"/>
+  <testcase name="displayedEvents returns every item when no client-side filter is on()" classname="com.bounswe.group9.mobile.ui.discovery.DiscoveryUiStateTest" time="0.0"/>
+  <testcase name="hasAccessibilityFilter true when any flag is on()" classname="com.bounswe.group9.mobile.ui.discovery.DiscoveryUiStateTest" time="0.0"/>
+  <testcase name="displayedEvents keeps only going items when goingOnly is on()" classname="com.bounswe.group9.mobile.ui.discovery.DiscoveryUiStateTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

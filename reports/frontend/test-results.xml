@@ -1,0 +1,377 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites name="vitest tests" tests="159" failures="0" errors="0" time="5.658790081">
+    <testsuite name="tests/api-errors.test.ts" timestamp="2026-05-15T19:51:11.367Z" hostname="Can-Emir-Bora-Macbook-Air.local" tests="5" failures="0" errors="0" skipped="0" time="0.0101505">
+        <testcase classname="tests/api-errors.test.ts" name="apiRequest error handling &gt; parses { detail } error envelope from FastAPI 4xx responses" time="0.006195">
+        </testcase>
+        <testcase classname="tests/api-errors.test.ts" name="apiRequest error handling &gt; preserves the HTTP status on the thrown ApiError" time="0.000774083">
+        </testcase>
+        <testcase classname="tests/api-errors.test.ts" name="apiRequest error handling &gt; falls back to a generic message when the body has no detail" time="0.000423458">
+        </testcase>
+        <testcase classname="tests/api-errors.test.ts" name="apiRequest error handling &gt; attaches an Authorization header for auth=&apos;required&apos; when a token is set" time="0.000833709">
+        </testcase>
+        <testcase classname="tests/api-errors.test.ts" name="apiRequest error handling &gt; does not send Authorization for auth=&apos;none&apos;" time="0.000908291">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/attendee-qr-modal.test.tsx" timestamp="2026-05-15T19:51:11.368Z" hostname="Can-Emir-Bora-Macbook-Air.local" tests="3" failures="0" errors="0" skipped="0" time="0.163602875">
+        <testcase classname="tests/attendee-qr-modal.test.tsx" name="AttendeeQrModal &gt; renders nothing when closed and skips the fetch" time="0.013720958">
+        </testcase>
+        <testcase classname="tests/attendee-qr-modal.test.tsx" name="AttendeeQrModal &gt; fetches the QR token on open and renders it inside the canvas" time="0.055703167">
+        </testcase>
+        <testcase classname="tests/attendee-qr-modal.test.tsx" name="AttendeeQrModal &gt; shows the upstream error message when the fetch rejects" time="0.093407375">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/attendee-roster.test.tsx" timestamp="2026-05-15T19:51:11.368Z" hostname="Can-Emir-Bora-Macbook-Air.local" tests="5" failures="0" errors="0" skipped="0" time="0.128963166">
+        <testcase classname="tests/attendee-roster.test.tsx" name="AttendeeRoster &gt; renders the empty state when no one is going" time="0.012027375">
+        </testcase>
+        <testcase classname="tests/attendee-roster.test.tsx" name="AttendeeRoster &gt; shows the per-row check-in status and the counter line" time="0.03096975">
+        </testcase>
+        <testcase classname="tests/attendee-roster.test.tsx" name="AttendeeRoster &gt; renders Mark in only for pending rows and triggers onMarkIn with the user id" time="0.074675541">
+        </testcase>
+        <testcase classname="tests/attendee-roster.test.tsx" name="AttendeeRoster &gt; disables the Mark in button while a manual call is in flight for that user" time="0.005135625">
+        </testcase>
+        <testcase classname="tests/attendee-roster.test.tsx" name="AttendeeRoster &gt; surfaces a top-level error message when the manual mark call fails" time="0.005691417">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/discovery-params.test.ts" timestamp="2026-05-15T19:51:11.369Z" hostname="Can-Emir-Bora-Macbook-Air.local" tests="7" failures="0" errors="0" skipped="0" time="0.011670459">
+        <testcase classname="tests/discovery-params.test.ts" name="fetchEvents URL construction &gt; omits all params when none are set" time="0.005854834">
+        </testcase>
+        <testcase classname="tests/discovery-params.test.ts" name="fetchEvents URL construction &gt; serialises quick_filter, sort and pagination" time="0.001782667">
+        </testcase>
+        <testcase classname="tests/discovery-params.test.ts" name="fetchEvents URL construction &gt; treats temporal_filter as an alias for quick_filter" time="0.000779333">
+        </testcase>
+        <testcase classname="tests/discovery-params.test.ts" name="fetchEvents URL construction &gt; only includes truthy accessibility flags" time="0.000855042">
+        </testcase>
+        <testcase classname="tests/discovery-params.test.ts" name="fetchEvents URL construction &gt; forwards proximity coords and use_default_area" time="0.000736292">
+        </testcase>
+        <testcase classname="tests/discovery-params.test.ts" name="fetchEvents URL construction &gt; trims whitespace-only search to nothing" time="0.00024475">
+        </testcase>
+        <testcase classname="tests/discovery-params.test.ts" name="fetchGeoJsonEvents URL construction &gt; forwards quick_filter and accessibility flags to /events/geojson" time="0.0004365">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/event-card.test.tsx" timestamp="2026-05-15T19:51:11.370Z" hostname="Can-Emir-Bora-Macbook-Air.local" tests="7" failures="0" errors="0" skipped="0" time="0.160875709">
+        <testcase classname="tests/event-card.test.tsx" name="EventCard &gt; renders the event title and category chip" time="0.111296666">
+        </testcase>
+        <testcase classname="tests/event-card.test.tsx" name="EventCard &gt; links to the event detail page" time="0.0049525">
+        </testcase>
+        <testcase classname="tests/event-card.test.tsx" name="EventCard &gt; hides Going / Bookmark actions for guests" time="0.004203">
+        </testcase>
+        <testcase classname="tests/event-card.test.tsx" name="EventCard &gt; shows Going + Bookmark for authenticated non-host users" time="0.022748708">
+        </testcase>
+        <testcase classname="tests/event-card.test.tsx" name="EventCard &gt; shows Edit instead of Going when the viewer is the host" time="0.011774834">
+        </testcase>
+        <testcase classname="tests/event-card.test.tsx" name="EventCard &gt; renders the Private badge for private events" time="0.002139792">
+        </testcase>
+        <testcase classname="tests/event-card.test.tsx" name="EventCard &gt; renders the Full badge when capacity is reached" time="0.003239">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/event-form-segments.test.ts" timestamp="2026-05-15T19:51:11.371Z" hostname="Can-Emir-Bora-Macbook-Air.local" tests="18" failures="0" errors="0" skipped="0" time="0.005517209">
+        <testcase classname="tests/event-form-segments.test.ts" name="event-form segments &gt; emits no segments when no stop has the timing toggle enabled" time="0.000772125">
+        </testcase>
+        <testcase classname="tests/event-form-segments.test.ts" name="event-form segments &gt; ignores the timing payload when the toggle is off, even if dates are filled in" time="0.00010025">
+        </testcase>
+        <testcase classname="tests/event-form-segments.test.ts" name="event-form segments &gt; emits a segment with positional indices when timing is filled in" time="0.000851625">
+        </testcase>
+        <testcase classname="tests/event-form-segments.test.ts" name="event-form segments &gt; drops empty descriptions to null" time="0.000080459">
+        </testcase>
+        <testcase classname="tests/event-form-segments.test.ts" name="event-form segments &gt; buildEventCreatePayload sends segments=null when none exist" time="0.000303416">
+        </testcase>
+        <testcase classname="tests/event-form-segments.test.ts" name="event-form segments &gt; buildEventCreatePayload sends segments[] when at least one stop has timing" time="0.000294">
+        </testcase>
+        <testcase classname="tests/event-form-segments.test.ts" name="event-form segments &gt; buildEventUpdatePayload sends segments=null to clear an existing itinerary" time="0.000090166">
+        </testcase>
+        <testcase classname="tests/event-form-segments.test.ts" name="event-form segments &gt; buildBestEffortEventUpdatePayload omits segments when itinerary is invalid" time="0.000242167">
+        </testcase>
+        <testcase classname="tests/event-form-segments.test.ts" name="event-form segments &gt; buildBestEffortEventUpdatePayload emits segments when itinerary is valid" time="0.000111625">
+        </testcase>
+        <testcase classname="tests/event-form-segments.test.ts" name="event-form step 2 validation &gt; flags partial stop timing as an error" time="0.000510666">
+        </testcase>
+        <testcase classname="tests/event-form-segments.test.ts" name="event-form step 2 validation &gt; flags reversed stop timing" time="0.000156792">
+        </testcase>
+        <testcase classname="tests/event-form-segments.test.ts" name="event-form step 2 validation &gt; accepts a complete and ordered stop timing" time="0.000099166">
+        </testcase>
+        <testcase classname="tests/event-form-segments.test.ts" name="event-form step 2 validation &gt; rejects a segment that starts before the event start" time="0.000141708">
+        </testcase>
+        <testcase classname="tests/event-form-segments.test.ts" name="event-form step 2 validation &gt; rejects a segment that ends after the event end" time="0.000133708">
+        </testcase>
+        <testcase classname="tests/event-form-segments.test.ts" name="event-form step 2 validation &gt; flags two consecutive stops whose timings overlap" time="0.000160708">
+        </testcase>
+        <testcase classname="tests/event-form-segments.test.ts" name="event-form step 2 validation &gt; does not clobber the per-stop error with the overlap error" time="0.000138917">
+        </testcase>
+        <testcase classname="tests/event-form-segments.test.ts" name="event-form step 2 validation &gt; flags missing primary location lat/lng" time="0.000110334">
+        </testcase>
+        <testcase classname="tests/event-form-segments.test.ts" name="event-form mapping &gt; rehydrates segment timing per location when reopening an event for editing" time="0.00043925">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/events-api.test.ts" timestamp="2026-05-15T19:51:11.372Z" hostname="Can-Emir-Bora-Macbook-Air.local" tests="14" failures="0" errors="0" skipped="0" time="0.006469541">
+        <testcase classname="tests/events-api.test.ts" name="events-api endpoints &gt; fetchEventDetail issues a GET against /events/{id}" time="0.002759375">
+        </testcase>
+        <testcase classname="tests/events-api.test.ts" name="events-api endpoints &gt; setAttendance posts {status: &apos;going&apos;} to the attendance endpoint" time="0.000503541">
+        </testcase>
+        <testcase classname="tests/events-api.test.ts" name="events-api endpoints &gt; removeAttendance issues a DELETE" time="0.000195042">
+        </testcase>
+        <testcase classname="tests/events-api.test.ts" name="events-api endpoints &gt; addBookmark and removeBookmark hit /events/{id}/bookmark with POST/DELETE" time="0.000350667">
+        </testcase>
+        <testcase classname="tests/events-api.test.ts" name="events-api endpoints &gt; changeEventStatus PATCHes /events/{id}/status with the requested status" time="0.000186125">
+        </testcase>
+        <testcase classname="tests/events-api.test.ts" name="events-api endpoints &gt; deleteEvent DELETEs /events/{id}" time="0.000165458">
+        </testcase>
+        <testcase classname="tests/events-api.test.ts" name="events-api endpoints &gt; fetchComments GETs /events/{id}/comments" time="0.000152708">
+        </testcase>
+        <testcase classname="tests/events-api.test.ts" name="events-api endpoints &gt; fetchSimilarEvents GETs /events/{id}/similar with optional auth" time="0.000240167">
+        </testcase>
+        <testcase classname="tests/events-api.test.ts" name="events-api endpoints &gt; postComment POSTs the text and forwards parent_id when given" time="0.000388375">
+        </testcase>
+        <testcase classname="tests/events-api.test.ts" name="events-api endpoints &gt; deleteComment DELETEs /events/{id}/comments/{commentId}" time="0.000187208">
+        </testcase>
+        <testcase classname="tests/events-api.test.ts" name="events-api endpoints &gt; fetchHostProfile GETs /users/{id}/profile" time="0.000157041">
+        </testcase>
+        <testcase classname="tests/events-api.test.ts" name="events-api endpoints &gt; fetchNotifications passes pagination and requires auth" time="0.000377291">
+        </testcase>
+        <testcase classname="tests/events-api.test.ts" name="events-api endpoints &gt; markNotificationRead PATCHes /notifications/{id}/read" time="0.000151292">
+        </testcase>
+        <testcase classname="tests/events-api.test.ts" name="events-api endpoints &gt; markAllNotificationsRead PATCHes /notifications/read-all" time="0.0001405">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/filter-sidebar.test.tsx" timestamp="2026-05-15T19:51:11.372Z" hostname="Can-Emir-Bora-Macbook-Air.local" tests="8" failures="0" errors="0" skipped="0" time="0.636553333">
+        <testcase classname="tests/filter-sidebar.test.tsx" name="FilterSidebar &gt; renders the five quick-filter buttons in the documented order" time="0.156404375">
+        </testcase>
+        <testcase classname="tests/filter-sidebar.test.tsx" name="FilterSidebar &gt; renders Bookmarked and Going under My Events only when authenticated" time="0.117144458">
+        </testcase>
+        <testcase classname="tests/filter-sidebar.test.tsx" name="FilterSidebar &gt; does not include a Past button — Show past events is the only entry point" time="0.04035425">
+        </testcase>
+        <testcase classname="tests/filter-sidebar.test.tsx" name="FilterSidebar &gt; toggles a quick filter through onFiltersChange" time="0.092987583">
+        </testcase>
+        <testcase classname="tests/filter-sidebar.test.tsx" name="FilterSidebar &gt; toggles an accessibility checkbox" time="0.095900625">
+        </testcase>
+        <testcase classname="tests/filter-sidebar.test.tsx" name="FilterSidebar &gt; flips the Show past events switch" time="0.019099292">
+        </testcase>
+        <testcase classname="tests/filter-sidebar.test.tsx" name="FilterSidebar &gt; changes the sort option" time="0.053646125">
+        </testcase>
+        <testcase classname="tests/filter-sidebar.test.tsx" name="FilterSidebar &gt; calls onApply and onClear when the action buttons are clicked" time="0.060338584">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/filter-state.test.ts" timestamp="2026-05-15T19:51:11.373Z" hostname="Can-Emir-Bora-Macbook-Air.local" tests="5" failures="0" errors="0" skipped="0" time="0.0011105">
+        <testcase classname="tests/filter-state.test.ts" name="countActiveFilters &gt; returns 0 for the default state" time="0.000484458">
+        </testcase>
+        <testcase classname="tests/filter-state.test.ts" name="countActiveFilters &gt; counts each category id once" time="0.000066083">
+        </testcase>
+        <testcase classname="tests/filter-state.test.ts" name="countActiveFilters &gt; counts temporal, personal and showPast each as 1" time="0.000050167">
+        </testcase>
+        <testcase classname="tests/filter-state.test.ts" name="countActiveFilters &gt; counts a non-default sort as 1, but ignores start_time" time="0.000055417">
+        </testcase>
+        <testcase classname="tests/filter-state.test.ts" name="countActiveFilters &gt; counts each truthy accessibility flag" time="0.000040875">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/going-events-api.test.ts" timestamp="2026-05-15T19:51:11.373Z" hostname="Can-Emir-Bora-Macbook-Air.local" tests="3" failures="0" errors="0" skipped="0" time="0.004243">
+        <testcase classname="tests/going-events-api.test.ts" name="fetchMyGoingEvents &gt; GETs /attendances/me/events with the auth header" time="0.002885125">
+        </testcase>
+        <testcase classname="tests/going-events-api.test.ts" name="fetchMyGoingEvents &gt; returns the parsed list of going events" time="0.000570458">
+        </testcase>
+        <testcase classname="tests/going-events-api.test.ts" name="fetchMyGoingEvents &gt; returns an empty array when the user has no going events" time="0.000350916">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/going-events-profile.test.tsx" timestamp="2026-05-15T19:51:11.374Z" hostname="Can-Emir-Bora-Macbook-Air.local" tests="10" failures="0" errors="0" skipped="0" time="1.414279667">
+        <testcase classname="tests/going-events-profile.test.tsx" name="Going Events tab — navigation &gt; renders the Going Events nav button" time="0.522027">
+        </testcase>
+        <testcase classname="tests/going-events-profile.test.tsx" name="Going Events tab — navigation &gt; shows the Going Events section when the tab is clicked" time="0.131380334">
+        </testcase>
+        <testcase classname="tests/going-events-profile.test.tsx" name="Going Events tab — upcoming sub-tab &gt; renders a card for each upcoming going event" time="0.099082333">
+        </testcase>
+        <testcase classname="tests/going-events-profile.test.tsx" name="Going Events tab — upcoming sub-tab &gt; shows &apos;Going&apos; badge on upcoming events" time="0.070137584">
+        </testcase>
+        <testcase classname="tests/going-events-profile.test.tsx" name="Going Events tab — upcoming sub-tab &gt; shows the empty state when there are no upcoming going events" time="0.092595584">
+        </testcase>
+        <testcase classname="tests/going-events-profile.test.tsx" name="Going Events tab — upcoming sub-tab &gt; links each card to the event detail page" time="0.092173417">
+        </testcase>
+        <testcase classname="tests/going-events-profile.test.tsx" name="Going Events tab — upcoming sub-tab &gt; renders the event category badge" time="0.058960792">
+        </testcase>
+        <testcase classname="tests/going-events-profile.test.tsx" name="Going Events tab — past sub-tab &gt; shows &apos;Attended&apos; badge and event on the past tab" time="0.118648458">
+        </testcase>
+        <testcase classname="tests/going-events-profile.test.tsx" name="Going Events tab — past sub-tab &gt; shows the empty state when there are no attended events" time="0.152673167">
+        </testcase>
+        <testcase classname="tests/going-events-profile.test.tsx" name="Going Events tab — error state &gt; shows an error message when the fetch fails" time="0.073515125">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/guest-only-route.test.tsx" timestamp="2026-05-15T19:51:11.374Z" hostname="Can-Emir-Bora-Macbook-Air.local" tests="2" failures="0" errors="0" skipped="0" time="0.027529416">
+        <testcase classname="tests/guest-only-route.test.tsx" name="GuestOnlyRoute &gt; renders children for guests" time="0.02492">
+        </testcase>
+        <testcase classname="tests/guest-only-route.test.tsx" name="GuestOnlyRoute &gt; redirects authenticated users to the next path" time="0.001847625">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/image-carousel.test.tsx" timestamp="2026-05-15T19:51:11.375Z" hostname="Can-Emir-Bora-Macbook-Air.local" tests="3" failures="0" errors="0" skipped="0" time="0.233925375">
+        <testcase classname="tests/image-carousel.test.tsx" name="ImageCarousel &gt; shows a &apos;No Photos&apos; placeholder when there are no images" time="0.015531708">
+        </testcase>
+        <testcase classname="tests/image-carousel.test.tsx" name="ImageCarousel &gt; renders the first image by default and uses the title as the alt text" time="0.059951459">
+        </testcase>
+        <testcase classname="tests/image-carousel.test.tsx" name="ImageCarousel &gt; advances and rewinds through images, wrapping at the boundaries" time="0.157805875">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/inbox-event-recommended.test.tsx" timestamp="2026-05-15T19:51:11.375Z" hostname="Can-Emir-Bora-Macbook-Air.local" tests="6" failures="0" errors="0" skipped="0" time="0.055852875">
+        <testcase classname="tests/inbox-event-recommended.test.tsx" name="getNotificationIcon &gt; returns the Sparkles-decorated styling for event_recommended" time="0.0012155">
+        </testcase>
+        <testcase classname="tests/inbox-event-recommended.test.tsx" name="getNotificationIcon &gt; falls back to the bell icon for unknown types" time="0.000096916">
+        </testcase>
+        <testcase classname="tests/inbox-event-recommended.test.tsx" name="NotificationItem &gt; renders the &apos;Recommended for you&apos; pill for event_recommended" time="0.040888833">
+        </testcase>
+        <testcase classname="tests/inbox-event-recommended.test.tsx" name="NotificationItem &gt; does NOT render the pill for non-recommendation notification types" time="0.002444584">
+        </testcase>
+        <testcase classname="tests/inbox-event-recommended.test.tsx" name="NotificationItem &gt; marks the notification as read and navigates to the event on click" time="0.005664917">
+        </testcase>
+        <testcase classname="tests/inbox-event-recommended.test.tsx" name="NotificationItem &gt; skips navigation when event_id is null but still marks as read" time="0.004686666">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/itinerary-timeline.test.tsx" timestamp="2026-05-15T19:51:11.376Z" hostname="Can-Emir-Bora-Macbook-Air.local" tests="6" failures="0" errors="0" skipped="0" time="0.124193625">
+        <testcase classname="tests/itinerary-timeline.test.tsx" name="ItineraryTimeline &gt; renders one row per stop, in order_index order" time="0.091953959">
+        </testcase>
+        <testcase classname="tests/itinerary-timeline.test.tsx" name="ItineraryTimeline &gt; marks the primary stop with a Primary badge" time="0.003148416">
+        </testcase>
+        <testcase classname="tests/itinerary-timeline.test.tsx" name="ItineraryTimeline &gt; shows the segment description when a matching segment exists" time="0.021351792">
+        </testcase>
+        <testcase classname="tests/itinerary-timeline.test.tsx" name="ItineraryTimeline &gt; renders the address when location_address is present" time="0.001282334">
+        </testcase>
+        <testcase classname="tests/itinerary-timeline.test.tsx" name="ItineraryTimeline &gt; forwards every stop to the route map preview" time="0.004318375">
+        </testcase>
+        <testcase classname="tests/itinerary-timeline.test.tsx" name="ItineraryTimeline &gt; hides the route map when hideMap is set" time="0.001244083">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/list-view.test.tsx" timestamp="2026-05-15T19:51:11.376Z" hostname="Can-Emir-Bora-Macbook-Air.local" tests="4" failures="0" errors="0" skipped="0" time="0.183965875">
+        <testcase classname="tests/list-view.test.tsx" name="ListView &gt; shows the &apos;No events found&apos; empty state when there are no items" time="0.028209333">
+        </testcase>
+        <testcase classname="tests/list-view.test.tsx" name="ListView &gt; renders one card per event and a result count summary" time="0.099876917">
+        </testcase>
+        <testcase classname="tests/list-view.test.tsx" name="ListView &gt; does not render pagination controls when there is a single page" time="0.0076555">
+        </testcase>
+        <testcase classname="tests/list-view.test.tsx" name="ListView &gt; calls onPageChange when a page number is clicked" time="0.047386667">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/location-search-input.test.tsx" timestamp="2026-05-15T19:51:11.377Z" hostname="Can-Emir-Bora-Macbook-Air.local" tests="3" failures="0" errors="0" skipped="0" time="0.491012167">
+        <testcase classname="tests/location-search-input.test.tsx" name="LocationSearchInput &gt; does not call suggestPlaces for queries shorter than 2 characters" time="0.018240084">
+        </testcase>
+        <testcase classname="tests/location-search-input.test.tsx" name="LocationSearchInput &gt; debounces the suggest request to 400ms after value change" time="0.006836667">
+        </testcase>
+        <testcase classname="tests/location-search-input.test.tsx" name="LocationSearchInput &gt; renders the suggestion list and calls onPick when a result is clicked" time="0.4653915">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/login-page.test.tsx" timestamp="2026-05-15T19:51:11.378Z" hostname="Can-Emir-Bora-Macbook-Air.local" tests="4" failures="0" errors="0" skipped="0" time="0.627405208">
+        <testcase classname="tests/login-page.test.tsx" name="LoginPage &gt; shows the protected-route banner when redirected to login" time="0.046619">
+        </testcase>
+        <testcase classname="tests/login-page.test.tsx" name="LoginPage &gt; submits valid login credentials and redirects to the requested path" time="0.31981375">
+        </testcase>
+        <testcase classname="tests/login-page.test.tsx" name="LoginPage &gt; renders backend login errors" time="0.245319709">
+        </testcase>
+        <testcase classname="tests/login-page.test.tsx" name="LoginPage &gt; does not render placeholder remember-me or password-reset actions" time="0.014727958">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/nominatim.test.ts" timestamp="2026-05-15T19:51:11.378Z" hostname="Can-Emir-Bora-Macbook-Air.local" tests="10" failures="0" errors="0" skipped="0" time="0.007812792">
+        <testcase classname="tests/nominatim.test.ts" name="suggestPlaces &gt; hits the local proxy with the encoded query and the requested limit" time="0.003982375">
+        </testcase>
+        <testcase classname="tests/nominatim.test.ts" name="suggestPlaces &gt; returns an empty list for blank queries without calling fetch" time="0.00097875">
+        </testcase>
+        <testcase classname="tests/nominatim.test.ts" name="suggestPlaces &gt; maps Nominatim entries into typed results and prefers a short, friendly name" time="0.00093475">
+        </testcase>
+        <testcase classname="tests/nominatim.test.ts" name="suggestPlaces &gt; filters out entries with non-numeric coordinates" time="0.00022675">
+        </testcase>
+        <testcase classname="tests/nominatim.test.ts" name="suggestPlaces &gt; returns an empty list on upstream error responses" time="0.000096166">
+        </testcase>
+        <testcase classname="tests/nominatim.test.ts" name="suggestPlaces &gt; returns an empty list when fetch throws" time="0.000120333">
+        </testcase>
+        <testcase classname="tests/nominatim.test.ts" name="reverseGeocode &gt; hits /api/geo/reverse with both coordinates" time="0.000196708">
+        </testcase>
+        <testcase classname="tests/nominatim.test.ts" name="reverseGeocode &gt; trims to the first three comma-separated parts and caps length at 100" time="0.000186375">
+        </testcase>
+        <testcase classname="tests/nominatim.test.ts" name="reverseGeocode &gt; returns null when the upstream returns an empty display_name" time="0.00011675">
+        </testcase>
+        <testcase classname="tests/nominatim.test.ts" name="reverseGeocode &gt; returns null on fetch error" time="0.000091167">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/not-found.test.tsx" timestamp="2026-05-15T19:51:11.379Z" hostname="Can-Emir-Bora-Macbook-Air.local" tests="3" failures="0" errors="0" skipped="0" time="0.129574625">
+        <testcase classname="tests/not-found.test.tsx" name="NotFound page &gt; renders the 404 marker" time="0.018819834">
+        </testcase>
+        <testcase classname="tests/not-found.test.tsx" name="NotFound page &gt; shows the &apos;Page not found&apos; heading" time="0.002301667">
+        </testcase>
+        <testcase classname="tests/not-found.test.tsx" name="NotFound page &gt; offers a &apos;Back to Home&apos; link pointing at /" time="0.107426125">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/profile-route.test.ts" timestamp="2026-05-15T19:51:11.379Z" hostname="Can-Emir-Bora-Macbook-Air.local" tests="3" failures="0" errors="0" skipped="0" time="0.001837791">
+        <testcase classname="tests/profile-route.test.ts" name="getProfileHref &gt; returns the public profile path for another user" time="0.000884334">
+        </testcase>
+        <testcase classname="tests/profile-route.test.ts" name="getProfileHref &gt; returns /profile/me when target equals the current user" time="0.000097833">
+        </testcase>
+        <testcase classname="tests/profile-route.test.ts" name="getProfileHref &gt; returns the public profile path when no current user is provided" time="0.000077334">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/protected-route.test.tsx" timestamp="2026-05-15T19:51:11.379Z" hostname="Can-Emir-Bora-Macbook-Air.local" tests="6" failures="0" errors="0" skipped="0" time="0.044422708">
+        <testcase classname="tests/protected-route.test.tsx" name="buildProtectedRedirectUrl &gt; adds the reason and next path" time="0.009173083">
+        </testcase>
+        <testcase classname="tests/protected-route.test.tsx" name="buildProtectedRedirectUrl &gt; keeps existing login query parameters" time="0.000377542">
+        </testcase>
+        <testcase classname="tests/protected-route.test.tsx" name="ProtectedRoute &gt; renders the loading state while auth is restoring" time="0.018975209">
+        </testcase>
+        <testcase classname="tests/protected-route.test.tsx" name="ProtectedRoute &gt; redirects guests to login with the current path" time="0.004803583">
+        </testcase>
+        <testcase classname="tests/protected-route.test.tsx" name="ProtectedRoute &gt; does not redirect guests while logout is in progress" time="0.005804958">
+        </testcase>
+        <testcase classname="tests/protected-route.test.tsx" name="ProtectedRoute &gt; renders children for authenticated users" time="0.001184084">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/qr-checkin-api.test.ts" timestamp="2026-05-15T19:51:11.380Z" hostname="Can-Emir-Bora-Macbook-Air.local" tests="4" failures="0" errors="0" skipped="0" time="0.012948917">
+        <testcase classname="tests/qr-checkin-api.test.ts" name="QR check-in endpoints &gt; fetchMyAttendeeQr GETs /attendances/me/{event_id}/qr with the auth header" time="0.008924709">
+        </testcase>
+        <testcase classname="tests/qr-checkin-api.test.ts" name="QR check-in endpoints &gt; fetchEventAttendees GETs /events/{event_id}/attendees" time="0.001396959">
+        </testcase>
+        <testcase classname="tests/qr-checkin-api.test.ts" name="QR check-in endpoints &gt; checkInAttendee POSTs the user_id manual fallback body" time="0.001475708">
+        </testcase>
+        <testcase classname="tests/qr-checkin-api.test.ts" name="QR check-in endpoints &gt; checkInAttendee forwards the scanned token when given" time="0.000315833">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/rate-host.test.ts" timestamp="2026-05-15T19:51:11.380Z" hostname="Can-Emir-Bora-Macbook-Air.local" tests="3" failures="0" errors="0" skipped="0" time="0.0040715">
+        <testcase classname="tests/rate-host.test.ts" name="rateHost &gt; sends only score when no review text is provided" time="0.003018333">
+        </testcase>
+        <testcase classname="tests/rate-host.test.ts" name="rateHost &gt; includes the review text when provided" time="0.000208584">
+        </testcase>
+        <testcase classname="tests/rate-host.test.ts" name="rateHost &gt; trims surrounding whitespace and drops empty review text" time="0.000210875">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/register-page.test.tsx" timestamp="2026-05-15T19:51:11.380Z" hostname="Can-Emir-Bora-Macbook-Air.local" tests="2" failures="0" errors="0" skipped="0" time="0.923324916">
+        <testcase classname="tests/register-page.test.tsx" name="RegisterPage &gt; validates required fields before submitting" time="0.223945042">
+        </testcase>
+        <testcase classname="tests/register-page.test.tsx" name="RegisterPage &gt; submits valid registration details" time="0.698344834">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/session.test.ts" timestamp="2026-05-15T19:51:11.380Z" hostname="Can-Emir-Bora-Macbook-Air.local" tests="2" failures="0" errors="0" skipped="0" time="0.001901541">
+        <testcase classname="tests/session.test.ts" name="session store &gt; stores authenticated session data and notifies subscribers" time="0.001305417">
+        </testcase>
+        <testcase classname="tests/session.test.ts" name="session store &gt; resets to guest state after logout" time="0.000135625">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/similar-events.test.tsx" timestamp="2026-05-15T19:51:11.381Z" hostname="Can-Emir-Bora-Macbook-Air.local" tests="4" failures="0" errors="0" skipped="0" time="0.21904475">
+        <testcase classname="tests/similar-events.test.tsx" name="SimilarEventsSection &gt; renders nothing once an empty list resolves" time="0.033798459">
+        </testcase>
+        <testcase classname="tests/similar-events.test.tsx" name="SimilarEventsSection &gt; hides the section when the request fails" time="0.005609">
+        </testcase>
+        <testcase classname="tests/similar-events.test.tsx" name="SimilarEventsSection &gt; renders a card per similar event with the correct detail link" time="0.169983709">
+        </testcase>
+        <testcase classname="tests/similar-events.test.tsx" name="SimilarEventsSection &gt; shows the primary category when present, otherwise the location name" time="0.007777875">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/status-badge.test.tsx" timestamp="2026-05-15T19:51:11.381Z" hostname="Can-Emir-Bora-Macbook-Air.local" tests="9" failures="0" errors="0" skipped="0" time="0.026530041">
+        <testcase classname="tests/status-badge.test.tsx" name="eventStatusVariant &gt; returns cancelled when the event is cancelled" time="0.001167208">
+        </testcase>
+        <testcase classname="tests/status-badge.test.tsx" name="eventStatusVariant &gt; returns ended when the event has ended" time="0.00025">
+        </testcase>
+        <testcase classname="tests/status-badge.test.tsx" name="eventStatusVariant &gt; prefers full over published when capacity is reached on a live event" time="0.000109167">
+        </testcase>
+        <testcase classname="tests/status-badge.test.tsx" name="eventStatusVariant &gt; returns draft for draft events that aren&apos;t full" time="0.000137833">
+        </testcase>
+        <testcase classname="tests/status-badge.test.tsx" name="eventStatusVariant &gt; returns published for active events that aren&apos;t full" time="0.000124208">
+        </testcase>
+        <testcase classname="tests/status-badge.test.tsx" name="StatusBadge &gt; renders the human label for each variant" time="0.017702458">
+        </testcase>
+        <testcase classname="tests/status-badge.test.tsx" name="StatusBadge &gt; renders Cancelled for the cancelled variant" time="0.003088792">
+        </testcase>
+        <testcase classname="tests/status-badge.test.tsx" name="StatusBadge &gt; renders Private for private events" time="0.001686375">
+        </testcase>
+        <testcase classname="tests/status-badge.test.tsx" name="StatusBadge &gt; renders Full for at-capacity events" time="0.001293167">
+        </testcase>
+    </testsuite>
+</testsuites>

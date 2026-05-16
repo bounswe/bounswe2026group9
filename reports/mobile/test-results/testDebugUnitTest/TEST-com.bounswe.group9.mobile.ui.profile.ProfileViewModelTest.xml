@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.bounswe.group9.mobile.ui.profile.ProfileViewModelTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-05-12T18:50:12.129Z" hostname="runnervmeorf1" time="0.041">
+  <properties/>
+  <testcase name="setCredentials with token and id triggers profile + hosted + bookmarks fetch()" classname="com.bounswe.group9.mobile.ui.profile.ProfileViewModelTest" time="0.012"/>
+  <testcase name="setCredentials with null clears profile state()" classname="com.bounswe.group9.mobile.ui.profile.ProfileViewModelTest" time="0.004"/>
+  <testcase name="saveProfile success surfaces successMessage and clears isSaving()" classname="com.bounswe.group9.mobile.ui.profile.ProfileViewModelTest" time="0.02"/>
+  <testcase name="saveProfile failure surfaces errorMessage and clears isSaving()" classname="com.bounswe.group9.mobile.ui.profile.ProfileViewModelTest" time="0.005"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

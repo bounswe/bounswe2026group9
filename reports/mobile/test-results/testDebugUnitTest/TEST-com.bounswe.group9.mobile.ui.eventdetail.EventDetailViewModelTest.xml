@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.bounswe.group9.mobile.ui.eventdetail.EventDetailViewModelTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-05-12T18:50:11.944Z" hostname="runnervmeorf1" time="0.124">
+  <properties/>
+  <testcase name="removeAttendance decrements going count and clears status()" classname="com.bounswe.group9.mobile.ui.eventdetail.EventDetailViewModelTest" time="0.024"/>
+  <testcase name="requestAccess success updates accessRequestStatus()" classname="com.bounswe.group9.mobile.ui.eventdetail.EventDetailViewModelTest" time="0.008"/>
+  <testcase name="toggleBookmark optimistic flip rolls back on failure()" classname="com.bounswe.group9.mobile.ui.eventdetail.EventDetailViewModelTest" time="0.007"/>
+  <testcase name="loadEvent limited result populates limitedPreview()" classname="com.bounswe.group9.mobile.ui.eventdetail.EventDetailViewModelTest" time="0.005"/>
+  <testcase name="setGoing optimistically increments going_count and flips status()" classname="com.bounswe.group9.mobile.ui.eventdetail.EventDetailViewModelTest" time="0.007"/>
+  <testcase name="postComment success prepends new comment and clears the input()" classname="com.bounswe.group9.mobile.ui.eventdetail.EventDetailViewModelTest" time="0.008"/>
+  <testcase name="setGoing rolls back state and surfaces actionError on failure()" classname="com.bounswe.group9.mobile.ui.eventdetail.EventDetailViewModelTest" time="0.007"/>
+  <testcase name="loadEvent NotFound failure surfaces typed detailError()" classname="com.bounswe.group9.mobile.ui.eventdetail.EventDetailViewModelTest" time="0.006"/>
+  <testcase name="loadEvent full result populates fullDetail()" classname="com.bounswe.group9.mobile.ui.eventdetail.EventDetailViewModelTest" time="0.006"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

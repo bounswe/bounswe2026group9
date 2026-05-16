@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.bounswe.group9.mobile.ui.auth.AuthViewModelTest" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-05-12T18:50:10.800Z" hostname="runnervmeorf1" time="0.314">
+  <properties/>
+  <testcase name="login success persists session and flips loggedIn()" classname="com.bounswe.group9.mobile.ui.auth.AuthViewModelTest" time="0.139"/>
+  <testcase name="logout clears session and resets ui state()" classname="com.bounswe.group9.mobile.ui.auth.AuthViewModelTest" time="0.012"/>
+  <testcase name="login failure surfaces error and stops loading()" classname="com.bounswe.group9.mobile.ui.auth.AuthViewModelTest" time="0.012"/>
+  <testcase name="login with blank password surfaces validation error()" classname="com.bounswe.group9.mobile.ui.auth.AuthViewModelTest" time="0.008"/>
+  <testcase name="existing token in session flow flips isLoggedIn on init()" classname="com.bounswe.group9.mobile.ui.auth.AuthViewModelTest" time="0.012"/>
+  <testcase name="refreshSession failure forces logout and invokes onExpired()" classname="com.bounswe.group9.mobile.ui.auth.AuthViewModelTest" time="0.016"/>
+  <testcase name="login with blank email surfaces validation error()" classname="com.bounswe.group9.mobile.ui.auth.AuthViewModelTest" time="0.008"/>
+  <testcase name="refreshSession success persists rotated token and stays loggedIn()" classname="com.bounswe.group9.mobile.ui.auth.AuthViewModelTest" time="0.015"/>
+  <testcase name="register rejects malformed date of birth()" classname="com.bounswe.group9.mobile.ui.auth.AuthViewModelTest" time="0.008"/>
+  <testcase name="register rejects username shorter than three chars()" classname="com.bounswe.group9.mobile.ui.auth.AuthViewModelTest" time="0.007"/>
+  <testcase name="register rejects password shorter than eight chars()" classname="com.bounswe.group9.mobile.ui.auth.AuthViewModelTest" time="0.007"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

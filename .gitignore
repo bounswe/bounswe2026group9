@@ -14,8 +14,10 @@ __pycache__/
 .benchmarks/
 .coverage
 .coverage.*
-coverage.xml
-htmlcov/
+/backend/coverage.xml
+/frontend/coverage.xml
+/backend/htmlcov/
+/frontend/htmlcov/
 
 # IDE
 .vscode/
